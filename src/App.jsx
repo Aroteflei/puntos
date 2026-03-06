@@ -4,7 +4,7 @@ const FONTS = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@70
 // ─── i18n ──────────────────────────────────────
 const strings = {
   es: {
-    chooseGame: "Elegí tu juego", more: "Más juegos próximamente ✨", feedback: "Feedback", suggest: "¿Sugerencia o bug?",
+    chooseGame: "Elegí tu juego ✨", more: "Más juegos próximamente ✨", feedback: "Feedback", suggest: "¿Sugerencia o bug?",
     write: "Escribí acá...", close: "Cerrar", send: "Enviar", settings: "Ajustes", darkMode: "Modo oscuro",
     soundVib: "Sonidos/vibración", lang: "Idioma", contGame: "Continuar partida de", unfinished: "Tenés una partida sin terminar",
     howMany: "¿A cuántos puntos?", names: "Nombres", next: "Siguiente →", back: "← Atrás", start: "Empezar",
@@ -24,7 +24,7 @@ const strings = {
     served: "servida",
   },
   en: {
-    chooseGame: "Choose your game", more: "More games coming soon ✨", feedback: "Feedback", suggest: "Suggestion or bug?",
+    chooseGame: "Choose your game ✨", more: "More games coming soon ✨", feedback: "Feedback", suggest: "Suggestion or bug?",
     write: "Write here...", close: "Close", send: "Send", settings: "Settings", darkMode: "Dark mode",
     soundVib: "Sound/vibration", lang: "Language", contGame: "Continue game of", unfinished: "You have an unfinished game",
     howMany: "How many points?", names: "Names", next: "Next →", back: "← Back", start: "Start",
