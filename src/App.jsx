@@ -22,6 +22,8 @@ const strings = {
     category: "Categoría", total: "TOTAL",
     upTo: "Hasta", staircase: "Escalera", poker: "Póker", generala: "Generala", doubleGen: "Doble Gen.",
     served: "servida",
+    turnWarningTitle: "Atención", turnWarning: "No es el turno de {name}. Le toca a {expected}. ¿Querés seguir igual?",
+    rematch: "Revancha", continueLast: "Continuar última partida", openNow: "Abrir ahora", handNum: "Mano",
   },
   en: {
     chooseGame: "Choose your game ✨", more: "More games coming soon ✨", feedback: "Feedback", suggest: "Suggestion or bug?",
@@ -42,6 +44,8 @@ const strings = {
     category: "Category", total: "TOTAL",
     upTo: "Up to", staircase: "Straight", poker: "Four of a kind", generala: "Generala", doubleGen: "Double Gen.",
     served: "served",
+    turnWarningTitle: "Heads up", turnWarning: "It's not {name}'s turn. It should be {expected}'s turn. Continue anyway?",
+    rematch: "Rematch", continueLast: "Continue last game", openNow: "Open now", handNum: "Hand",
   }
 };
 
@@ -74,6 +78,7 @@ const ST = {
 };
 
 const bajadaReq = (score) => score >= 2000 ? 120 : score >= 1000 ? 90 : 50;
+const clone = (v) => JSON.parse(JSON.stringify(v));
 
 // Share result - with multiple fallbacks
 async function shareResult(title, lines, opts = {}) {
@@ -203,13 +208,13 @@ function EN({ name, onSave, sz = 18 }) { const { t } = useApp(); const [ed, setE
 }
 
 const IcoBtn = ({ onClick, children, t }) => <button onClick={onClick} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt,
-  borderRadius: 12, width: 44, height: 44, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, touchAction: "manipulation" }}>{children}</button>;
+  borderRadius: 12, width: 48, height: 48, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, touchAction: "manipulation" }}>{children}</button>;
 
 function Hdr({ title, emoji, onBack, sub, icons }) {
   const { t } = useApp();
   return <div style={{ padding: "16px 16px 12px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${t.brd}` }}>
     <button onClick={onBack} style={{ background: t.card, border: `1px solid ${t.brd}`, color: t.txt, fontSize: 16, borderRadius: 10,
-      width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, touchAction: "manipulation" }}>←</button>
+      width: 48, height: 48, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, touchAction: "manipulation" }}>←</button>
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontSize: 18 }}>{emoji}</span>
@@ -227,16 +232,33 @@ function NI({ label, value, onChange, step = 1, min, hint }) { const { t } = use
   return <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
     <div><span style={{ fontSize: 13 }}>{label}</span>{hint && <span style={{ fontSize: 10, color: t.txtF, marginLeft: 4 }}>{hint}</span>}</div>
     <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-      <button onClick={() => onChange(min !== undefined ? Math.max(min, value - step) : value - step)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, width: 28, height: 28, borderRadius: 6, cursor: "pointer", fontSize: 14 }}>−</button>
+      <button onClick={() => onChange(min !== undefined ? Math.max(min, value - step) : value - step)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, width: 44, height: 44, borderRadius: 10, cursor: "pointer", fontSize: 18, touchAction: "manipulation" }}>−</button>
       <input type="number" value={raw} onChange={e => setRaw(e.target.value)} onBlur={() => commit(raw)} onKeyDown={e => { if (e.key === "Enter") commit(raw) }} onFocus={e => e.target.select()}
-        style={{ width: 50, textAlign: "center", background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 6, padding: 2, fontSize: 14, fontFamily: "'DM Sans'", outline: "none" }} />
-      <button onClick={() => onChange(value + step)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, width: 28, height: 28, borderRadius: 6, cursor: "pointer", fontSize: 14 }}>+</button>
+        style={{ width: 64, minHeight: 44, textAlign: "center", background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 6, padding: 2, fontSize: 14, fontFamily: "'DM Sans'", outline: "none" }} />
+      <button onClick={() => onChange(value + step)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, width: 44, height: 44, borderRadius: 10, cursor: "pointer", fontSize: 18, touchAction: "manipulation" }}>+</button>
     </div></div>;
 }
 
 function Modal({ children, onClose }) { return <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 100,
   display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
   <div onClick={e => e.stopPropagation()} style={{ maxWidth: 340, width: "100%" }}>{children}</div></div>; }
+
+function UndoBar({ toast, onUndo, onClose }) {
+  const { t, L } = useApp();
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => onClose?.(), 3500);
+    return () => clearTimeout(id);
+  }, [toast, onClose]);
+  if (!toast) return null;
+  return <div style={{ position: "fixed", left: 16, right: 16, bottom: 18, zIndex: 120, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+    <div style={{ pointerEvents: "auto", maxWidth: 460, width: "100%", background: t.card, border: `1px solid ${t.brd}`, boxShadow: t.shH, borderRadius: 16, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: t.txt }}>{toast.text}</div>
+      <B v="gh" onClick={onClose} s={{ padding: "10px 12px", minHeight: 40, flexShrink: 0 }}>{L.close}</B>
+      <B onClick={() => { onUndo?.(); onClose?.(); }} s={{ padding: "10px 14px", minHeight: 40, flexShrink: 0 }}>{L.undo}</B>
+    </div>
+  </div>;
+}
 
 // ─── TALLY (hand-drawn) ───────────────────────
 function Tally({ count, color, divAt }) {
@@ -269,20 +291,31 @@ function Truco({ onBack, onContinueChange }) {
   const { t, sounds, L } = useApp();
   const [target, setTarget] = useState(15);
   const [step, setStep] = useState(0);
+  const nameRefs = useRef([]);
   const [started, setStarted] = useState(false);
   const [names, setNames] = useState(["Nosotros", "Ellos"]);
   const [sc, setSc] = useState([]);
   const [modal, setModal] = useState(null);
   const [hist, setHist] = useState([]);
   const [showH, setShowH] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const moveToNextTrucoName = (i) => {
+    const next = nameRefs.current[i + 1];
+    if (next) { next.focus(); next.select?.(); }
+    else startGame();
+  };
 
   useEffect(() => {
     ST.load("truco-game").then(d => {
       if (d?.started) {
         setTarget(d.target ?? 15);
-        setNames(Array.isArray(d.names) && d.names.length ? d.names : ["Nosotros", "Ellos"]);
-        setSc(Array.isArray(d.sc) ? d.sc : []);
+        const loadedNames = Array.isArray(d.names) && d.names.length ? d.names : ["Nosotros", "Ellos"];
+        const loadedSc = Array.isArray(d.sc) && d.sc.length ? d.sc : loadedNames.map(n => ({ name: n, p: 0 }));
+        setNames(loadedNames);
+        setSc(loadedSc);
         setStarted(true);
+        onContinueChange?.("truco");
       }
     });
     ST.load("truco-hist").then(d => { if (Array.isArray(d)) setHist(d) });
@@ -310,17 +343,22 @@ function Truco({ onBack, onContinueChange }) {
   };
 
   const startGame = async () => {
-    const fresh = names.map(n => ({ name: n || "Equipo", p: 0 }));
+    const finalNames = names.map((n, i) => n?.trim() || (i === 0 ? "Nosotros" : "Ellos"));
+    const fresh = finalNames.map(n => ({ name: n, p: 0 }));
+    setNames(finalNames);
     setSc(fresh);
     setStarted(true);
-    await ST.save("truco-game", { started: true, target, names, sc: fresh });
+    await ST.save("truco-game", { started: true, target, names: finalNames, sc: fresh });
     onContinueChange?.("truco");
   };
 
   const add = async (i, v) => {
+    const prev = clone(sc);
     const u = sc.map((row, idx) => idx === i ? { ...row, p: Math.max(0, row.p + v) } : row);
     setSc(u);
+    setToast({ text: `${u[i].name}: ${v > 0 ? "+" : ""}${v}` , undo: () => { setSc(prev); persistNow(prev); } });
     await persistNow(u);
+    if (sounds) vib();
     if (sounds && u[i].p >= target) vibWin();
   };
 
@@ -333,19 +371,25 @@ function Truco({ onBack, onContinueChange }) {
     await persistNow(nextSc, nextNames);
   };
 
+  const rematch = async () => {
+    const resetSc = (sc.length ? sc : names.map(n => ({ name: n, p: 0 }))).map(s => ({ ...s, p: 0 }));
+    setSc(resetSc);
+    setModal(null);
+    setToast({ text: L.rematch, undo: null });
+    await persistNow(resetSc);
+  };
+
   const winner = sc.find(s => s.p >= target);
   const saveNew = async () => {
     const nextHist = [{ scores: sc.map(s => ({ name: s.name, p: s.p })), target, date: new Date().toLocaleString(), done: !!winner }, ...hist];
     setHist(nextHist);
-    const resetSc = sc.map(s => ({ ...s, p: 0 }));
-    setSc(resetSc);
-    setModal(null);
     await ST.save("truco-hist", nextHist);
-    await persistNow(resetSc);
+    await rematch();
   };
   const resetZ = async () => {
-    const resetSc = sc.map(s => ({ ...s, p: 0 }));
-    setSc(resetSc);
+    setStarted(false);
+    setStep(0);
+    setSc([]);
     setModal(null);
     await ST.del("truco-game");
     onContinueChange?.(null);
@@ -357,9 +401,10 @@ function Truco({ onBack, onContinueChange }) {
     else await ST.del("truco-hist");
   };
   const doShare = () => shareResult("Truco - " + target + " pts", sc.map(s => `${s.name}: ${s.p}`));
+  const isPhone = typeof window !== "undefined" && window.innerWidth <= 480;
 
   if (!started) return <div><Hdr title="Truco" emoji="🂡" onBack={goBack} />
-    <div style={{ maxWidth: 380, margin: "0 auto", padding: "20px 20px 44px", display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ maxWidth: 420, margin: "0 auto", padding: "20px 20px 56px", display: "flex", flexDirection: "column", gap: 16 }}>
       {step === 0 && <><p style={{ fontSize: 17, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>{L.howMany}</p>
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>{[15, 30].map(v => <B key={v} v={target === v ? "pri" : "gh"} onClick={() => setTarget(v)}
           s={{ fontSize: 26, padding: "18px 16px", minHeight: 68, fontFamily: "'Playfair Display'", fontWeight: 800 }}>{v}</B>)}</div>
@@ -367,10 +412,13 @@ function Truco({ onBack, onContinueChange }) {
       {step === 1 && <><p style={{ fontSize: 17, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>{L.names}</p>
         {names.map((n, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: t.txtF, width: 20 }}>{i + 1}.</span>
-          <input value={n} onChange={e => { const u = [...names]; u[i] = e.target.value; setNames(u) }}
+          <input autoFocus={i === 0} ref={el => { nameRefs.current[i] = el }} value={n} onChange={e => { const u = [...names]; u[i] = e.target.value; setNames(u) }}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveToNextTrucoName(i) } }} returnKeyHint={i === names.length - 1 ? "done" : "next"}
             style={{ flex: 1, background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12, padding: "13px 14px", minHeight: 48, fontSize: 16, fontFamily: "inherit", outline: "none" }} /></div>)}
-        <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setStep(0)} s={{ flex: 1 }}>{L.back}</B>
-          <B onClick={startGame} s={{ flex: 1, fontSize: 16 }}>{L.start} 🂡</B></div></>}
+        <div style={{ position: "sticky", bottom: 10, marginTop: 8, background: `linear-gradient(180deg, transparent, ${t.bg} 28%)`, paddingTop: 12 }}>
+          <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setStep(0)} s={{ flex: 1 }}>{L.back}</B>
+            <B onClick={startGame} s={{ flex: 1, fontSize: 16, minHeight: 52 }}>{L.start} 🂡</B></div>
+        </div></>}
     </div></div>;
 
   return <div>
@@ -390,7 +438,7 @@ function Truco({ onBack, onContinueChange }) {
 
     {showH && hist.length > 0 && <div style={{ margin: "8px 16px", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 12, padding: 10 }}>
       <p style={{ fontSize: 12, fontWeight: 600, color: t.pri, margin: "0 0 6px", fontFamily: "'Playfair Display'" }}>{L.hist}</p>
-      {hist.map((h, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: `1px solid ${t.brd}30`, fontSize: 12 }}>
+      {hist.map((h, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", borderBottom: `1px solid ${t.brd}30`, fontSize: 12 }}>
         <div style={{ flex: 1 }}>{h.scores.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.p}</b></span>)}</div>
         <span style={{ fontSize: 10, color: t.txtF }}>{h.date}</span>
         <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 18, padding: 6 }}>×</button>
@@ -399,53 +447,62 @@ function Truco({ onBack, onContinueChange }) {
 
     {winner && <div style={{ textAlign: "center", padding: 16, margin: "12px 16px", background: `linear-gradient(135deg, ${t.pri}, ${t.priL})`, borderRadius: 14, color: "#fff" }}>
       <div style={{ fontSize: 24, fontFamily: "'Playfair Display'", fontWeight: 800 }}>🏆 ¡{winner.name} {L.wins}!</div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
+      <div style={{ fontSize: 13, opacity: .9, marginTop: 4 }}>{sc.map(s => `${s.name} ${s.p}`).join(" · ")}</div>
+      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10, flexWrap: "wrap" }}>
         <B onClick={doShare} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>📤 {L.share}</B>
+        <B onClick={rematch} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.rematch}</B>
         <B onClick={() => setModal("new")} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.yesNew}</B></div></div>}
 
-    <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", padding: "16px", alignItems: "stretch" }}>
-      {sc.map((s, i) => <div key={i} style={{ background: t.card, border: `1px solid ${t.brd}`, borderRadius: 18,
-        padding: 18, boxShadow: t.sh, opacity: winner && winner !== s ? .35 : 1, transition: "opacity .3s", display: "flex", flexDirection: "column", minHeight: target === 30 ? 470 : 360 }}>
-        <div style={{ textAlign: "center", marginBottom: 12 }}><EN name={s.name} onSave={n => ren(i, n)} sz={20} /></div>
-        <div style={{ margin: "0 0 12px", padding: "14px 12px", background: t.bgS, borderRadius: 16, border: `1px solid ${t.brd}`,
-          minHeight: target === 30 ? 270 : 190, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-          {target === 30 && <div style={{ fontSize: 10, color: t.txtM, fontWeight: 700, letterSpacing: 1.2, marginBottom: 8, textAlign: "center" }}>MALAS / BUENAS</div>}
-          <Tally count={s.p} color={t.pri} divAt={target === 30 ? 15 : null} /></div>
-        <div style={{ fontFamily: "'Playfair Display'", fontSize: 64, fontWeight: 800, color: t.pri, lineHeight: .95, marginTop: 2, textAlign: "center" }}>{s.p}</div>
-        <div style={{ fontSize: 13, color: t.txtF, marginBottom: 14, textAlign: "center" }}>{Math.max(0, target - s.p)} {L.remain}</div>
-        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginTop: "auto" }}>
-          {[1, 2, 3].map(v => <B key={v} onClick={() => add(i, v)} s={{ fontSize: 18, minHeight: 52, padding: "14px 0" }}>+{v}</B>)}
-          <B v="gh" onClick={() => add(i, -1)} s={{ fontSize: 18, minHeight: 52, padding: "14px 0" }}>−1</B>
+    <div style={{ display: "grid", gap: isPhone ? 10 : 14, gridTemplateColumns: isPhone ? "repeat(2, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))", padding: isPhone ? "12px" : "16px", alignItems: "stretch" }}>
+      {sc.map((s, i) => <div key={i} style={{ background: t.card, border: `1px solid ${t.brd}`, borderRadius: isPhone ? 14 : 18,
+        padding: isPhone ? 12 : 16, boxShadow: t.sh, opacity: winner && winner !== s ? .45 : 1, transition: "opacity .3s", display: "flex", flexDirection: "column", minHeight: isPhone ? 320 : 390 }}>
+        <div style={{ textAlign: "center", marginBottom: 10 }}><EN name={s.name} onSave={n => ren(i, n)} sz={isPhone ? 17 : 20} /></div>
+        <div style={{ display: "grid", gap: 10, gridTemplateRows: "1fr auto 1fr", flex: 1 }}>
+          <div style={{ padding: isPhone ? "10px 8px" : "14px 12px", background: t.bgS, borderRadius: 14, border: `1px solid ${t.brd}`, minHeight: isPhone ? (target === 30 ? 122 : 104) : (target === 30 ? 150 : 120), display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            {target === 30 && <div style={{ fontSize: 9, color: t.txtM, fontWeight: 700, letterSpacing: 1.1, marginBottom: 6, textAlign: "center" }}>MALAS / BUENAS</div>}
+            <Tally count={s.p} color={t.pri} divAt={target === 30 ? 15 : null} />
+          </div>
+          <div style={{ padding: isPhone ? "10px 8px" : "14px 10px", background: t.bgS, borderRadius: 14, border: `1px solid ${t.brd}`, display: "flex", alignItems: "center", justifyContent: "center", minHeight: isPhone ? 92 : 110 }}>
+            <div style={{ fontFamily: "'Playfair Display'", fontSize: isPhone ? 42 : 58, fontWeight: 800, color: t.pri, lineHeight: .95 }}>{s.p}</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "end" }}>
+            <div style={{ fontSize: isPhone ? 12 : 13, color: t.txtF, marginBottom: 10, textAlign: "center" }}>{Math.max(0, target - s.p)} {L.remain}</div>
+            <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+              {[1, 2, 3].map(v => <B key={v} onClick={() => add(i, v)} s={{ fontSize: isPhone ? 16 : 18, minHeight: 48, padding: "12px 0" }}>+{v}</B>)}
+              <B v="gh" onClick={() => add(i, -1)} s={{ fontSize: isPhone ? 16 : 18, minHeight: 48, padding: "12px 0" }}>−1</B>
+            </div>
+          </div>
         </div>
       </div>)}
     </div>
+    <UndoBar toast={toast} onUndo={() => toast?.undo?.()} onClose={() => setToast(null)} />
   </div>;
 }
-
-// ═══════════════════════════════════════════════
-// BURAKO
-// ═══════════════════════════════════════════════
-// BURAKO
-// ═══════════════════════════════════════════════
 const BK_D = { pura: 200, canasta: 100, cierre: 100, muerto: 100 };
 
-function Burako({ onBack }) {
+function Burako({ onBack, onContinueChange }) {
   const { t, sounds, L } = useApp();
   const [setup, setSetup] = useState(true); const [sStep, setSStep] = useState(0);
   const [pC, setPC] = useState(2); const [tgt, setTgt] = useState(3000); const [cfg, setCfg] = useState({ ...BK_D });
   const [showCfg, setShowCfg] = useState(false); const [teamNames, setTeamNames] = useState(["Pareja 1", "Pareja 2"]);
   const [teams, setTeams] = useState([]); const [adding, setAdding] = useState(false); const [editIdx, setEditIdx] = useState(null);
   const [hf, setHf] = useState([]); const [modal, setModal] = useState(null); const [hist, setHist] = useState([]);
-  const [showH, setShowH] = useState(false);
+  const [showH, setShowH] = useState(false); const [toast, setToast] = useState(null);
+  const teamNameRefs = useRef([]);
 
   const handlePC = (n) => { setPC(n); setTeamNames(n === 2 ? ["Pareja 1", "Pareja 2"] : ["Jugador 1", "Jugador 2", "Jugador 3"]) };
+  const moveToNextBurakoName = (i) => {
+    const next = teamNameRefs.current[i + 1];
+    if (next) { next.focus(); next.select?.(); }
+    else setSStep(2);
+  };
 
-  useEffect(() => { ST.load("burako-game").then(d => { if (d?.teams?.length) { setTeams(d.teams); setTgt(d.tgt); setCfg(d.cfg); setPC(d.pC); setSetup(false) } });
+  useEffect(() => { ST.load("burako-game").then(d => { if (d?.teams?.length) { setTeams(d.teams); setTgt(d.tgt); setCfg(d.cfg); setPC(d.pC); setSetup(false); onContinueChange?.("burako") } });
     ST.load("burako-hist").then(d => { if (d) setHist(d) }) }, []);
-  useEffect(() => { if (teams.length) ST.save("burako-game", { teams, tgt, cfg, pC }) }, [teams]);
+  useEffect(() => { if (teams.length && !setup) { ST.save("burako-game", { teams, tgt, cfg, pC }); onContinueChange?.("burako"); } }, [teams, tgt, cfg, pC, setup, onContinueChange]);
   useEffect(() => { if (hist.length) ST.save("burako-hist", hist) }, [hist]);
 
-  const start = () => { setTeams(teamNames.map(n => ({ name: n, hands: [] }))); setSetup(false) };
+  const start = () => { const fresh = teamNames.map(n => ({ name: n, hands: [] })); setTeams(fresh); setSetup(false); ST.save("burako-game", { teams: fresh, tgt, cfg, pC }); onContinueChange?.("burako") };
   const initHand = () => { setHf(teams.map(() => ({ pura: 0, canasta: 0, puntos: 0, cierre: false, muerto: true }))); setAdding(true); setEditIdx(null) };
   const startEdit = (hi) => { setHf(teams.map(tm => ({ ...tm.hands[hi] }))); setEditIdx(hi); setAdding(true) };
   const calc = (h) => { if (!h) return 0; let s = (h.pura || 0) * cfg.pura + (h.canasta || 0) * cfg.canasta + (h.puntos || 0); if (h.cierre) s += cfg.cierre; if (!h.muerto) s -= cfg.muerto; return s };
@@ -455,17 +512,19 @@ function Burako({ onBack }) {
   const someoneClosed = hf.some(h => h?.cierre); const ren = (i, n) => { const u = [...teams]; u[i].name = n; setTeams(u) };
   const maxHands = Math.max(...teams.map(tm => tm.hands.length), 0);
   const winner = teams.find(tm => total(tm) >= tgt);
-  const saveHand = () => { const u = [...teams]; if (editIdx !== null) { hf.forEach((h, i) => { u[i].hands[editIdx] = { ...h } }) } else { hf.forEach((h, i) => { u[i].hands.push({ ...h }) }) }
-    setTeams(u); setAdding(false); setHf([]); setEditIdx(null); if (sounds && teams.some(tm => total(tm) >= tgt)) vibWin() };
-  const undoLast = () => { const u = [...teams]; u.forEach(tm => tm.hands.pop()); setTeams(u); setModal(null) };
-  const saveNew = () => { setHist(h => [{ teams: teams.map(tm => ({ name: tm.name, t: total(tm) })), tgt, date: new Date().toLocaleString(), done: !!winner }, ...h]);
-    setTeams(teams.map(tm => ({ ...tm, hands: [] }))); setModal(null); ST.del("burako-game") };
-  const resetZ = () => { setTeams(teams.map(tm => ({ ...tm, hands: [] }))); setModal(null); ST.del("burako-game") };
+  const saveHand = () => { const prev = clone(teams); const u = clone(teams); if (editIdx !== null) { hf.forEach((h, i) => { u[i].hands[editIdx] = { ...h } }) } else { hf.forEach((h, i) => { u[i].hands.push({ ...h }) }) }
+    setTeams(u); setAdding(false); setHf([]); setEditIdx(null); setToast({ text: editIdx !== null ? `${L.editHand} ${editIdx + 1}` : L.newHand, undo: () => setTeams(prev) }); if (sounds && u.some(tm => total(tm) >= tgt)) vibWin() };
+  const undoLast = () => { const u = clone(teams); u.forEach(tm => tm.hands.pop()); setTeams(u); setModal(null) };
+  const rematch = async () => { const resetTeams = teams.map(tm => ({ ...tm, hands: [] })); setTeams(resetTeams); setModal(null); setToast({ text: L.rematch, undo: null }); await ST.save("burako-game", { teams: resetTeams, tgt, cfg, pC }); onContinueChange?.("burako") };
+  const saveNew = async () => { const nextHist = [{ teams: teams.map(tm => ({ name: tm.name, t: total(tm) })), tgt, date: new Date().toLocaleString(), done: !!winner }, ...hist];
+    setHist(nextHist); await ST.save("burako-hist", nextHist); await rematch() };
+  const resetZ = async () => { setTeams([]); setSetup(true); setModal(null); await ST.del("burako-game"); onContinueChange?.(null) };
   const delH = i => setHist(h => h.filter((_, j) => j !== i));
   const doShare = () => shareResult(`Burako - ${(tgt / 1000).toFixed(tgt % 1000 ? 1 : 0)}K`, teams.map(tm => `${tm.name}: ${total(tm)}`));
+  const goBack = () => { onContinueChange?.(teams.length ? "burako" : null); onBack() };
 
-  if (setup) return <div><Hdr title="Burako" emoji="🃏" onBack={onBack} />
-    <div style={{ maxWidth: 340, margin: "0 auto", padding: "20px 20px 40px", display: "flex", flexDirection: "column", gap: 16 }}>
+  if (setup) return <div><Hdr title="Burako" emoji="🃏" onBack={goBack} />
+    <div style={{ maxWidth: 360, margin: "0 auto", padding: "20px 20px 48px", display: "flex", flexDirection: "column", gap: 16 }}>
       {sStep === 0 && <><p style={{ fontSize: 16, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>{L.howPlay}</p>
         <div style={{ display: "flex", gap: 8 }}>{[2, 3].map(n => <B key={n} v={pC === n ? "pri" : "gh"} onClick={() => handlePC(n)}
           s={{ flex: 1, fontSize: 15, padding: "14px 10px" }}>{n === 2 ? L.pairs : L.threePlayers}</B>)}</div>
@@ -473,11 +532,14 @@ function Burako({ onBack }) {
       {sStep === 1 && <><p style={{ fontSize: 16, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>{L.names}</p>
         {teamNames.map((n, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: t.txtF, width: 20 }}>{i + 1}.</span>
-          <input value={n} onChange={e => { const u = [...teamNames]; u[i] = e.target.value; setTeamNames(u) }}
-            style={{ flex: 1, background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 10, padding: "10px 12px", fontSize: 15, fontFamily: "inherit", outline: "none" }} /></div>)}
-        <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setSStep(0)} s={{ flex: 1 }}>{L.back}</B><B onClick={() => setSStep(2)} s={{ flex: 1 }}>{L.next}</B></div></>}
+          <input autoFocus={i === 0} ref={el => { teamNameRefs.current[i] = el }} value={n} onChange={e => { const u = [...teamNames]; u[i] = e.target.value; setTeamNames(u) }}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveToNextBurakoName(i) } }} returnKeyHint={i === teamNames.length - 1 ? "done" : "next"}
+            style={{ flex: 1, background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12, padding: "13px 14px", minHeight: 48, fontSize: 16, fontFamily: "inherit", outline: "none" }} /></div>)}
+        <div style={{ position: "sticky", bottom: 10, marginTop: 8, background: `linear-gradient(180deg, transparent, ${t.bg} 28%)`, paddingTop: 12 }}>
+          <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setSStep(0)} s={{ flex: 1 }}>{L.back}</B><B onClick={() => setSStep(2)} s={{ flex: 1, minHeight: 52 }}>{L.next}</B></div>
+        </div></>}
       {sStep === 2 && <><p style={{ fontSize: 16, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>{L.target}</p>
-        <div style={{ display: "flex", gap: 6 }}>{[3000, 5000].map(n => <B key={n} v={tgt === n ? "pri" : "gh"} onClick={() => setTgt(n)} s={{ flex: 1, fontSize: 14 }}>{(n / 1000)}K</B>)}</div>
+        <div style={{ display: "flex", gap: 6 }}>{[3000, 5000].map(n => <B key={n} v={tgt === n ? "pri" : "gh"} onClick={() => setTgt(n)} s={{ flex: 1, fontSize: 14, minHeight: 52 }}>{(n / 1000)}K</B>)}</div>
         <NI label={L.custom} value={tgt} onChange={v => setTgt(v)} step={500} min={500} />
         <div style={{ borderTop: `1px solid ${t.brd}`, paddingTop: 12 }}>
           <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 8px" }}>{L.values}</p>
@@ -486,11 +548,11 @@ function Burako({ onBack }) {
           <NI label={L.closed} value={cfg.cierre} onChange={v => setCfg({ ...cfg, cierre: v })} step={10} min={0} />
           <NI label={L.penaltyDead} value={cfg.muerto} onChange={v => setCfg({ ...cfg, muerto: v })} step={10} min={0} /></div>
         <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setSStep(1)} s={{ flex: 1 }}>{L.back}</B>
-          <B onClick={start} s={{ flex: 1, padding: 12, fontSize: 15 }}>{L.start} 🃏</B></div></>}
+          <B onClick={start} s={{ flex: 1, padding: 12, fontSize: 15, minHeight: 52 }}>{L.start} 🃏</B></div></>}
     </div></div>;
 
   return <div>
-    <Hdr title="Burako" emoji="🃏" onBack={onBack} sub={`A ${(tgt / 1000).toFixed(tgt % 1000 ? 1 : 0)}K`} icons={<>
+    <Hdr title="Burako" emoji="🃏" onBack={goBack} sub={`A ${(tgt / 1000).toFixed(tgt % 1000 ? 1 : 0)}K`} icons={<>
       <IcoBtn onClick={() => setShowCfg(!showCfg)} t={t}>⚙️</IcoBtn>
       <IcoBtn onClick={doShare} t={t}>📤</IcoBtn>
       <IcoBtn onClick={() => setModal("new")} t={t}>🔄</IcoBtn>
@@ -511,7 +573,7 @@ function Burako({ onBack }) {
       <NI label={L.canastas} value={cfg.canasta} onChange={v => setCfg({ ...cfg, canasta: v })} step={10} min={0} />
       <NI label={L.closed} value={cfg.cierre} onChange={v => setCfg({ ...cfg, cierre: v })} step={10} min={0} />
       <NI label={L.penaltyDead} value={cfg.muerto} onChange={v => setCfg({ ...cfg, muerto: v })} step={10} min={0} />
-      <B onClick={() => setShowCfg(false)} s={{ width: "100%", marginTop: 2 }}>{L.close}</B></div>}
+      <B onClick={() => setShowCfg(false)} s={{ width: "100%", marginTop: 6 }}>{L.close}</B></div>}
 
     {showH && hist.length > 0 && <div style={{ margin: "8px 16px", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 12, padding: 10 }}>
       <p style={{ fontSize: 12, fontWeight: 600, color: t.pri, margin: "0 0 6px", fontFamily: "'Playfair Display'" }}>{L.hist}</p>
@@ -521,33 +583,35 @@ function Burako({ onBack }) {
 
     {winner && <div style={{ textAlign: "center", padding: 14, margin: "8px 16px", background: `linear-gradient(135deg, ${t.pri}, ${t.priL})`, borderRadius: 14, color: "#fff" }}>
       <div style={{ fontSize: 22, fontFamily: "'Playfair Display'", fontWeight: 800 }}>🏆 ¡{winner.name} {L.wins}!</div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8, flexWrap: "wrap" }}>
         <B onClick={doShare} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>📤 {L.share}</B>
+        <B onClick={rematch} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.rematch}</B>
         <B onClick={() => setModal("new")} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.yesNew}</B></div></div>}
 
-    {/* Ledger */}
     <div style={{ padding: "12px 12px 0", overflowX: "auto" }}><div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${teams.length}, 1fr)`, gap: 2, marginBottom: 2 }}>
-        {teams.map((tm, i) => <div key={i} style={{ padding: "6px 4px", textAlign: "center", background: t.card, border: `1px solid ${t.brd}`, borderRadius: "8px 8px 0 0" }}>
+      <div style={{ display: "grid", gridTemplateColumns: `60px repeat(${teams.length}, 1fr)`, gap: 4, marginBottom: 4 }}>
+        <div style={{ padding: "8px 4px", textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: "8px 8px 0 0", fontSize: 11, color: t.txtM }}>{L.handNum}</div>
+        {teams.map((tm, i) => <div key={i} style={{ padding: "8px 4px", textAlign: "center", background: t.card, border: `1px solid ${t.brd}`, borderRadius: "8px 8px 0 0" }}>
           <EN name={tm.name} onSave={n => ren(i, n)} sz={14} />
           <div style={{ fontSize: 11, color: t.pri, marginTop: 2, fontWeight: 700 }}>{L.dropWith}: {bajadaReq(total(tm))}</div></div>)}
       </div>
-      {Array.from({ length: maxHands }).map((_, hi) => <div key={hi} onClick={() => !adding && startEdit(hi)}
-        style={{ display: "grid", gridTemplateColumns: `repeat(${teams.length}, 1fr)`, gap: 2, marginBottom: 2, cursor: "pointer" }}>
-        {teams.map((tm, ti) => { const h = tm.hands[hi]; if (!h) return <div key={ti} style={{ background: t.card, border: `1px solid ${t.brd}`, minHeight: 32 }} />;
+      {Array.from({ length: maxHands }).map((_, hi) => <div key={hi} style={{ display: "grid", gridTemplateColumns: `60px repeat(${teams.length}, 1fr)`, gap: 4, marginBottom: 6, alignItems: "stretch" }}>
+        <div style={{ background: hi % 2 === 0 ? t.bgS : t.card, border: `1px solid ${t.brd}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: t.pri, fontFamily: "'Playfair Display'" }}>{hi + 1}</div>
+        {teams.map((tm, ti) => { const h = tm.hands[hi]; if (!h) return <div key={ti} style={{ background: t.card, border: `1px solid ${t.brd}`, minHeight: 52, borderRadius: 10 }} />;
           const s = calc(h); const bits = []; if (h.pura > 0) bits.push(`${h.pura}P`); if (h.canasta > 0) bits.push(`${h.canasta}C`);
           if (h.puntos !== 0) bits.push(`${h.puntos > 0 ? "+" : ""}${h.puntos}`); if (h.cierre) bits.push("✓"); if (!h.muerto) bits.push("−M");
-          return <div key={ti} style={{ background: t.card, border: `1px solid ${t.brd}`, padding: "4px 6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 10, color: t.txtM, lineHeight: 1.2 }}>{bits.join("·")}</span>
-            <span style={{ fontFamily: "'Playfair Display'", fontSize: 15, fontWeight: 700, color: s >= 0 ? t.ok : t.err, marginLeft: 4, flexShrink: 0 }}>{s >= 0 ? "+" : ""}{s}</span></div> })}</div>)}
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${teams.length}, 1fr)`, gap: 2, marginTop: 2 }}>
-        {teams.map((tm, i) => <div key={i} style={{ padding: 6, textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: "0 0 8px 8px" }}>
+          return <div key={ti} onClick={() => !adding && startEdit(hi)} style={{ background: hi % 2 === 0 ? t.card : t.bgS, border: `1px solid ${t.brd}`, padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: 10, cursor: "pointer", minHeight: 52 }}>
+            <span style={{ fontSize: 11, color: t.txtM, lineHeight: 1.25 }}>{bits.join(" · ")}</span>
+            <span style={{ fontFamily: "'Playfair Display'", fontSize: 17, fontWeight: 700, color: s >= 0 ? t.ok : t.err, marginLeft: 8, flexShrink: 0 }}>{s >= 0 ? "+" : ""}{s}</span></div> })}
+      </div>)}
+      <div style={{ display: "grid", gridTemplateColumns: `60px repeat(${teams.length}, 1fr)`, gap: 4, marginTop: 4 }}>
+        <div style={{ padding: 8, textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: "0 0 0 8px", fontWeight: 800, color: t.pri, fontFamily: "'Playfair Display'" }}>{L.total}</div>
+        {teams.map((tm, i) => <div key={i} style={{ padding: 8, textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: i === teams.length - 1 ? "0 0 8px 0" : 0 }}>
           <div style={{ fontFamily: "'Playfair Display'", fontSize: 28, fontWeight: 800, color: t.pri }}>{total(tm)}</div>
-          <div style={{ fontSize: 9, color: t.txtF }}>{Math.max(0, tgt - total(tm))} {L.toWin}</div></div>)}
+          <div style={{ fontSize: 10, color: t.txtF }}>{Math.max(0, tgt - total(tm))} {L.toWin}</div></div>)}
       </div>
     </div></div>
 
-    {/* Add/edit hand */}
     <div style={{ padding: "10px 12px 20px" }}>
       {adding ? <div style={{ background: t.card, border: `1px solid ${t.brd}`, borderRadius: 14, padding: 12, boxShadow: t.sh }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: t.pri, margin: "0 0 8px", fontFamily: "'Playfair Display'" }}>{editIdx !== null ? `${L.editHand} ${editIdx + 1}` : L.newHand}</p>
@@ -559,28 +623,29 @@ function Burako({ onBack }) {
               <NI label={L.puras} value={hf[i]?.pura || 0} onChange={v => upHf(i, "pura", v)} min={0} hint={`(${cfg.pura})`} />
               <NI label={L.canastas} value={hf[i]?.canasta || 0} onChange={v => upHf(i, "canasta", v)} min={0} hint={`(${cfg.canasta})`} />
               <NI label={L.puntos} value={hf[i]?.puntos || 0} onChange={v => upHf(i, "puntos", v)} step={5} />
-              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-                <span style={{ fontSize: 11, color: t.txtM, flex: 1 }}>{L.playedDead}</span>
-                <B v={hf[i]?.muerto ? "pri" : "gh"} onClick={() => upHf(i, "muerto", true)} s={{ padding: "3px 8px", fontSize: 10 }}>Sí</B>
-                <B v={!hf[i]?.muerto ? "err" : "gh"} onClick={() => upHf(i, "muerto", false)} s={{ padding: "3px 8px", fontSize: 10 }}>No</B></div>
-              <div style={{ marginBottom: 4 }}>{hf[i]?.cierre
-                ? <B onClick={() => { const u = [...hf]; u[i] = { ...u[i], cierre: false }; setHf(u) }} s={{ width: "100%", fontSize: 11, padding: "5px 8px" }}>✓ {L.closed}</B>
-                : other ? <div style={{ fontSize: 10, color: t.txtF, textAlign: "center", padding: "5px 0", fontStyle: "italic" }}>{L.notClosed}</div>
-                : <B v="out" onClick={() => setCierre(i)} s={{ width: "100%", fontSize: 11, padding: "5px 8px" }}>{L.closed}</B>}</div>
-              <div style={{ marginTop: 6, padding: "4px 6px", background: t.bg, borderRadius: 6, display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 9, color: t.txtF }}>{L.sub}</span>
-                <span style={{ fontFamily: "'Playfair Display'", fontSize: 15, fontWeight: 700, color: calc(hf[i]) >= 0 ? t.ok : t.err }}>{calc(hf[i]) >= 0 ? "+" : ""}{calc(hf[i])}</span></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: t.txtM, flex: 1 }}>{L.playedDead}</span>
+                <B v={hf[i]?.muerto ? "pri" : "gh"} onClick={() => upHf(i, "muerto", true)} s={{ padding: "8px 10px", fontSize: 11, minHeight: 40 }}>Sí</B>
+                <B v={!hf[i]?.muerto ? "err" : "gh"} onClick={() => upHf(i, "muerto", false)} s={{ padding: "8px 10px", fontSize: 11, minHeight: 40 }}>No</B></div>
+              <div style={{ marginBottom: 6 }}>{hf[i]?.cierre
+                ? <B onClick={() => { const u = [...hf]; u[i] = { ...u[i], cierre: false }; setHf(u) }} s={{ width: "100%", fontSize: 12, minHeight: 42 }}>✓ {L.closed}</B>
+                : other ? <div style={{ fontSize: 10, color: t.txtF, textAlign: "center", padding: "8px 0", fontStyle: "italic" }}>{L.notClosed}</div>
+                : <B v="out" onClick={() => setCierre(i)} s={{ width: "100%", fontSize: 12, minHeight: 42 }}>{L.closed}</B>}</div>
+              <div style={{ marginTop: 6, padding: "6px 8px", background: t.bg, borderRadius: 8, display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 10, color: t.txtF }}>{L.sub}</span>
+                <span style={{ fontFamily: "'Playfair Display'", fontSize: 16, fontWeight: 700, color: calc(hf[i]) >= 0 ? t.ok : t.err }}>{calc(hf[i]) >= 0 ? "+" : ""}{calc(hf[i])}</span></div>
             </div> })}
         </div>
         <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-          <B onClick={saveHand} disabled={!someoneClosed} s={{ flex: 1, padding: 10 }}>{someoneClosed ? L.save : L.chooseClosed}</B>
-          <B v="gh" onClick={() => { setAdding(false); setHf([]); setEditIdx(null) }}>{L.cancel}</B></div>
-      </div> : <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-        <B onClick={initHand} s={{ padding: "10px 24px" }}>{L.newHand}</B>
-        {maxHands > 0 && <B v="err" onClick={() => setModal("undo")}>{L.undo}</B>}</div>}
-    </div></div>;
+          <B onClick={saveHand} disabled={!someoneClosed} s={{ flex: 1, padding: 10, minHeight: 48 }}>{someoneClosed ? L.save : L.chooseClosed}</B>
+          <B v="gh" onClick={() => { setAdding(false); setHf([]); setEditIdx(null) }} s={{ minHeight: 48 }}>{L.cancel}</B></div>
+      </div> : <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+        <B onClick={initHand} s={{ padding: "12px 24px", minHeight: 48 }}>{L.newHand}</B>
+        {maxHands > 0 && <B v="err" onClick={() => setModal("undo")} s={{ minHeight: 48 }}>{L.undo}</B>}</div>}
+    </div>
+    <UndoBar toast={toast} onUndo={() => toast?.undo?.()} onClose={() => setToast(null)} />
+  </div>;
 }
-
 // ═══════════════════════════════════════════════
 // GENERALA
 // ═══════════════════════════════════════════════
@@ -593,37 +658,54 @@ const GC = [
 ];
 const gV = (c) => c.f ? c.f : Array.from({ length: Math.floor(c.m / c.n) }, (_, i) => (i + 1) * c.n);
 
-function Generala({ onBack }) {
+function Generala({ onBack, onContinueChange }) {
   const { t, sounds, L } = useApp();
   const [sStep, setSStep] = useState(0); const [pCount, setPCount] = useState(2);
   const [pNames, setPNames] = useState(["Jugador 1", "Jugador 2"]);
   const [ps, setPs] = useState([]); const [started, setStarted] = useState(false);
   const [sheet, setSheet] = useState(null); const [modal, setModal] = useState(null);
-  const [hist, setHist] = useState([]); const [showH, setShowH] = useState(false);
+  const [hist, setHist] = useState([]); const [showH, setShowH] = useState(false); const [toast, setToast] = useState(null);
+  const playerNameRefs = useRef([]);
 
   const handleCount = (n) => { setPCount(n); setPNames(Array.from({ length: n }, (_, i) => pNames[i] || `Jugador ${i + 1}`)) };
 
-  useEffect(() => { ST.load("generala-game").then(d => { if (d?.ps?.length) { setPs(d.ps); setStarted(true) } });
+  useEffect(() => { ST.load("generala-game").then(d => { if (d?.ps?.length) { setPs(d.ps); setStarted(true); onContinueChange?.("generala") } });
     ST.load("generala-hist").then(d => { if (d) setHist(d) }) }, []);
-  useEffect(() => { if (started && ps.length) ST.save("generala-game", { ps }) }, [ps]);
+  useEffect(() => { if (started && ps.length) { ST.save("generala-game", { ps }); onContinueChange?.("generala") } }, [ps, started, onContinueChange]);
   useEffect(() => { if (hist.length) ST.save("generala-hist", hist) }, [hist]);
 
-  const startGame = () => { const fresh = {}; GC.forEach(c => { fresh[c.k] = null }); setPs(pNames.map(n => ({ name: n, scores: { ...fresh } }))); setStarted(true) };
-  const setSc = (pi, k, v) => { const u = [...ps]; u[pi].scores[k] = v; setPs(u); setSheet(null); if (sounds) vib() };
+  const freshScores = () => { const fresh = {}; GC.forEach(c => { fresh[c.k] = null }); return fresh; };
+  const startGame = () => { const finalNames = pNames.map((n, i) => n?.trim() || `Jugador ${i + 1}`); setPNames(finalNames); setPs(finalNames.map(n => ({ name: n, scores: freshScores() }))); setStarted(true); onContinueChange?.("generala") };
+  const moveToNextGeneralaName = (i) => {
+    const next = playerNameRefs.current[i + 1];
+    if (next) { next.focus(); next.select?.(); }
+    else startGame();
+  };
+  const setSc = (pi, k, v) => { const prev = clone(ps); const u = clone(ps); u[pi].scores[k] = v; setPs(u); setSheet(null); setToast({ text: `${u[pi].name} · ${GC.find(c => c.k === k)?.l}`, undo: () => setPs(prev) }); if (sounds) vib() };
   const tot = p => Object.values(p.scores).reduce((s, v) => s + (typeof v === "number" ? v : 0), 0);
-  const ren = (i, n) => { const u = [...ps]; u[i].name = n; setPs(u) };
+  const ren = (i, n) => { const u = clone(ps); u[i].name = n; setPs(u) };
   const allSame = (c) => { const v = ps.map(p => p.scores[c.k]); if (v.some(x => x === null || x === "x")) return false; return v.every(x => x === v[0]) && ps.length > 1 };
   const allDone = GC.every(c => ps.every(p => p.scores[c.k] !== null));
   const filledCount = ps.length > 0 ? Math.min(...ps.map(p => GC.filter(c => p.scores[c.k] !== null).length)) : 0;
+  const turnCounts = ps.map(p => GC.filter(c => p.scores[c.k] !== null).length);
+  const currentTurnIndex = ps.length ? Math.max(0, turnCounts.findIndex(c => c === filledCount)) : 0;
+  const currentTurnName = ps[currentTurnIndex]?.name;
+  const askTurnGuard = (pi) => {
+    if (!ps.length || pi === currentTurnIndex) return true;
+    const msg = L.turnWarning.replace('{name}', ps[pi]?.name || '').replace('{expected}', currentTurnName || '');
+    return window.confirm(msg);
+  };
   const turnsLeft = 11 - filledCount;
-  const saveNew = () => { setHist(h => [{ players: ps.map(p => ({ name: p.name, t: tot(p) })), date: new Date().toLocaleString() }, ...h]);
-    setStarted(false); setSStep(0); setModal(null); ST.del("generala-game") };
-  const resetZ = () => { setStarted(false); setSStep(0); setModal(null); ST.del("generala-game") };
+  const rematch = async () => { const next = ps.map(p => ({ name: p.name, scores: freshScores() })); setPs(next); setModal(null); setToast({ text: L.rematch, undo: null }); await ST.save("generala-game", { ps: next }); onContinueChange?.("generala") };
+  const saveNew = async () => { const nextHist = [{ players: ps.map(p => ({ name: p.name, t: tot(p) })), date: new Date().toLocaleString() }, ...hist];
+    setHist(nextHist); await ST.save("generala-hist", nextHist); await rematch() };
+  const resetZ = async () => { setStarted(false); setSStep(0); setModal(null); setPs([]); await ST.del("generala-game"); onContinueChange?.(null) };
   const delH = i => setHist(h => h.filter((_, j) => j !== i));
   const doShare = () => shareResult("Generala", ps.map(p => `${p.name}: ${tot(p)}`));
+  const goBack = () => { onContinueChange?.(started ? "generala" : null); onBack() };
 
-  if (!started) return <div><Hdr title="Generala" emoji="🎲" onBack={onBack} />
-    <div style={{ maxWidth: 340, margin: "0 auto", padding: "20px 20px 40px", display: "flex", flexDirection: "column", gap: 16 }}>
+  if (!started) return <div><Hdr title="Generala" emoji="🎲" onBack={goBack} />
+    <div style={{ maxWidth: 360, margin: "0 auto", padding: "20px 20px 48px", display: "flex", flexDirection: "column", gap: 16 }}>
       {sStep === 0 && <><p style={{ fontSize: 16, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>{L.howManyPlayers}</p>
         <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
           {[2, 3, 4, 5, 6].map(n => <B key={n} v={pCount === n ? "pri" : "gh"} onClick={() => handleCount(n)}
@@ -632,14 +714,17 @@ function Generala({ onBack }) {
       {sStep === 1 && <><p style={{ fontSize: 16, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>{L.names}</p>
         {pNames.map((n, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: t.txtF, width: 20 }}>{i + 1}.</span>
-          <input value={n} onChange={e => { const u = [...pNames]; u[i] = e.target.value; setPNames(u) }}
-            style={{ flex: 1, background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 10, padding: "10px 12px", fontSize: 15, fontFamily: "inherit", outline: "none" }} /></div>)}
-        <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setSStep(0)} s={{ flex: 1 }}>{L.back}</B>
-          <B onClick={startGame} s={{ flex: 1, padding: 12, fontSize: 15 }}>{L.start} 🎲</B></div></>}
+          <input autoFocus={i === 0} ref={el => { playerNameRefs.current[i] = el }} value={n} onChange={e => { const u = [...pNames]; u[i] = e.target.value; setPNames(u) }}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveToNextGeneralaName(i) } }} returnKeyHint={i === pNames.length - 1 ? "done" : "next"}
+            style={{ flex: 1, background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12, padding: "13px 14px", minHeight: 48, fontSize: 16, fontFamily: "inherit", outline: "none" }} /></div>)}
+        <div style={{ position: "sticky", bottom: 10, marginTop: 8, background: `linear-gradient(180deg, transparent, ${t.bg} 28%)`, paddingTop: 12 }}>
+          <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setSStep(0)} s={{ flex: 1 }}>{L.back}</B>
+            <B onClick={startGame} s={{ flex: 1, padding: 12, fontSize: 15, minHeight: 52 }}>{L.start} 🎲</B></div>
+        </div></>}
     </div></div>;
 
   return <div>
-    <Hdr title="Generala" emoji="🎲" onBack={onBack} sub={turnsLeft > 0 ? `${turnsLeft} ${L.turnsLeft}` : `¡${L.done}!`} icons={<>
+    <Hdr title="Generala" emoji="🎲" onBack={goBack} sub={turnsLeft > 0 ? `${turnsLeft} ${L.turnsLeft}` : `¡${L.done}!`} icons={<>
       <IcoBtn onClick={doShare} t={t}>📤</IcoBtn>
       <IcoBtn onClick={() => setModal("new")} t={t}>🔄</IcoBtn>
       {hist.length > 0 && <IcoBtn onClick={() => setShowH(!showH)} t={t}>📋</IcoBtn>}
@@ -657,6 +742,7 @@ function Generala({ onBack }) {
       <div style={{ background: t.card, borderRadius: 20, padding: 20, boxShadow: t.shH }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: t.pri, margin: "0 0 4px", fontFamily: "'Playfair Display'" }}>
           {ps[sheet.pi]?.name} — {GC.find(c => c.k === sheet.cat)?.l}</p>
+        {sheet.pi !== currentTurnIndex && <p style={{ fontSize: 11, color: t.err, margin: "0 0 10px" }}>{L.turnWarning.replace('{name}', ps[sheet.pi]?.name || '').replace('{expected}', currentTurnName || '')}</p>}
         <p style={{ fontSize: 11, color: t.txtM, margin: "0 0 12px" }}>{L.chooseScore}</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {gV(GC.find(c => c.k === sheet.cat)).map(v => <B key={v} onClick={() => setSc(sheet.pi, sheet.cat, v)}
@@ -675,36 +761,37 @@ function Generala({ onBack }) {
 
     {allDone && <div style={{ textAlign: "center", padding: 14, margin: "8px 12px", background: `linear-gradient(135deg, ${t.pri}, ${t.priL})`, borderRadius: 14, color: "#fff" }}>
       <div style={{ fontSize: 20, fontFamily: "'Playfair Display'", fontWeight: 800 }}>🏆 ¡{ps.reduce((b, p) => tot(p) > tot(b) ? p : b, ps[0]).name} {L.wins}!</div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8, flexWrap: "wrap" }}>
         <B onClick={doShare} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>📤 {L.share}</B>
+        <B onClick={rematch} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.rematch}</B>
         <B onClick={() => setModal("new")} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.yesNew}</B></div></div>}
 
     <div style={{ padding: "10px 8px 20px", overflowX: "auto" }}>
       <div style={{ minWidth: Math.max(300, 100 + ps.length * 76) }}>
-        <div style={{ display: "grid", gridTemplateColumns: `100px repeat(${ps.length}, 1fr)`, gap: 2, marginBottom: 2 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `110px repeat(${ps.length}, minmax(64px, 1fr))`, gap: 3, marginBottom: 3, position: "sticky", top: 0, zIndex: 2 }}>
           <div style={{ padding: 4, fontSize: 10, color: t.txtF }}></div>
-          {ps.map((p, i) => <div key={i} style={{ padding: "5px 3px", textAlign: "center", background: t.card, borderRadius: "8px 8px 0 0", border: `1px solid ${t.brd}`, borderBottom: "none" }}>
+          {ps.map((p, i) => <div key={i} style={{ padding: "8px 4px", textAlign: "center", background: t.card, borderRadius: "10px 10px 0 0", border: `1px solid ${t.brd}`, borderBottom: "none" }}>
             <EN name={p.name} onSave={n => ren(i, n)} sz={12} /></div>)}
         </div>
         {GC.map((cat, ci) => { const same = allSame(cat);
-          return <div key={cat.k} style={{ display: "grid", gridTemplateColumns: `100px repeat(${ps.length}, 1fr)`, gap: 2, marginBottom: 2, position: "relative" }}>
-            <div style={{ padding: "6px 5px", fontSize: 11, background: t.bgS, border: `1px solid ${t.brd}`,
+          return <div key={cat.k} style={{ display: "grid", gridTemplateColumns: `110px repeat(${ps.length}, minmax(64px, 1fr))`, gap: 3, marginBottom: 3, position: "relative" }}>
+            <div style={{ padding: "10px 6px", fontSize: 11, background: t.bgS, border: `1px solid ${t.brd}`,
               borderRadius: ci === 0 ? "8px 0 0 0" : ci === GC.length - 1 ? "0 0 0 8px" : 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
               <span style={{ fontWeight: 600, color: t.pri, fontFamily: "'Playfair Display'", fontSize: 12 }}>{cat.l}</span>
               <span style={{ fontSize: 9, color: t.txtF }}>{cat.n ? `${L.upTo} ${cat.m}` : gV(cat).join("/")}</span></div>
             {ps.map((p, pi) => { const val = p.scores[cat.k];
-              return <div key={pi} onClick={() => setSheet({ pi, cat: cat.k })}
+              return <div key={pi} onClick={() => { if (val === null && !askTurnGuard(pi)) return; setSheet({ pi, cat: cat.k }) }}
                 style={{ padding: 3, textAlign: "center", cursor: "pointer",
                   background: val === "x" ? t.errBg : val !== null ? t.okBg : t.card, border: `1px solid ${t.brd}`,
                   borderRadius: ci === 0 && pi === ps.length - 1 ? "0 8px 0 0" : ci === GC.length - 1 && pi === ps.length - 1 ? "0 0 8px 0" : 0,
-                  display: "flex", alignItems: "center", justifyContent: "center", minHeight: 38, transition: "background .15s" }}>
+                  display: "flex", alignItems: "center", justifyContent: "center", minHeight: 52, transition: "background .15s" }}>
                 {val === "x" ? <span style={{ color: t.err, fontSize: 15, fontWeight: 700 }}>✗</span>
                   : val !== null ? <span style={{ fontFamily: "'Playfair Display'", fontSize: 17, fontWeight: 700, color: t.pri }}>{val}</span>
                   : <span style={{ color: t.txtF, fontSize: 13 }}>·</span>}
               </div> })}
             {same && <div style={{ position: "absolute", top: "50%", left: 102, right: 2, height: 2, background: t.pri, opacity: .35, pointerEvents: "none" }} />}
           </div> })}
-        <div style={{ display: "grid", gridTemplateColumns: `100px repeat(${ps.length}, 1fr)`, gap: 2, marginTop: 4 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `110px repeat(${ps.length}, minmax(64px, 1fr))`, gap: 3, marginTop: 6 }}>
           <div style={{ padding: "8px 5px", fontSize: 12, fontWeight: 800, color: t.pri, fontFamily: "'Playfair Display'",
             background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: "0 0 0 8px" }}>{L.total}</div>
           {ps.map((p, pi) => <div key={pi} style={{ padding: 5, textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`,
@@ -712,9 +799,10 @@ function Generala({ onBack }) {
             <span style={{ fontFamily: "'Playfair Display'", fontSize: 24, fontWeight: 800, color: t.pri }}>{tot(p)}</span></div>)}
         </div>
       </div>
-    </div></div>;
+    </div>
+    <UndoBar toast={toast} onUndo={() => toast?.undo?.()} onClose={() => setToast(null)} />
+  </div>;
 }
-
 // ═══════════════════════════════════════════════
 // HOME + APP
 // ═══════════════════════════════════════════════
@@ -744,6 +832,12 @@ function App() {
   const tog = () => setDk(!dk);
   const toggleLang = () => setLang(l => l === "es" ? "en" : "es");
 
+  const clearCurrent = async () => {
+    if (!contGame) return;
+    await ST.del(`${contGame}-game`);
+    setContGame(null);
+  };
+
   return <Ctx.Provider value={{ t, dk, tog, sounds, setSounds, L, lang }}>
     <div style={{ minHeight: "100vh", background: t.bg, color: t.txt, fontFamily: "'DM Sans',sans-serif", transition: "background .3s,color .3s" }}>
       <link href={FONTS} rel="stylesheet" />
@@ -752,12 +846,12 @@ function App() {
       `}</style>
 
       {sel === "truco" ? <Truco onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
-        : sel === "burako" ? <Burako onBack={() => setSel(null)} />
-        : sel === "generala" ? <Generala onBack={() => setSel(null)} />
+        : sel === "burako" ? <Burako onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
+        : sel === "generala" ? <Generala onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
         : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "44px 20px 40px" }}>
           <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 10, alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-            <button onClick={() => setShowFb(true)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 10, width: 52, height: 52, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>💬</button>
-            <button onClick={() => setShowSettings(true)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 10, width: 52, height: 52, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>⚙️</button>
+            <button onClick={() => setShowFb(true)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12, width: 52, height: 52, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>💬</button>
+            <button onClick={() => setShowSettings(true)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12, width: 52, height: 52, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>⚙️</button>
           </div>
 
           {showFb && <Modal onClose={() => setShowFb(false)}><div style={{ background: t.card, borderRadius: 16, padding: 24, boxShadow: t.shH }}>
@@ -785,14 +879,17 @@ function App() {
           <div style={{ height: 2, width: 60, background: `linear-gradient(90deg, transparent, ${t.pri}, transparent)`, margin: "0 auto" }} />
           <p style={{ fontSize: 13, color: t.txtM, letterSpacing: 1, margin: "10px 0 24px" }}>{L.chooseGame}</p>
 
-          {contGame && <div style={{ background: t.okBg, border: `1px solid ${t.ok}30`, borderRadius: 12, padding: "12px 20px",
-            marginBottom: 20, display: "flex", alignItems: "center", gap: 10, maxWidth: 380, width: "100%" }}>
-            <div onClick={() => setSel(contGame)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, cursor: "pointer" }}>
-              <span style={{ fontSize: 20 }}>{GAMES[contGame].emoji}</span>
-              <div><div style={{ fontSize: 13, fontWeight: 600, color: t.ok }}>{L.contGame} {GAMES[contGame].name}</div>
-                <div style={{ fontSize: 11, color: t.txtM }}>{L.unfinished}</div></div></div>
-            <button onClick={(e) => { e.stopPropagation(); ST.del(`${contGame}-game`); setContGame(null) }}
-              style={{ background: "none", border: "none", color: t.txtM, cursor: "pointer", fontSize: 16, padding: "4px 6px", flexShrink: 0 }}>×</button>
+          {contGame && <div style={{ background: t.okBg, border: `1px solid ${t.ok}30`, borderRadius: 16, padding: "16px 18px", marginBottom: 20, maxWidth: 380, width: "100%", boxShadow: t.sh }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 46, height: 46, borderRadius: 12, background: t.card, border: `1px solid ${t.brd}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{GAMES[contGame].emoji}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: t.txtM }}>{L.unfinished}</div>
+                <div style={{ fontSize: 18, color: t.ok, fontWeight: 800, fontFamily: "'Playfair Display'" }}>{L.continueLast}</div>
+                <div style={{ fontSize: 13, color: t.txt }}>{GAMES[contGame].name}</div>
+              </div>
+              <button onClick={clearCurrent} style={{ background: "none", border: "none", color: t.txtM, cursor: "pointer", fontSize: 18, padding: "4px 6px" }}>×</button>
+            </div>
+            <B onClick={() => setSel(contGame)} s={{ width: "100%", minHeight: 50 }}>{L.openNow}</B>
           </div>}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 380, width: "100%" }}>
@@ -810,5 +907,4 @@ function App() {
     </div>
   </Ctx.Provider>;
 }
-
 export default App;
