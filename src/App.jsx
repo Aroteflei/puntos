@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
+import React, { useState, useEffect, useMemo, createContext, useContext, useRef } from 'react';
 const FONTS = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap";
 
 // ─── i18n ──────────────────────────────────────
@@ -90,6 +90,7 @@ const ST = {
 
 const bajadaReq = (score) => score >= 2000 ? 120 : score >= 1000 ? 90 : 50;
 const clone = (v) => JSON.parse(JSON.stringify(v));
+const fmtDate = () => { const d = new Date(); return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}` };
 
 // Share result - with multiple fallbacks
 async function shareResult(title, lines, opts = {}) {
@@ -271,10 +272,18 @@ function UndoBar({ toast, onUndo, onClose }) {
   </div>;
 }
 
-// ─── TALLY (hand-drawn) ───────────────────────
+// ─── TALLY (hand-drawn, stable offsets) ───────
 function Tally({ count, color, divAt }) {
-  const s = 44, p = 4, gap = 8; const els = []; let drawn = 0, divDone = !divAt;
-  const r = () => (Math.random() - .5) * 1.5;
+  const s = 44, p = 4, gap = 8;
+  // Generate stable random offsets once per count change
+  const offsets = useMemo(() => {
+    const arr = [];
+    for (let i = 0; i < 60; i++) arr.push((Math.random() - .5) * 1.5);
+    return arr;
+  }, [count]);
+  let oi = 0;
+  const r = () => offsets[oi++ % offsets.length];
+  const els = []; let drawn = 0, divDone = !divAt;
   const sq = (k) => <svg key={k} width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{ animation: "popIn .25s ease" }}>
     <rect x={p + r()} y={p + r()} width={s - p * 2 + r()} height={s - p * 2 + r()} fill="none" stroke={color} strokeWidth="2.2" rx="1" opacity=".8" />
     <line x1={p + 1 + r()} y1={s - p - 1 + r()} x2={s - p - 1 + r()} y2={p + 1 + r()} stroke={color} strokeWidth="2.2" opacity=".8" /></svg>;
@@ -394,10 +403,13 @@ function Truco({ onBack, onContinueChange }) {
 
   const winner = sc.find(s => s.p >= target);
   const saveNew = async () => {
-    const nextHist = [{ scores: sc.map(s => ({ name: s.name, p: s.p })), target, date: new Date().toLocaleString(), done: !!winner }, ...hist];
+    const nextHist = [{ scores: sc.map(s => ({ name: s.name, p: s.p })), target, date: fmtDate(), done: !!winner }, ...hist];
     setHist(nextHist);
     await ST.save("truco-hist", nextHist);
-    await rematch();
+    const resetSc = sc.map(s => ({ ...s, p: 0 }));
+    setSc(resetSc);
+    setModal(null);
+    await persistNow(resetSc);
   };
   const resetZ = async () => {
     setStarted(false);
@@ -467,42 +479,51 @@ function Truco({ onBack, onContinueChange }) {
         <B onClick={rematch} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.rematch}</B>
         <B onClick={() => setModal("new")} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.yesNew}</B></div></div>}
 
-    <div style={{ padding: isPhone ? "8px" : "12px" }}>
-      {/* Shared tally card */}
-      <div style={{ background: t.card, border: `1px solid ${t.brd}`, borderRadius: isPhone ? 14 : 18, boxShadow: t.sh, overflow: "hidden" }}>
-        {/* Names row */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          {sc.map((s, i) => <div key={i} style={{ textAlign: "center", padding: "10px 8px 6px", opacity: winner && winner !== s ? .4 : 1 }}>
+    <div style={{ padding: isPhone ? "8px 10px" : "12px 16px" }}>
+      {/* Tally comparison card */}
+      <div style={{ background: t.card, border: `1px solid ${t.brd}`, borderRadius: isPhone ? 14 : 18, boxShadow: t.sh, padding: isPhone ? "12px 0" : "16px 0" }}>
+        {/* Names */}
+        <div style={{ display: "flex" }}>
+          {sc.map((s, i) => <div key={i} style={{ flex: 1, textAlign: "center", opacity: winner && winner !== s ? .4 : 1 }}>
             <EN name={s.name} onSave={n => ren(i, n)} sz={isPhone ? 15 : 18} />
           </div>)}
         </div>
 
-        {/* Tally area - side by side */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", minHeight: isPhone ? (target === 30 ? 200 : 140) : (target === 30 ? 260 : 170) }}>
-          {sc.map((s, i) => <React.Fragment key={i}>
-            {i === 1 && <div style={{ background: t.brd, margin: "8px 0" }} />}
-            <div style={{ padding: isPhone ? "6px 10px" : "8px 14px", background: t.bgS, display: "flex", flexDirection: "column", justifyContent: "flex-start", opacity: winner && winner !== s ? .4 : 1 }}>
-              {target === 30 && <div style={{ fontSize: 8, color: t.txtM, fontWeight: 700, letterSpacing: 1, marginBottom: 4, textAlign: "center" }}>MALAS / BUENAS</div>}
-              <Tally count={s.p} color={t.pri} divAt={target === 30 ? 15 : null} />
-            </div>
-          </React.Fragment>)}
+        {/* Tallies - pushed toward center */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 0, margin: "10px 0",
+          minHeight: isPhone ? (target === 30 ? 200 : 140) : (target === 30 ? 260 : 170) }}>
+          <div style={{ flex: "0 1 auto", padding: isPhone ? "8px 12px 8px 16px" : "10px 16px 10px 20px",
+            background: t.bgS, borderRadius: "12px 0 0 12px", border: `1px solid ${t.brd}`, borderRight: "none",
+            display: "flex", flexDirection: "column", alignItems: "flex-end",
+            opacity: winner && winner !== sc[0] ? .4 : 1 }}>
+            {target === 30 && <div style={{ fontSize: 8, color: t.txtM, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>MALAS / BUENAS</div>}
+            <Tally count={sc[0]?.p || 0} color={t.pri} divAt={target === 30 ? 15 : null} />
+          </div>
+          <div style={{ width: 2, background: t.brd, flexShrink: 0 }} />
+          <div style={{ flex: "0 1 auto", padding: isPhone ? "8px 16px 8px 12px" : "10px 20px 10px 16px",
+            background: t.bgS, borderRadius: "0 12px 12px 0", border: `1px solid ${t.brd}`, borderLeft: "none",
+            display: "flex", flexDirection: "column", alignItems: "flex-start",
+            opacity: winner && winner !== sc[1] ? .4 : 1 }}>
+            {target === 30 && <div style={{ fontSize: 8, color: t.txtM, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>MALAS / BUENAS</div>}
+            <Tally count={sc[1]?.p || 0} color={t.pri} divAt={target === 30 ? 15 : null} />
+          </div>
         </div>
 
-        {/* Scores row */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: `1px solid ${t.brd}` }}>
-          {sc.map((s, i) => <div key={i} style={{ textAlign: "center", padding: isPhone ? "10px 6px" : "14px 8px", opacity: winner && winner !== s ? .4 : 1 }}>
-            <div style={{ fontFamily: "'Playfair Display'", fontSize: isPhone ? 42 : 54, fontWeight: 800, color: t.pri, lineHeight: .95 }}>{s.p}</div>
-            <div style={{ fontSize: isPhone ? 11 : 12, color: t.txtF, marginTop: 4 }}>{Math.max(0, target - s.p)} {L.remain}</div>
+        {/* Scores */}
+        <div style={{ display: "flex" }}>
+          {sc.map((s, i) => <div key={i} style={{ flex: 1, textAlign: "center", padding: "6px 0", opacity: winner && winner !== s ? .4 : 1 }}>
+            <div style={{ fontFamily: "'Playfair Display'", fontSize: isPhone ? 40 : 52, fontWeight: 800, color: t.pri, lineHeight: 1 }}>{s.p}</div>
+            <div style={{ fontSize: 11, color: t.txtF, marginTop: 2 }}>{Math.max(0, target - s.p)} {L.remain}</div>
           </div>)}
         </div>
+      </div>
 
-        {/* Buttons row */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: `1px solid ${t.brd}` }}>
-          {sc.map((s, i) => <div key={i} style={{ padding: isPhone ? "8px 6px" : "10px 8px", display: "grid", gap: 6, gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-            {[1, 2, 3].map(v => <B key={v} onClick={() => add(i, v)} s={{ fontSize: isPhone ? 15 : 17, minHeight: 44, padding: "10px 0" }}>+{v}</B>)}
-            <B v="gh" onClick={() => add(i, -1)} s={{ fontSize: isPhone ? 15 : 17, minHeight: 44, padding: "10px 0" }}>−1</B>
-          </div>)}
-        </div>
+      {/* Buttons - separate row with space */}
+      <div style={{ display: "flex", gap: isPhone ? 10 : 14, marginTop: isPhone ? 10 : 14 }}>
+        {sc.map((s, i) => <div key={i} style={{ flex: 1, display: "grid", gap: 6, gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+          {[1, 2, 3].map(v => <B key={v} onClick={() => add(i, v)} s={{ fontSize: isPhone ? 16 : 18, minHeight: 48, padding: "12px 0" }}>+{v}</B>)}
+          <B v="gh" onClick={() => add(i, -1)} s={{ fontSize: isPhone ? 16 : 18, minHeight: 48, padding: "12px 0" }}>−1</B>
+        </div>)}
       </div>
     </div>
     <UndoBar toast={toast} onUndo={() => toast?.undo?.()} onClose={() => setToast(null)} />
@@ -547,8 +568,8 @@ function Burako({ onBack, onContinueChange }) {
     setTeams(u); setAdding(false); setHf([]); setEditIdx(null); setRedoHand(null); setToast({ text: editIdx !== null ? `${L.editHand} ${editIdx + 1}` : L.newHand, undo: () => setTeams(prev) }); if (sounds && u.some(tm => total(tm) >= tgt)) vibWin() };
   const undoLast = () => { const u = clone(teams); const removed = u.map(tm => tm.hands.pop() || null); setTeams(u); setRedoHand(removed); setModal(null); setToast({ text: L.undoDesc, redo: () => { const r = clone(u); r.forEach((tm, i) => { if (removed[i]) tm.hands.push(removed[i]); }); setTeams(r); setRedoHand(null); } }); };
   const rematch = async () => { const resetTeams = teams.map(tm => ({ ...tm, hands: [] })); setTeams(resetTeams); setModal(null); setToast({ text: L.rematch, undo: null }); await ST.save("burako-game", { teams: resetTeams, tgt, cfg, pC }); onContinueChange?.("burako") };
-  const saveNew = async () => { const nextHist = [{ teams: teams.map(tm => ({ name: tm.name, t: total(tm) })), tgt, date: new Date().toLocaleString(), done: !!winner }, ...hist];
-    setHist(nextHist); await ST.save("burako-hist", nextHist); await rematch() };
+  const saveNew = async () => { const nextHist = [{ teams: teams.map(tm => ({ name: tm.name, t: total(tm) })), tgt, date: fmtDate(), done: !!winner }, ...hist];
+    setHist(nextHist); await ST.save("burako-hist", nextHist); const resetTeams = teams.map(tm => ({ ...tm, hands: [] })); setTeams(resetTeams); setModal(null); await ST.save("burako-game", { teams: resetTeams, tgt, cfg, pC }); onContinueChange?.("burako") };
   const resetZ = async () => { setTeams([]); setSetup(true); setModal(null); await ST.del("burako-game"); onContinueChange?.(null) };
   const delH = i => setHist(h => h.filter((_, j) => j !== i));
   const doShare = () => shareResult(`Burako - ${(tgt / 1000).toFixed(tgt % 1000 ? 1 : 0)}K`, teams.map(tm => `${tm.name}: ${total(tm)}`));
@@ -621,7 +642,7 @@ function Burako({ onBack, onContinueChange }) {
         <B onClick={() => setModal("new")} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.yesNew}</B></div></div>}
 
     <div style={{ padding: "12px 12px 0", overflowX: "auto" }}><div>
-      <div style={{ display: "grid", gridTemplateColumns: `60px repeat(${teams.length}, 1fr)`, gap: 4, marginBottom: 4 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `60px repeat(${teams.length}, 1fr)`, gap: 4, marginBottom: 4, position: "sticky", top: 0, zIndex: 2 }}>
         <div style={{ padding: "8px 4px", textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: "8px 8px 0 0", fontSize: 11, color: t.txtM }}>{L.handNum}</div>
         {teams.map((tm, i) => <div key={i} style={{ padding: "8px 4px", textAlign: "center", background: t.card, border: `1px solid ${t.brd}`, borderRadius: "8px 8px 0 0" }}>
           <EN name={tm.name} onSave={n => ren(i, n)} sz={14} />
@@ -637,10 +658,10 @@ function Burako({ onBack, onContinueChange }) {
             <span style={{ fontFamily: "'Playfair Display'", fontSize: 17, fontWeight: 700, color: s >= 0 ? t.ok : t.err, marginLeft: 8, flexShrink: 0 }}>{s >= 0 ? "+" : ""}{s}</span></div> })}
       </div>)}
       <div style={{ display: "grid", gridTemplateColumns: `60px repeat(${teams.length}, 1fr)`, gap: 4, marginTop: 4 }}>
-        <div style={{ padding: 8, textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: "0 0 0 8px", fontWeight: 800, color: t.pri, fontFamily: "'Playfair Display'" }}>{L.total}</div>
-        {teams.map((tm, i) => <div key={i} style={{ padding: 8, textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: i === teams.length - 1 ? "0 0 8px 0" : 0 }}>
-          <div style={{ fontFamily: "'Playfair Display'", fontSize: 28, fontWeight: 800, color: t.pri }}>{total(tm)}</div>
-          <div style={{ fontSize: 10, color: t.txtF }}>{Math.max(0, tgt - total(tm))} {L.toWin}</div></div>)}
+        <div style={{ padding: "6px 4px", textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: "0 0 0 8px", fontWeight: 800, color: t.pri, fontFamily: "'Playfair Display'", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{L.total}</div>
+        {teams.map((tm, i) => <div key={i} style={{ padding: "6px 4px", textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: i === teams.length - 1 ? "0 0 8px 0" : 0 }}>
+          <div style={{ fontFamily: "'Playfair Display'", fontSize: 24, fontWeight: 800, color: t.pri }}>{total(tm)}</div>
+          <div style={{ fontSize: 9, color: t.txtF }}>{Math.max(0, tgt - total(tm))} {L.toWin}</div></div>)}
       </div>
     </div></div>
 
@@ -656,8 +677,8 @@ function Burako({ onBack, onContinueChange }) {
               <NI label={L.puntos} value={hf[i]?.puntos || 0} onChange={v => upHf(i, "puntos", v)} step={5} />
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: t.txtM, flex: 1 }}>{L.playedDead}</span>
-                <B v={hf[i]?.muerto ? "pri" : "gh"} onClick={() => upHf(i, "muerto", true)} s={{ padding: "8px 10px", fontSize: 11, minHeight: 40, minWidth: 52, flex: 1 }}>Sí</B>
-                <B v={!hf[i]?.muerto ? "err" : "gh"} onClick={() => upHf(i, "muerto", false)} s={{ padding: "8px 10px", fontSize: 11, minHeight: 40, minWidth: 52, flex: 1 }}>No</B></div>
+                <B v={hf[i]?.muerto ? "pri" : "gh"} onClick={() => upHf(i, "muerto", true)} s={{ padding: "5px 12px", fontSize: 11, minHeight: 32 }}>Sí</B>
+                <B v={!hf[i]?.muerto ? "err" : "gh"} onClick={() => upHf(i, "muerto", false)} s={{ padding: "5px 12px", fontSize: 11, minHeight: 32 }}>No</B></div>
               <div style={{ marginBottom: 6 }}>{hf[i]?.cierre
                 ? <B onClick={() => { const u = [...hf]; u[i] = { ...u[i], cierre: false }; setHf(u) }} s={{ width: "100%", fontSize: 12, minHeight: 42 }}>✓ {L.closed}</B>
                 : other ? <div style={{ fontSize: 10, color: t.txtF, textAlign: "center", padding: "8px 0", fontStyle: "italic" }}>{L.notClosed}</div>
@@ -730,8 +751,8 @@ function Generala({ onBack, onContinueChange }) {
   };
   const turnsLeft = 11 - filledCount;
   const rematch = async () => { const next = ps.map(p => ({ name: p.name, scores: freshScores() })); setPs(next); setModal(null); setToast({ text: L.rematch, undo: null }); await ST.save("generala-game", { ps: next }); onContinueChange?.("generala") };
-  const saveNew = async () => { const nextHist = [{ players: ps.map(p => ({ name: p.name, t: tot(p) })), date: new Date().toLocaleString() }, ...hist];
-    setHist(nextHist); await ST.save("generala-hist", nextHist); await rematch() };
+  const saveNew = async () => { const nextHist = [{ players: ps.map(p => ({ name: p.name, t: tot(p) })), date: fmtDate() }, ...hist];
+    setHist(nextHist); await ST.save("generala-hist", nextHist); setStarted(false); setSStep(0); setModal(null); ST.del("generala-game"); onContinueChange?.(null) };
   const resetZ = async () => { setStarted(false); setSStep(0); setModal(null); setPs([]); await ST.del("generala-game"); onContinueChange?.(null) };
   const delH = i => setHist(h => h.filter((_, j) => j !== i));
   const doShare = () => shareResult("Generala", ps.map(p => `${p.name}: ${tot(p)}`));
@@ -877,6 +898,7 @@ function App() {
       <link href={FONTS} rel="stylesheet" />
       <style>{`input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield}*{box-sizing:border-box}::selection{background:${t.priL};color:#fff}
         @keyframes popIn{from{transform:scale(0.8);opacity:0}to{transform:scale(1);opacity:1}}
+        button:active{transform:scale(0.95)!important;opacity:0.85!important}
       `}</style>
 
       {sel === "truco" ? <Truco onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
