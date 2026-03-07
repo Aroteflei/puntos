@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, useRef, useCallback } from 'react';
+import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 const FONTS = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap";
 
 // ─── i18n ──────────────────────────────────────
@@ -148,7 +148,7 @@ async function shareResult(title, lines, opts = {}) {
     // Small brand (no URL)
     ctx.fillStyle = "#B9AA9A";
     ctx.font = "500 26px system-ui, -apple-system, sans-serif";
-    const brand = "scorepuntos";
+    const brand = "puntos";
     ctx.fillText(brand, c.width - 220, c.height - 48);
 
     const blob = await new Promise(r => c.toBlob(r, "image/png"));
@@ -416,7 +416,7 @@ function Truco({ onBack, onContinueChange }) {
         {names.map((n, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: t.txtF, width: 20 }}>{i + 1}.</span>
           <input autoFocus={i === 0} ref={el => { nameRefs.current[i] = el }} value={n} onChange={e => { const u = [...names]; u[i] = e.target.value; setNames(u) }}
-            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveToNextTrucoName(i) } }} onFocus={e => e.target.select()} returnKeyHint={i === names.length - 1 ? "done" : "next"}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveToNextTrucoName(i) } }} onFocus={e => e.target.select()} enterKeyHint={i === names.length - 1 ? "done" : "next"}
             style={{ flex: 1, background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12, padding: "13px 14px", minHeight: 48, fontSize: 16, fontFamily: "inherit", outline: "none" }} /></div>)}
         <div style={{ position: "sticky", bottom: 10, marginTop: 8, background: `linear-gradient(180deg, transparent, ${t.bg} 28%)`, paddingTop: 12 }}>
           <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setStep(0)} s={{ flex: 1 }}>{L.back}</B>
@@ -538,7 +538,7 @@ function Burako({ onBack, onContinueChange }) {
         {teamNames.map((n, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: t.txtF, width: 20 }}>{i + 1}.</span>
           <input autoFocus={i === 0} ref={el => { teamNameRefs.current[i] = el }} value={n} onChange={e => { const u = [...teamNames]; u[i] = e.target.value; setTeamNames(u) }}
-            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveToNextBurakoName(i) } }} onFocus={e => e.target.select()} returnKeyHint={i === teamNames.length - 1 ? "done" : "next"}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveToNextBurakoName(i) } }} onFocus={e => e.target.select()} enterKeyHint={i === teamNames.length - 1 ? "done" : "next"}
             style={{ flex: 1, background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12, padding: "13px 14px", minHeight: 48, fontSize: 16, fontFamily: "inherit", outline: "none" }} /></div>)}
         <div style={{ position: "sticky", bottom: 10, marginTop: 8, background: `linear-gradient(180deg, transparent, ${t.bg} 28%)`, paddingTop: 12 }}>
           <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setSStep(0)} s={{ flex: 1 }}>{L.back}</B><B onClick={() => setSStep(2)} s={{ flex: 1, minHeight: 52 }}>{L.next}</B></div>
@@ -722,7 +722,7 @@ function Generala({ onBack, onContinueChange }) {
         {pNames.map((n, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: t.txtF, width: 20 }}>{i + 1}.</span>
           <input autoFocus={i === 0} ref={el => { playerNameRefs.current[i] = el }} value={n} onChange={e => { const u = [...pNames]; u[i] = e.target.value; setPNames(u) }}
-            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveToNextGeneralaName(i) } }} onFocus={e => e.target.select()} returnKeyHint={i === pNames.length - 1 ? "done" : "next"}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveToNextGeneralaName(i) } }} onFocus={e => e.target.select()} enterKeyHint={i === pNames.length - 1 ? "done" : "next"}
             style={{ flex: 1, background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12, padding: "13px 14px", minHeight: 48, fontSize: 16, fontFamily: "inherit", outline: "none" }} /></div>)}
         <div style={{ position: "sticky", bottom: 10, marginTop: 8, background: `linear-gradient(180deg, transparent, ${t.bg} 28%)`, paddingTop: 12 }}>
           <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setSStep(0)} s={{ flex: 1 }}>{L.back}</B>
