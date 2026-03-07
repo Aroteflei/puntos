@@ -22,7 +22,7 @@ const strings = {
     category: "Categoría", total: "TOTAL",
     upTo: "Hasta", staircase: "Escalera", poker: "Póker", generala: "Generala", doubleGen: "Doble Gen.",
     served: "servida",
-    turnWarningTitle: "Atención", turnWarning: "No es el turno de {name}. Le toca a {expected}. ¿Querés seguir igual?",
+    turnWarningTitle: "Atención", turnWarning: "Le toca a {expected}. ¿Seguir?",
     rematch: "Revancha", continueLast: "Continuar última partida", openNow: "Abrir ahora", handNum: "Mano", redo: "Rehacer",
   },
   en: {
@@ -44,7 +44,7 @@ const strings = {
     category: "Category", total: "TOTAL",
     upTo: "Up to", staircase: "Straight", poker: "Four of a kind", generala: "Generala", doubleGen: "Double Gen.",
     served: "served",
-    turnWarningTitle: "Heads up", turnWarning: "It's not {name}'s turn. {expected} should play. Continue anyway?",
+    turnWarningTitle: "Heads up", turnWarning: "{expected}'s turn. Continue?",
     rematch: "Rematch", continueLast: "Continue last game", openNow: "Open now", handNum: "Hand", redo: "Redo",
   }
 };
@@ -72,9 +72,20 @@ const vibWin = () => { try { navigator?.vibrate?.([50, 50, 50, 50, 100]) } catch
 async function initWakeLock() { try { if ("wakeLock" in navigator) return await navigator.wakeLock.request("screen"); } catch (e) {} return null; }
 
 const ST = {
-  async save(k, v) { try { await window.storage?.set?.(k, JSON.stringify(v)) } catch (e) { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e2) {} } },
-  async load(k) { try { const r = await window.storage?.get?.(k); return r ? JSON.parse(r.value) : null; } catch (e) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null } catch (e2) { return null } } },
-  async del(k) { try { await window.storage?.delete?.(k) } catch (e) { try { localStorage.removeItem(k) } catch (e2) {} } },
+  async save(k, v) {
+    const json = JSON.stringify(v);
+    try { localStorage.setItem(k, json) } catch (e) {}
+    try { await window.storage?.set?.(k, json) } catch (e) {}
+  },
+  async load(k) {
+    // Try window.storage first (Claude artifacts), fallback to localStorage
+    try { const r = await window.storage?.get?.(k); if (r?.value) return JSON.parse(r.value); } catch (e) {}
+    try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+  },
+  async del(k) {
+    try { localStorage.removeItem(k) } catch (e) {}
+    try { await window.storage?.delete?.(k) } catch (e) {}
+  },
 };
 
 const bajadaReq = (score) => score >= 2000 ? 120 : score >= 1000 ? 90 : 50;
@@ -247,15 +258,15 @@ function UndoBar({ toast, onUndo, onClose }) {
   const { t, L } = useApp();
   useEffect(() => {
     if (!toast) return;
-    const id = setTimeout(() => onClose?.(), 3200);
+    const id = setTimeout(() => onClose?.(), 2500);
     return () => clearTimeout(id);
   }, [toast, onClose]);
   if (!toast) return null;
-  return <div style={{ position: "fixed", left: 12, right: 12, top: 78, zIndex: 120, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-    <div style={{ pointerEvents: "auto", maxWidth: 420, width: "100%", background: t.card, border: `1px solid ${t.brd}`, boxShadow: t.shH, borderRadius: 16, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: t.txt }}>{toast.text}</div>
-      {toast.redo && <B v="gh" onClick={() => { toast.redo?.(); onClose?.(); }} s={{ padding: "10px 12px", minHeight: 40, flexShrink: 0 }}>{L.redo}</B>}
-      {toast.undo && <B onClick={() => { onUndo?.(); onClose?.(); }} s={{ padding: "10px 14px", minHeight: 40, flexShrink: 0 }}>{L.undo}</B>}
+  return <div style={{ position: "fixed", left: 16, right: 16, bottom: 24, zIndex: 120, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+    <div style={{ pointerEvents: "auto", maxWidth: 340, width: "auto", background: t.card, border: `1px solid ${t.brd}`, boxShadow: t.sh, borderRadius: 12, padding: "6px 10px", display: "flex", alignItems: "center", gap: 8, opacity: 0.92 }}>
+      <div style={{ fontSize: 12, color: t.txtM, whiteSpace: "nowrap" }}>{toast.text}</div>
+      {toast.redo && <button onClick={() => { toast.redo?.(); onClose?.(); }} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans'", whiteSpace: "nowrap" }}>{L.redo}</button>}
+      {toast.undo && <button onClick={() => { onUndo?.(); onClose?.(); }} style={{ background: t.pri, border: "none", color: "#fff", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans'", whiteSpace: "nowrap" }}>{L.undo}</button>}
     </div>
   </div>;
 }
@@ -456,27 +467,43 @@ function Truco({ onBack, onContinueChange }) {
         <B onClick={rematch} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.rematch}</B>
         <B onClick={() => setModal("new")} s={{ background: "rgba(255,255,255,.2)", color: "#fff" }}>{L.yesNew}</B></div></div>}
 
-    <div style={{ display: "grid", gap: isPhone ? 10 : 14, gridTemplateColumns: isPhone ? "repeat(2, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))", padding: isPhone ? "12px" : "16px", alignItems: "stretch" }}>
-      {sc.map((s, i) => <div key={i} style={{ background: t.card, border: `1px solid ${t.brd}`, borderRadius: isPhone ? 14 : 18,
-        padding: isPhone ? 12 : 16, boxShadow: t.sh, opacity: winner && winner !== s ? .45 : 1, transition: "opacity .3s", display: "flex", flexDirection: "column", minHeight: isPhone ? 320 : 390 }}>
-        <div style={{ textAlign: "center", marginBottom: 10 }}><EN name={s.name} onSave={n => ren(i, n)} sz={isPhone ? 17 : 20} /></div>
-        <div style={{ display: "grid", gap: 10, gridTemplateRows: "1fr auto 1fr", flex: 1 }}>
-          <div style={{ padding: isPhone ? "10px 8px" : "14px 12px", background: t.bgS, borderRadius: 14, border: `1px solid ${t.brd}`, minHeight: isPhone ? (target === 30 ? 122 : 104) : (target === 30 ? 150 : 120), display: "flex", flexDirection: "column", justifyContent: "flex-start" }}>
-            {target === 30 && <div style={{ fontSize: 9, color: t.txtM, fontWeight: 700, letterSpacing: 1.1, marginBottom: 6, textAlign: "center" }}>MALAS / BUENAS</div>}
-            <Tally count={s.p} color={t.pri} divAt={target === 30 ? 15 : null} />
-          </div>
-          <div style={{ padding: isPhone ? "10px 8px" : "14px 10px", background: t.bgS, borderRadius: 14, border: `1px solid ${t.brd}`, display: "flex", alignItems: "center", justifyContent: "center", minHeight: isPhone ? 104 : 120 }}>
-            <div style={{ fontFamily: "'Playfair Display'", fontSize: isPhone ? 44 : 56, fontWeight: 800, color: t.pri, lineHeight: .95 }}>{s.p}</div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", justifyContent: "end" }}>
-            <div style={{ fontSize: isPhone ? 12 : 13, color: t.txtF, marginBottom: 10, textAlign: "center" }}>{Math.max(0, target - s.p)} {L.remain}</div>
-            <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-              {[1, 2, 3].map(v => <B key={v} onClick={() => add(i, v)} s={{ fontSize: isPhone ? 16 : 18, minHeight: 48, padding: "12px 0" }}>+{v}</B>)}
-              <B v="gh" onClick={() => add(i, -1)} s={{ fontSize: isPhone ? 16 : 18, minHeight: 48, padding: "12px 0" }}>−1</B>
-            </div>
-          </div>
+    <div style={{ padding: isPhone ? "8px" : "12px" }}>
+      {/* Shared tally card */}
+      <div style={{ background: t.card, border: `1px solid ${t.brd}`, borderRadius: isPhone ? 14 : 18, boxShadow: t.sh, overflow: "hidden" }}>
+        {/* Names row */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+          {sc.map((s, i) => <div key={i} style={{ textAlign: "center", padding: "10px 8px 6px", opacity: winner && winner !== s ? .4 : 1 }}>
+            <EN name={s.name} onSave={n => ren(i, n)} sz={isPhone ? 15 : 18} />
+          </div>)}
         </div>
-      </div>)}
+
+        {/* Tally area - side by side */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", minHeight: isPhone ? (target === 30 ? 200 : 140) : (target === 30 ? 260 : 170) }}>
+          {sc.map((s, i) => <React.Fragment key={i}>
+            {i === 1 && <div style={{ background: t.brd, margin: "8px 0" }} />}
+            <div style={{ padding: isPhone ? "6px 10px" : "8px 14px", background: t.bgS, display: "flex", flexDirection: "column", justifyContent: "flex-start", opacity: winner && winner !== s ? .4 : 1 }}>
+              {target === 30 && <div style={{ fontSize: 8, color: t.txtM, fontWeight: 700, letterSpacing: 1, marginBottom: 4, textAlign: "center" }}>MALAS / BUENAS</div>}
+              <Tally count={s.p} color={t.pri} divAt={target === 30 ? 15 : null} />
+            </div>
+          </React.Fragment>)}
+        </div>
+
+        {/* Scores row */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: `1px solid ${t.brd}` }}>
+          {sc.map((s, i) => <div key={i} style={{ textAlign: "center", padding: isPhone ? "10px 6px" : "14px 8px", opacity: winner && winner !== s ? .4 : 1 }}>
+            <div style={{ fontFamily: "'Playfair Display'", fontSize: isPhone ? 42 : 54, fontWeight: 800, color: t.pri, lineHeight: .95 }}>{s.p}</div>
+            <div style={{ fontSize: isPhone ? 11 : 12, color: t.txtF, marginTop: 4 }}>{Math.max(0, target - s.p)} {L.remain}</div>
+          </div>)}
+        </div>
+
+        {/* Buttons row */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: `1px solid ${t.brd}` }}>
+          {sc.map((s, i) => <div key={i} style={{ padding: isPhone ? "8px 6px" : "10px 8px", display: "grid", gap: 6, gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+            {[1, 2, 3].map(v => <B key={v} onClick={() => add(i, v)} s={{ fontSize: isPhone ? 15 : 17, minHeight: 44, padding: "10px 0" }}>+{v}</B>)}
+            <B v="gh" onClick={() => add(i, -1)} s={{ fontSize: isPhone ? 15 : 17, minHeight: 44, padding: "10px 0" }}>−1</B>
+          </div>)}
+        </div>
+      </div>
     </div>
     <UndoBar toast={toast} onUndo={() => toast?.undo?.()} onClose={() => setToast(null)} />
   </div>;
@@ -749,7 +776,7 @@ function Generala({ onBack, onContinueChange }) {
       <div style={{ background: t.card, borderRadius: 20, padding: 20, boxShadow: t.shH }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: t.pri, margin: "0 0 4px", fontFamily: "'Playfair Display'" }}>
           {ps[sheet.pi]?.name} — {GC.find(c => c.k === sheet.cat)?.l}</p>
-        {sheet.pi !== currentTurnIndex && <p style={{ fontSize: 11, color: t.err, margin: "0 0 10px" }}>{L.turnWarning.replace('{name}', ps[sheet.pi]?.name || '').replace('{expected}', currentTurnName || '')}</p>}
+        {sheet.pi !== currentTurnIndex && <p style={{ fontSize: 10, color: t.err, margin: "0 0 8px", opacity: 0.7 }}>⚠ {L.turnWarning.replace('{name}', ps[sheet.pi]?.name || '').replace('{expected}', currentTurnName || '')}</p>}
         <p style={{ fontSize: 11, color: t.txtM, margin: "0 0 12px" }}>{L.chooseScore}</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {gV(GC.find(c => c.k === sheet.cat)).map(v => <B key={v} onClick={() => setSc(sheet.pi, sheet.cat, v)}
@@ -883,7 +910,7 @@ function App() {
           </div></Modal>}
 
           <h1 style={{ fontFamily: "'Playfair Display'", fontSize: 52, fontWeight: 800, color: t.pri, margin: "0 0 6px", letterSpacing: -1 }}>PUNTOS</h1>
-          <div style={{ height: 2, width: 60, background: `linear-gradient(90deg, transparent, ${t.pri}, transparent)`, margin: "0 auto" }} />
+          <div style={{ height: 2, width: 60, background: `linear-gradient(90deg, transparent, ${t.pri}, transparent)`, margin: "0 auto 28px" }} />
           
           {contGame && <div style={{ background: t.okBg, border: `1px solid ${t.ok}30`, borderRadius: 16, padding: "16px 18px", marginBottom: 20, maxWidth: 380, width: "100%", boxShadow: t.sh }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
