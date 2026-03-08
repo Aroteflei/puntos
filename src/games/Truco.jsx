@@ -87,8 +87,8 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t }) {
       </div>
 
       <div style={{
-        flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
-        padding: "10px 10px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 120,
+        flex: "1 1 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
+        padding: "10px 10px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 80, maxHeight: "42vh",
       }}>
         {target === 30 && <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: 2, color: t.err, marginBottom: 4, fontFamily: F.sans }}>MALAS</div>}
         <TrucoTally count={player.p} color={t.txt} divAt={target === 30 ? 15 : null} buenasColor={t.ok} />
