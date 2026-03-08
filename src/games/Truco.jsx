@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useApp, ST, clone, shareResult, vib, vibWin, B, EN, Modal } from '../lib.jsx';
+import { useApp, ST, clone, shareResult, vib, vibWin, F, B, EN, Modal } from '../lib.jsx';
 
 function TrucoTally({ count, color, divAt }) {
   const SZ = 36, PD = 3, GAP = 4;
@@ -18,26 +18,26 @@ function TrucoTally({ count, color, divAt }) {
   const fullSq = (key) => (
     <svg key={key} width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}>
       <rect x={PD + j()} y={PD + j()} width={SZ - PD * 2 + j()} height={SZ - PD * 2 + j()}
-        fill="none" stroke={color} strokeWidth="2.5" rx="2" strokeLinecap="round" />
+        fill="none" stroke={color} strokeWidth="2" rx="1" strokeLinecap="round" opacity=".7" />
       <line x1={PD + 1 + j()} y1={SZ - PD - 1 + j()} x2={SZ - PD - 1 + j()} y2={PD + 1 + j()}
-        stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+        stroke={color} strokeWidth="2" strokeLinecap="round" opacity=".7" />
     </svg>
   );
 
   const partSq = (n, key) => {
     const segs = [];
-    if (n >= 1) segs.push(<line key="l" x1={PD + j()} y1={PD + j()} x2={PD + j()} y2={SZ - PD + j()} stroke={color} strokeWidth="2.5" strokeLinecap="round" />);
-    if (n >= 2) segs.push(<line key="b" x1={PD + j()} y1={SZ - PD + j()} x2={SZ - PD + j()} y2={SZ - PD + j()} stroke={color} strokeWidth="2.5" strokeLinecap="round" />);
-    if (n >= 3) segs.push(<line key="r" x1={SZ - PD + j()} y1={SZ - PD + j()} x2={SZ - PD + j()} y2={PD + j()} stroke={color} strokeWidth="2.5" strokeLinecap="round" />);
-    if (n >= 4) segs.push(<line key="t" x1={SZ - PD + j()} y1={PD + j()} x2={PD + j()} y2={PD + j()} stroke={color} strokeWidth="2.5" strokeLinecap="round" />);
+    if (n >= 1) segs.push(<line key="l" x1={PD + j()} y1={PD + j()} x2={PD + j()} y2={SZ - PD + j()} stroke={color} strokeWidth="2" strokeLinecap="round" opacity=".7" />);
+    if (n >= 2) segs.push(<line key="b" x1={PD + j()} y1={SZ - PD + j()} x2={SZ - PD + j()} y2={SZ - PD + j()} stroke={color} strokeWidth="2" strokeLinecap="round" opacity=".7" />);
+    if (n >= 3) segs.push(<line key="r" x1={SZ - PD + j()} y1={SZ - PD + j()} x2={SZ - PD + j()} y2={PD + j()} stroke={color} strokeWidth="2" strokeLinecap="round" opacity=".7" />);
+    if (n >= 4) segs.push(<line key="t" x1={SZ - PD + j()} y1={PD + j()} x2={PD + j()} y2={PD + j()} stroke={color} strokeWidth="2" strokeLinecap="round" opacity=".7" />);
     return <svg key={key} width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}>{segs}</svg>;
   };
 
   const divider = (
     <div key="div" style={{ display: "flex", alignItems: "center", width: "100%", margin: `${GAP}px 0`, padding: "0 2px" }}>
-      <div style={{ flex: 1, height: 2, background: "linear-gradient(90deg, transparent, #C0392B)", borderRadius: 1 }} />
-      <span style={{ fontSize: 8, color: "#C0392B", fontWeight: 700, letterSpacing: 2, padding: "0 6px", fontFamily: "'DM Sans'" }}>BUENAS</span>
-      <div style={{ flex: 1, height: 2, background: "linear-gradient(270deg, transparent, #C0392B)", borderRadius: 1 }} />
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${color})`, opacity: .4 }} />
+      <span style={{ fontSize: 8, color, fontWeight: 600, letterSpacing: 2, padding: "0 6px", fontFamily: F.sans }}>BUENAS</span>
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, transparent, ${color})`, opacity: .4 }} />
     </div>
   );
 
@@ -81,31 +81,31 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t }) {
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", opacity: dim ? 0.3 : 1, transition: "opacity .3s" }}>
-      <div style={{ textAlign: "center", padding: ph ? "8px 6px 6px" : "12px 10px 8px", borderBottom: `1px solid ${t.brd}` }}>
-        <EN name={player.name} onSave={n => onRen(idx, n)} sz={ph ? 15 : 18} />
+      <div style={{ textAlign: "center", padding: ph ? "10px 6px 8px" : "12px 10px 10px", borderBottom: `1px solid ${t.brd}` }}>
+        <EN name={player.name} onSave={n => onRen(idx, n)} sz={ph ? 14 : 16} />
       </div>
 
       <div style={{
         flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         padding: ph ? "6px 6px" : "10px 10px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 0,
       }}>
-        {target === 30 && <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 2, color: t.txtM, marginBottom: 4, fontFamily: "'DM Sans'" }}>MALAS</div>}
-        <TrucoTally count={player.p} color={t.pri} divAt={target === 30 ? 15 : null} />
+        {target === 30 && <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: 2, color: t.txtM, marginBottom: 4, fontFamily: F.sans }}>MALAS</div>}
+        <TrucoTally count={player.p} color={t.txt} divAt={target === 30 ? 15 : null} />
       </div>
 
-      <div style={{ textAlign: "center", padding: ph ? "6px 0" : "10px 0", borderTop: `1px solid ${t.brd}` }}>
-        <div style={{ fontFamily: "'Playfair Display'", fontWeight: 800, fontSize: ph ? 48 : 64, color: t.pri, lineHeight: 1 }}>
+      <div style={{ textAlign: "center", padding: ph ? "8px 0" : "10px 0", borderTop: `1px solid ${t.brd}` }}>
+        <div style={{ fontFamily: F.serif, fontSize: ph ? 48 : 64, color: t.pri, lineHeight: 1, letterSpacing: -1 }}>
           {player.p}
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: ph ? 4 : 6, padding: ph ? "6px 8px 10px" : "8px 14px 14px", borderTop: `1px solid ${t.brd}` }}>
+      <div style={{ display: "flex", gap: ph ? 4 : 6, padding: ph ? "8px 6px 10px" : "8px 12px 14px", borderTop: `1px solid ${t.brd}` }}>
         {[1, 2, 3].map(v => (
           <button key={v} onClick={() => !atTarget && onAdd(idx, v)} disabled={atTarget} style={{
-            background: atTarget ? t.bgS : t.pri, color: atTarget ? t.txtF : "#fff", border: "none",
-            borderRadius: 12, height: ph ? 44 : 50, width: "100%", fontSize: ph ? 18 : 20, fontWeight: 800,
-            fontFamily: "'Playfair Display'", cursor: atTarget ? "default" : "pointer", touchAction: "manipulation",
-            boxShadow: atTarget ? "none" : "0 1px 3px rgba(0,0,0,.1)", opacity: atTarget ? 0.4 : 1,
+            background: "transparent", color: atTarget ? t.txtF : t.pri, border: `1px solid ${atTarget ? t.brd : t.pri}`,
+            borderRadius: 6, height: ph ? 44 : 48, flex: 1, fontSize: ph ? 18 : 20,
+            fontFamily: F.serif, cursor: atTarget ? "default" : "pointer", touchAction: "manipulation",
+            opacity: atTarget ? 0.3 : 1, transition: "all .15s",
           }}>+{v}</button>
         ))}
       </div>
@@ -304,35 +304,37 @@ function Truco({ onBack, onContinueChange }) {
 
   if (!started) return (
     <div style={{ minHeight: "100vh", background: t.bg }}>
-      <div style={{ padding: "16px 16px 0" }}>
+      <div style={{ padding: "12px 16px 0" }}>
         <button onClick={goBack} style={{
-          background: t.card, border: `1px solid ${t.brd}`, color: t.txt, fontSize: 16, borderRadius: 10,
-          width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation"
+          background: "none", border: "none", color: t.txtM, fontSize: 15, fontFamily: F.sans, fontWeight: 500,
+          cursor: "pointer", padding: "8px 12px", touchAction: "manipulation"
         }}>←</button>
       </div>
 
-      <div style={{ maxWidth: 420, margin: "0 auto", padding: "20px 20px 56px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ maxWidth: 400, margin: "0 auto", padding: "20px 24px 56px", display: "flex", flexDirection: "column", gap: 16 }}>
         {step === 0 && <>
-          <p style={{ fontSize: 17, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>{L.howMany}</p>
+          <p style={{ fontSize: 22, color: t.txt, textAlign: "center", margin: 0, fontFamily: F.serif }}>{L.howMany}</p>
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
             {[15, 30].map(v => (
-              <B key={v} v={target === v ? "pri" : "gh"} onClick={() => setTarget(v)}
-                s={{ fontSize: 26, padding: "18px 16px", minHeight: 68, fontFamily: "'Playfair Display'", fontWeight: 800 }}>
-                {v}
-              </B>
+              <button key={v} onClick={() => setTarget(v)} style={{
+                background: "transparent", border: `1.5px solid ${target === v ? t.pri : t.brd}`, borderRadius: 6,
+                height: 100, fontSize: 36, fontFamily: F.serif, color: target === v ? t.pri : t.txt,
+                cursor: "pointer", touchAction: "manipulation", transition: "all .15s",
+              }}>{v}</button>
             ))}
           </div>
           <B onClick={() => setStep(1)} s={{ width: "100%" }}>{L.next}</B>
         </>}
 
         {step === 1 && <>
-          <p style={{ fontSize: 17, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>¿Cuántos jugadores?</p>
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr" }}>
+          <p style={{ fontSize: 22, color: t.txt, textAlign: "center", margin: 0, fontFamily: F.serif }}>¿Cuántos jugadores?</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {TEAM_SIZE_OPTIONS.map((opt) => (
-              <B key={opt.teamSize} v={teamSize === opt.teamSize ? "pri" : "gh"} onClick={() => handleTeamSize(opt.teamSize)}
-                s={{ width: "100%", minHeight: 54, fontSize: 18, fontFamily: "'Playfair Display'" }}>
-                {opt.label}
-              </B>
+              <button key={opt.teamSize} onClick={() => handleTeamSize(opt.teamSize)} style={{
+                background: "transparent", border: `1.5px solid ${teamSize === opt.teamSize ? t.pri : t.brd}`, borderRadius: 6,
+                padding: 16, textAlign: "left", fontSize: 15, fontFamily: F.sans, fontWeight: 500,
+                color: teamSize === opt.teamSize ? t.pri : t.txt, cursor: "pointer", touchAction: "manipulation", transition: "all .15s",
+              }}>{opt.label}</button>
             ))}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -342,36 +344,33 @@ function Truco({ onBack, onContinueChange }) {
         </>}
 
         {step === 2 && <>
-          <p style={{ fontSize: 17, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>{L.names}</p>
+          <p style={{ fontSize: 22, color: t.txt, textAlign: "center", margin: 0, fontFamily: F.serif }}>{L.names}</p>
 
           {teamSize === 1 ? (
             Array.from({ length: rawCount }).map((_, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 12, color: t.txtF, width: 20 }}>{i + 1}.</span>
-                <input autoFocus={i === 0} ref={el => { nameRefs.current[i] = el; }}
-                  value={rawNames[i] ?? ""}
-                  onChange={e => {
-                    const nextRawNames = [...rawNames];
-                    nextRawNames[i] = e.target.value;
-                    setRawNames(nextRawNames);
-                  }}
-                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); nextName(i); } }}
-                  onFocus={e => e.target.select()}
-                  enterKeyHint={i === rawCount - 1 ? "done" : "next"}
-                  placeholder={`Jugador ${i + 1}`}
-                  style={{
-                    flex: 1, background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12,
-                    padding: "13px 14px", minHeight: 48, fontSize: 16, fontFamily: "inherit", outline: "none"
-                  }} />
-              </div>
+              <input key={i} autoFocus={i === 0} ref={el => { nameRefs.current[i] = el; }}
+                value={rawNames[i] ?? ""}
+                onChange={e => {
+                  const nextRawNames = [...rawNames];
+                  nextRawNames[i] = e.target.value;
+                  setRawNames(nextRawNames);
+                }}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); nextName(i); } }}
+                onFocus={e => e.target.select()}
+                enterKeyHint={i === rawCount - 1 ? "done" : "next"}
+                placeholder={`Jugador ${i + 1}`}
+                style={{
+                  width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${t.brd}`, color: t.txt,
+                  padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0,
+                }} />
             ))
           ) : (
             [0, 1].map((teamIdx) => (
               <div key={teamIdx}>
-                <div style={{ fontSize: 12, color: t.txtM, fontFamily: "'DM Sans'", marginBottom: 6, fontWeight: 600 }}>
+                <div style={{ fontSize: 11, color: t.txtM, fontFamily: F.sans, marginBottom: 6, fontWeight: 400, letterSpacing: 1.5, textTransform: "uppercase" }}>
                   {teamIdx === 0 ? "Primera pareja" : "Segunda pareja"}
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", flexDirection: "column" }}>
                   {Array.from({ length: teamSize }).map((_, offset) => {
                     const idx = teamIdx * teamSize + offset;
                     return (
@@ -387,8 +386,8 @@ function Truco({ onBack, onContinueChange }) {
                         enterKeyHint={idx === rawCount - 1 ? "done" : "next"}
                         placeholder={`Jugador ${idx + 1}`}
                         style={{
-                          width: "100%", background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12,
-                          padding: "13px 14px", minHeight: 48, fontSize: 16, fontFamily: "inherit", outline: "none"
+                          width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${t.brd}`, color: t.txt,
+                          padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0,
                         }} />
                     );
                   })}
@@ -400,7 +399,7 @@ function Truco({ onBack, onContinueChange }) {
           <div style={{ position: "sticky", bottom: 10, marginTop: 8, background: `linear-gradient(180deg, transparent, ${t.bg} 28%)`, paddingTop: 12 }}>
             <div style={{ display: "flex", gap: 8 }}>
               <B v="gh" onClick={() => setStep(1)} s={{ flex: 1 }}>{L.back}</B>
-              <B onClick={startGame} s={{ flex: 1, fontSize: 16, minHeight: 52 }}>{L.start} 🂡</B>
+              <B onClick={startGame} s={{ flex: 1 }}>{L.start}</B>
             </div>
           </div>
         </>}
@@ -410,22 +409,21 @@ function Truco({ onBack, onContinueChange }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", background: t.bg, overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", padding: ph ? "8px 10px" : "10px 14px", gap: 8, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", padding: ph ? "8px 10px" : "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
         <button onClick={goBack} style={{
-          background: "none", border: "none", color: t.txtM, fontSize: 18, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
+          background: "none", border: "none", color: t.txtM, fontSize: 15, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
         }}>←</button>
-        <span style={{ fontSize: 12, color: t.txtM, fontFamily: "'DM Sans'", fontWeight: 600 }}>A {target}</span>
-        <span style={{ fontSize: 12, color: t.txtF, fontFamily: "'DM Sans'" }}>{teamSize * 2} jugadores</span>
+        <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>A {target}</span>
         <div style={{ flex: 1 }} />
-        <button onClick={doShare} style={{ background: "none", border: "none", color: t.txtM, fontSize: 14, cursor: "pointer", padding: 4, touchAction: "manipulation" }}>📤</button>
-        <button onClick={() => setModal("new")} style={{ background: "none", border: "none", color: t.txtM, fontSize: 14, cursor: "pointer", padding: 4, touchAction: "manipulation" }}>🔄</button>
+        <button onClick={doShare} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Compartir</button>
+        <button onClick={() => setModal("new")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Nueva</button>
       </div>
 
       {modal && <Modal onClose={() => setModal(null)}>
-        <div style={{ background: t.card, borderRadius: 16, padding: 24, textAlign: "center", boxShadow: t.shH }}>
-          <p style={{ fontSize: 15, fontWeight: 600, fontFamily: "'Playfair Display'", margin: "0 0 6px" }}>{modal === "new" ? L.newGame : L.resetQ}</p>
-          <p style={{ fontSize: 12, color: t.txtM, margin: "0 0 16px" }}>{modal === "new" ? L.savesHist : L.losesAll}</p>
-          <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
+          <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{modal === "new" ? L.newGame : L.resetQ}</p>
+          <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "new" ? L.savesHist : L.losesAll}</p>
+          <div style={{ display: "flex", gap: 10 }}>
             <B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
             {modal === "new" ? <B onClick={saveNew} s={{ flex: 1 }}>{L.yesNew}</B> : <B v="err" onClick={resetZ} s={{ flex: 1 }}>{L.reset}</B>}
           </div>
@@ -434,20 +432,20 @@ function Truco({ onBack, onContinueChange }) {
       </Modal>}
 
       {winner && (
-        <div style={{ textAlign: "center", padding: ph ? 8 : 12, background: `linear-gradient(135deg, ${t.pri}, ${t.priL})`, color: "#fff", flexShrink: 0 }}>
-          <div style={{ fontSize: ph ? 16 : 20, fontFamily: "'Playfair Display'", fontWeight: 800 }}>🏆 ¡{winner.name} {L.wins}!</div>
-          <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 4 }}>
-            <B onClick={doShare} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 11, padding: "4px 10px", minHeight: 30 }}>📤</B>
-            <B onClick={rematch} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 11, padding: "4px 10px", minHeight: 30 }}>{L.rematch}</B>
-            <B onClick={() => setModal("new")} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 11, padding: "4px 10px", minHeight: 30 }}>{L.yesNew}</B>
+        <div style={{ textAlign: "center", padding: ph ? 10 : 14, background: t.pri, color: "#fff", flexShrink: 0, animation: "scaleIn .3s ease" }}>
+          <div style={{ fontSize: ph ? 16 : 18, fontFamily: F.serif }}>¡{winner.name} {L.wins}!</div>
+          <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 6 }}>
+            <button onClick={doShare} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>Compartir</button>
+            <button onClick={rematch} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.rematch}</button>
+            <button onClick={() => setModal("new")} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.yesNew}</button>
           </div>
         </div>
       )}
 
       {picaActive && (
-        <div style={{ padding: "8px 12px", background: t.okBg, borderTop: `1px solid ${t.ok}20`, borderBottom: `1px solid ${t.ok}20`, flexShrink: 0 }}>
-          <div style={{ fontSize: 13, color: t.ok, fontWeight: 800, textAlign: "center", fontFamily: "'DM Sans'" }}>{picaLabel}</div>
-          <div style={{ fontSize: 11, color: t.txtM, textAlign: "center", marginTop: 2 }}>{picaHint}</div>
+        <div style={{ padding: "8px 16px", borderBottom: `1px solid ${t.pri}20`, flexShrink: 0 }}>
+          <div style={{ fontSize: 12, color: t.pri, fontWeight: 600, textAlign: "center", fontFamily: F.sans }}>{picaLabel}</div>
+          <div style={{ fontSize: 11, color: t.txtM, textAlign: "center", marginTop: 2, fontFamily: F.sans }}>{picaHint}</div>
         </div>
       )}
 
@@ -464,10 +462,10 @@ function Truco({ onBack, onContinueChange }) {
           persist({ sc: lastState.sc, picapicaStep: lastState.picapicaStep });
           setLastState(null);
         }} style={{
-          position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)",
-          background: t.card, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 16px",
-          fontSize: 12, fontWeight: 600, color: t.txtM, cursor: "pointer", boxShadow: t.shH, zIndex: 50,
-          fontFamily: "'DM Sans'", touchAction: "manipulation"
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          background: t.txt, borderRadius: 8, padding: "8px 20px", border: "none",
+          fontSize: 12, fontWeight: 500, color: t.bg, cursor: "pointer", boxShadow: t.shH, zIndex: 50,
+          fontFamily: F.sans, touchAction: "manipulation", animation: "fadeUp .2s ease",
         }}>
           {L.undo}
         </button>

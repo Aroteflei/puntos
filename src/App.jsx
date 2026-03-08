@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Ctx, FONTS, strings, light, dark, ST, initWakeLock, B, Modal, useApp } from './lib.jsx';
+import { Ctx, FONTS, F, strings, light, dark, ST, initWakeLock, B, Modal, useApp } from './lib.jsx';
 import Truco from './games/Truco.jsx';
 import Burako from './games/Burako.jsx';
 import Generala from './games/Generala.jsx';
@@ -40,11 +40,13 @@ function App() {
 
   return (
     <Ctx.Provider value={{ t, dk, tog, sounds: true, L, lang: "es" }}>
-      <div style={{ minHeight: "100vh", background: t.bg, color: t.txt, fontFamily: "'DM Sans',sans-serif", transition: "background .3s,color .3s" }}>
+      <div style={{ minHeight: "100vh", background: t.bg, color: t.txt, fontFamily: F.sans, transition: "background .3s,color .3s" }}>
         <link href={FONTS} rel="stylesheet" />
         <style>{`input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield}*{box-sizing:border-box}::selection{background:${t.priL};color:#fff}
-          @keyframes popIn{from{transform:scale(0.8);opacity:0}to{transform:scale(1);opacity:1}}
-          button:active{transform:scale(0.95)!important;opacity:0.85!important}
+          @keyframes popIn{from{transform:scale(0.9);opacity:0}to{transform:scale(1);opacity:1}}
+          @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+          @keyframes scaleIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+          button:active{transform:scale(0.97)!important}
         `}</style>
 
         {sel === "truco" ? <Truco onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
@@ -59,49 +61,37 @@ function App() {
 
 function Home({ t, dk, tog, L, setSel, contGame, clearCurrent }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "44px 20px 40px", position: "relative" }}>
-
-      {/* Dark mode toggle */}
-      <button onClick={tog} style={{
-        position: "absolute", top: 16, right: 20,
-        background: "none", border: "none",
-        color: t.txtM, fontSize: 22, cursor: "pointer",
-        padding: 8, touchAction: "manipulation",
-      }}>{dk ? "☀️" : "🌙"}</button>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "64px 24px 48px", maxWidth: 400, margin: "0 auto" }}>
 
       {/* Title */}
-      <h1 style={{ fontFamily: "'Playfair Display'", fontSize: 52, fontWeight: 800, color: t.pri, margin: "0 0 6px", letterSpacing: -1 }}>PUNTOS</h1>
-      <div style={{ height: 2, width: 60, background: `linear-gradient(90deg, transparent, ${t.pri}, transparent)`, margin: "0 auto 28px" }} />
+      <h1 style={{ fontFamily: F.serif, fontSize: 48, fontWeight: 400, color: t.pri, margin: 0, letterSpacing: -.5, animation: "fadeUp .4s ease" }}>PUNTOS</h1>
+      <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 400, letterSpacing: 3, color: t.txtM, textTransform: "uppercase", marginTop: 4, animation: "fadeUp .4s ease .05s both" }}>marcador</span>
 
       {/* Continue last game */}
       {contGame && (
-        <div style={{ background: t.okBg, border: `1px solid ${t.ok}30`, borderRadius: 16, padding: "16px 18px", marginBottom: 20, maxWidth: 380, width: "100%", boxShadow: t.sh }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <div style={{ width: 46, height: 46, borderRadius: 12, background: t.card, border: `1px solid ${t.brd}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{GAMES[contGame].emoji}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 18, color: t.ok, fontWeight: 800, fontFamily: "'Playfair Display'" }}>{L.continueLast}</div>
-              <div style={{ fontSize: 13, color: t.txt }}>{GAMES[contGame].name}</div>
-            </div>
-            <button onClick={clearCurrent} style={{ background: "none", border: "none", color: t.txtM, cursor: "pointer", fontSize: 18, padding: "4px 6px" }}>×</button>
-          </div>
-          <B onClick={() => setSel(contGame)} s={{ width: "100%", minHeight: 50 }}>{L.openNow}</B>
+        <div onClick={() => setSel(contGame)} style={{ width: "100%", marginTop: 40, padding: "14px 0", borderBottom: `1px solid ${t.pri}20`, cursor: "pointer", display: "flex", alignItems: "center", animation: "fadeUp .4s ease .1s both" }}>
+          <span style={{ flex: 1, fontFamily: F.sans, fontSize: 14, fontWeight: 500, color: t.pri }}>Continuar: {GAMES[contGame].name}</span>
+          <button onClick={e => { e.stopPropagation(); clearCurrent() }} style={{ background: "none", border: "none", color: t.txtF, cursor: "pointer", fontSize: 14, padding: "4px 8px", fontFamily: F.sans }}>×</button>
         </div>
       )}
 
-      {/* Game cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 380, width: "100%" }}>
-        {Object.entries(GAMES).map(([key, g]) => (
+      {/* Game list */}
+      <div style={{ width: "100%", marginTop: contGame ? 8 : 40 }}>
+        {Object.entries(GAMES).map(([key, g], i) => (
           <div key={key} onClick={() => setSel(key)}
-            style={{ background: t.card, border: `1px solid ${t.brd}`, borderRadius: 16, padding: "22px 24px",
-              display: "flex", alignItems: "center", gap: 18, cursor: "pointer", transition: "all .25s", boxShadow: t.sh }}>
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: t.bgS, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
-              border: `1px solid ${t.brd}` }}>{g.emoji}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Playfair Display'", fontSize: 20, fontWeight: 700, color: t.pri }}>{g.name}</div>
-            </div>
-            <div style={{ color: t.priL, fontSize: 18 }}>→</div>
+            style={{ padding: "20px 0", borderBottom: i < Object.keys(GAMES).length - 1 ? `1px solid ${t.brd}` : "none",
+              display: "flex", alignItems: "center", cursor: "pointer", animation: `fadeUp .4s ease ${(i + 2) * .06}s both` }}>
+            <span style={{ flex: 1, fontFamily: F.serif, fontSize: 22, color: t.txt }}>{g.name}</span>
+            <span style={{ color: t.txtF, fontSize: 14, fontFamily: F.sans }}>→</span>
           </div>
         ))}
+      </div>
+
+      {/* Dark mode toggle */}
+      <div style={{ marginTop: 48, display: "flex", gap: 4, fontFamily: F.sans, fontSize: 12, animation: "fadeUp .4s ease .4s both" }}>
+        <button onClick={() => { if (dk) tog() }} style={{ background: "none", border: "none", color: dk ? t.txtF : t.pri, cursor: "pointer", padding: "4px 8px", fontWeight: dk ? 400 : 600, fontFamily: F.sans, fontSize: 12 }}>Light</button>
+        <span style={{ color: t.txtF }}>/</span>
+        <button onClick={() => { if (!dk) tog() }} style={{ background: "none", border: "none", color: dk ? t.pri : t.txtF, cursor: "pointer", padding: "4px 8px", fontWeight: dk ? 600 : 400, fontFamily: F.sans, fontSize: 12 }}>Dark</button>
       </div>
     </div>
   );

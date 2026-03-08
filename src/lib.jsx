@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, createContext, useContext } from 'react';
 
 // ─── FONTS ─────────────────────────────────────
-export const FONTS = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap";
+export const FONTS = "https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Instrument+Sans:wght@400;500;600;700&display=swap";
+export const F = { serif: "'Instrument Serif', Georgia, serif", sans: "'Instrument Sans', system-ui, sans-serif" };
 
 // ─── i18n ──────────────────────────────────────
 export const strings = {
@@ -53,16 +54,16 @@ export const strings = {
 
 // ─── THEMES ────────────────────────────────────
 export const light = {
-  bg:"#F7F3EE",bgS:"#F0E8DE",card:"#FFF",pri:"#6B4E30",priL:"#B4946A",priD:"#3C2A15",
-  txt:"#2C1810",txtM:"#9C8B7A",txtF:"#C4B4A0",brd:"#E8E0D6",
-  err:"#C0392B",errBg:"#FCEAE8",ok:"#27764E",okBg:"#E8F5ED",
-  sh:"0 1px 6px rgba(80,50,20,.06)",shH:"0 4px 16px rgba(80,50,20,.12)",
+  bg:"#FFFFFF",bgS:"#F6F6F4",card:"#FFFFFF",pri:"#1A5C52",priL:"#3D8B7A",priD:"#0E3A33",
+  txt:"#1A1A1A",txtM:"#7A7A78",txtF:"#B5B5B2",brd:"#E8E8E6",
+  err:"#C23B22",errBg:"#FDF0ED",ok:"#2D7A50",okBg:"#EDF7F1",
+  sh:"none",shH:"0 8px 32px rgba(0,0,0,.08)",
 };
 export const dark = {
-  bg:"#1A1714",bgS:"#242018",card:"#2C2720",pri:"#C49A6C",priL:"#DEB98E",priD:"#8B6B45",
-  txt:"#E8E0D6",txtM:"#9C8E7E",txtF:"#5C5248",brd:"#3A3530",
-  err:"#E8695E",errBg:"#3A2220",ok:"#5CB880",okBg:"#1E2E22",
-  sh:"0 1px 6px rgba(0,0,0,.2)",shH:"0 4px 16px rgba(0,0,0,.3)",
+  bg:"#111111",bgS:"#1A1A1A",card:"#1A1A1A",pri:"#5DC4AD",priL:"#7DD8C4",priD:"#3A9A85",
+  txt:"#E8E8E6",txtM:"#8A8A88",txtF:"#4A4A48",brd:"#2A2A28",
+  err:"#E85C4A",errBg:"#2A1A18",ok:"#5CB87A",okBg:"#1A2A1E",
+  sh:"none",shH:"0 8px 32px rgba(0,0,0,.3)",
 };
 
 // ─── CONTEXT ───────────────────────────────────
@@ -102,7 +103,7 @@ export async function shareResult(title, lines) {
     const c = document.createElement("canvas");
     c.width = 1200; c.height = 630;
     const ctx = c.getContext("2d");
-    ctx.fillStyle = "#F7F3EE"; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, c.width, c.height);
 
     const wrap = (ct, str, maxW) => {
       const words = String(str).split(" "); const out = []; let line = "";
@@ -114,18 +115,18 @@ export async function shareResult(title, lines) {
       if (line) out.push(line); return out;
     };
 
-    ctx.fillStyle = "#2C1810"; ctx.font = "800 72px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = "#1A1A1A"; ctx.font = "72px Georgia, serif";
     const titleLines = wrap(ctx, title, 1040);
     let y = 140;
     titleLines.slice(0, 2).forEach((ln) => { const w = ctx.measureText(ln).width; ctx.fillText(ln, (c.width - w) / 2, y); y += 84; });
-    ctx.strokeStyle = "#D8CFC5"; ctx.lineWidth = 2;
+    ctx.strokeStyle = "#E8E8E6"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(140, y + 10); ctx.lineTo(c.width - 140, y + 10); ctx.stroke(); y += 70;
-    ctx.fillStyle = "#6B4E30"; ctx.font = "600 44px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = "#1A5C52"; ctx.font = "600 44px system-ui, sans-serif";
     for (let i = 0; i < lines.length && i < 8; i++) {
       const wrapped = wrap(ctx, lines[i], 980);
       for (let j = 0; j < wrapped.length && j < 8; j++) { const ln = wrapped[j]; const w = ctx.measureText(ln).width; ctx.fillText(ln, (c.width - w) / 2, y); y += 58; }
     }
-    ctx.fillStyle = "#B9AA9A"; ctx.font = "500 26px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = "#B5B5B2"; ctx.font = "500 26px system-ui, sans-serif";
     ctx.fillText("puntos", c.width - 180, c.height - 48);
 
     const blob = await new Promise(r => c.toBlob(r, "image/png"));
@@ -141,13 +142,13 @@ export async function shareResult(title, lines) {
 // ─── UI ATOMS ──────────────────────────────────
 export function B({ children, onClick, disabled, v = "pri", s, ...r }) {
   const { t, sounds } = useApp();
-  const vars = { pri: { background: t.pri, color: "#fff", border: "none", boxShadow: "0 1px 3px rgba(0,0,0,.1)" },
-    out: { background: "transparent", color: t.pri, border: `1.5px solid ${t.pri}`, boxShadow: "none" },
-    err: { background: "transparent", color: t.err, border: `1.5px solid ${t.err}`, boxShadow: "none" },
-    gh: { background: t.bgS, color: t.txt, border: `1px solid ${t.brd}`, boxShadow: "none" } };
+  const vars = { pri: { background: t.pri, color: "#fff", border: "none" },
+    out: { background: "transparent", color: t.pri, border: `1.5px solid ${t.pri}` },
+    err: { background: "transparent", color: t.err, border: `1.5px solid ${t.err}` },
+    gh: { background: t.bgS, color: t.txt, border: `1px solid ${t.brd}` } };
   const handle = () => { if (!disabled && onClick) { if (sounds) vib(); onClick() } };
-  return <button onClick={handle} disabled={disabled} style={{ borderRadius: 12, padding: "12px 18px", minHeight: 44, fontSize: 15, fontWeight: 700,
-    fontFamily: "'DM Sans'", cursor: disabled ? "default" : "pointer", transition: "all .15s", opacity: disabled ? .35 : 1, touchAction: "manipulation", ...vars[v], ...s }} {...r}>{children}</button>;
+  return <button onClick={handle} disabled={disabled} style={{ borderRadius: 6, padding: "12px 20px", minHeight: 44, fontSize: 14, fontWeight: 600,
+    letterSpacing: .2, fontFamily: F.sans, cursor: disabled ? "default" : "pointer", transition: "opacity .15s", opacity: disabled ? .35 : 1, touchAction: "manipulation", ...vars[v], ...s }} {...r}>{children}</button>;
 }
 
 export function EN({ name, onSave, sz = 18 }) {
@@ -155,28 +156,25 @@ export function EN({ name, onSave, sz = 18 }) {
   useEffect(() => setVal(name), [name]);
   if (ed) return <input autoFocus value={val} onChange={e => setVal(e.target.value)} onBlur={() => { onSave(val); setEd(false) }}
     onKeyDown={e => { if (e.key === "Enter") { onSave(val); setEd(false) } }}
-    style={{ background: t.bgS, border: `1.5px solid ${t.pri}`, color: t.txt, fontSize: sz, fontWeight: 600, fontFamily: "'Playfair Display'",
-      borderRadius: 8, padding: "2px 8px", outline: "none", width: "100%" }} />;
-  return <span onClick={() => setEd(true)} style={{ fontSize: sz, fontWeight: 600, color: t.txt, cursor: "pointer",
-    fontFamily: "'Playfair Display'" }}>{name} <span style={{ fontSize: 10, color: t.txtF }}>✎</span></span>;
+    style={{ background: "transparent", border: "none", borderBottom: `1.5px solid ${t.pri}`, color: t.txt, fontSize: sz, fontFamily: F.serif,
+      borderRadius: 0, padding: "2px 0", outline: "none", width: "100%" }} />;
+  return <span onClick={() => setEd(true)} style={{ fontSize: sz, color: t.txt, cursor: "pointer",
+    fontFamily: F.serif, textDecoration: "underline dashed", textDecorationColor: t.brd, textUnderlineOffset: 3 }}>{name}</span>;
 }
 
-export const IcoBtn = ({ onClick, children, t }) => <button onClick={onClick} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt,
-  borderRadius: 12, width: 48, height: 48, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, touchAction: "manipulation" }}>{children}</button>;
+export const IcoBtn = ({ onClick, children, t }) => <button onClick={onClick} style={{ background: "transparent", border: `1px solid ${t.brd}`, color: t.txt,
+  borderRadius: 6, width: 40, height: 40, cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, touchAction: "manipulation" }}>{children}</button>;
 
 export function Hdr({ title, emoji, onBack, sub, icons }) {
   const { t } = useApp();
-  return <div style={{ padding: "16px 16px 12px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${t.brd}` }}>
-    <button onClick={onBack} style={{ background: t.card, border: `1px solid ${t.brd}`, color: t.txt, fontSize: 16, borderRadius: 10,
-      width: 48, height: 48, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, touchAction: "manipulation" }}>←</button>
+  return <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderBottom: `1px solid ${t.brd}` }}>
+    <button onClick={onBack} style={{ background: "none", border: "none", color: t.txtM, fontSize: 15, fontFamily: F.sans, fontWeight: 500,
+      cursor: "pointer", padding: "8px 12px", touchAction: "manipulation" }}>←</button>
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ fontSize: 18 }}>{emoji}</span>
-        <span style={{ fontFamily: "'Playfair Display'", fontSize: 20, color: t.pri, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</span>
-      </div>
-      {sub && <p style={{ margin: "1px 0 0 26px", fontSize: 11, color: t.txtM }}>{sub}</p>}
+      <span style={{ fontFamily: F.serif, fontSize: 20, color: t.pri, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</span>
+      {sub && <p style={{ margin: "2px 0 0", fontSize: 11, color: t.txtM, letterSpacing: .3 }}>{sub}</p>}
     </div>
-    {icons && <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>{icons}</div>}
+    {icons && <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>{icons}</div>}
   </div>;
 }
 
@@ -185,30 +183,30 @@ export function NI({ label, value, onChange, step = 1, min, hint }) {
   const [raw, setRaw] = useState(String(value)); useEffect(() => setRaw(String(value)), [value]);
   const commit = (v) => { const n = v === "" || v === "-" ? 0 : Number(v); onChange(min !== undefined ? Math.max(min, n) : n) };
   return <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-    <div><span style={{ fontSize: 13 }}>{label}</span>{hint && <span style={{ fontSize: 10, color: t.txtF, marginLeft: 4 }}>{hint}</span>}</div>
+    <div><span style={{ fontSize: 13, fontFamily: F.sans, fontWeight: 500 }}>{label}</span>{hint && <span style={{ fontSize: 10, color: t.txtF, marginLeft: 4 }}>{hint}</span>}</div>
     <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-      <button onClick={() => onChange(min !== undefined ? Math.max(min, value - step) : value - step)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, width: 44, height: 44, borderRadius: 10, cursor: "pointer", fontSize: 18, touchAction: "manipulation" }}>−</button>
+      <button onClick={() => onChange(min !== undefined ? Math.max(min, value - step) : value - step)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, width: 40, height: 40, borderRadius: 6, cursor: "pointer", fontSize: 16, fontFamily: F.sans, fontWeight: 500, touchAction: "manipulation" }}>−</button>
       <input type="number" value={raw} onChange={e => setRaw(e.target.value)} onBlur={() => commit(raw)} onKeyDown={e => { if (e.key === "Enter") commit(raw) }} onFocus={e => e.target.select()}
-        style={{ width: 64, minHeight: 44, textAlign: "center", background: t.card, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 6, padding: 2, fontSize: 14, fontFamily: "'DM Sans'", outline: "none" }} />
-      <button onClick={() => onChange(value + step)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, width: 44, height: 44, borderRadius: 10, cursor: "pointer", fontSize: 18, touchAction: "manipulation" }}>+</button>
+        style={{ width: 60, minHeight: 40, textAlign: "center", background: "transparent", border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 6, padding: 2, fontSize: 14, fontFamily: F.sans, outline: "none" }} />
+      <button onClick={() => onChange(value + step)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, width: 40, height: 40, borderRadius: 6, cursor: "pointer", fontSize: 16, fontFamily: F.sans, fontWeight: 500, touchAction: "manipulation" }}>+</button>
     </div></div>;
 }
 
 export function Modal({ children, onClose }) {
-  return <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 100,
-    display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
-    <div onClick={e => e.stopPropagation()} style={{ maxWidth: 340, width: "100%" }}>{children}</div></div>;
+  return <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.25)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", zIndex: 100,
+    display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "fadeUp .2s ease" }} onClick={onClose}>
+    <div onClick={e => e.stopPropagation()} style={{ maxWidth: 340, width: "100%", animation: "scaleIn .2s ease" }}>{children}</div></div>;
 }
 
 export function UndoBar({ toast, onUndo, onClose }) {
   const { t, L } = useApp();
   useEffect(() => { if (!toast) return; const id = setTimeout(() => onClose?.(), 2500); return () => clearTimeout(id); }, [toast, onClose]);
   if (!toast) return null;
-  return <div style={{ position: "fixed", left: 12, right: 12, top: 68, zIndex: 120, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-    <div style={{ pointerEvents: "auto", maxWidth: 320, width: "auto", background: t.card, border: `1px solid ${t.brd}`, boxShadow: t.shH, borderRadius: 10, padding: "5px 10px", display: "flex", alignItems: "center", gap: 8, opacity: 0.95 }}>
-      <div style={{ fontSize: 12, color: t.txtM, whiteSpace: "nowrap" }}>{toast.text}</div>
-      {toast.redo && <button onClick={() => { toast.redo?.(); onClose?.(); }} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans'", whiteSpace: "nowrap" }}>{L.redo}</button>}
-      {toast.undo && <button onClick={() => { onUndo?.(); onClose?.(); }} style={{ background: t.pri, border: "none", color: "#fff", borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans'", whiteSpace: "nowrap" }}>{L.undo}</button>}
+  return <div style={{ position: "fixed", left: 12, right: 12, bottom: 24, zIndex: 120, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+    <div style={{ pointerEvents: "auto", maxWidth: 320, width: "auto", background: t.txt, boxShadow: t.shH, borderRadius: 8, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, animation: "fadeUp .2s ease" }}>
+      <div style={{ fontSize: 12, color: t.bg, whiteSpace: "nowrap", fontFamily: F.sans, fontWeight: 500 }}>{toast.text}</div>
+      {toast.redo && <button onClick={() => { toast.redo?.(); onClose?.(); }} style={{ background: "transparent", border: `1px solid rgba(255,255,255,.2)`, color: t.bg, borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: F.sans, whiteSpace: "nowrap" }}>{L.redo}</button>}
+      {toast.undo && <button onClick={() => { onUndo?.(); onClose?.(); }} style={{ background: "transparent", border: `1px solid rgba(255,255,255,.2)`, color: t.bg, borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: F.sans, whiteSpace: "nowrap" }}>{L.undo}</button>}
     </div>
   </div>;
 }
@@ -220,18 +218,18 @@ export function Tally({ count, color, divAt }) {
   let oi = 0; const r = () => offsets[oi++ % offsets.length];
   const els = []; let drawn = 0, divDone = !divAt;
   const sq = (k) => <svg key={k} width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{ animation: "popIn .25s ease" }}>
-    <rect x={p + r()} y={p + r()} width={s - p * 2 + r()} height={s - p * 2 + r()} fill="none" stroke={color} strokeWidth="2.2" rx="1" opacity=".8" />
-    <line x1={p + 1 + r()} y1={s - p - 1 + r()} x2={s - p - 1 + r()} y2={p + 1 + r()} stroke={color} strokeWidth="2.2" opacity=".8" /></svg>;
+    <rect x={p + r()} y={p + r()} width={s - p * 2 + r()} height={s - p * 2 + r()} fill="none" stroke={color} strokeWidth="2" rx="1" opacity=".7" />
+    <line x1={p + 1 + r()} y1={s - p - 1 + r()} x2={s - p - 1 + r()} y2={p + 1 + r()} stroke={color} strokeWidth="2" opacity=".7" /></svg>;
   const part = (n, k) => { const l = [];
-    if (n >= 1) l.push(<line key="l" x1={p + r()} y1={p + r()} x2={p + r()} y2={s - p + r()} stroke={color} strokeWidth="2.2" strokeLinecap="round" opacity=".8" />);
-    if (n >= 2) l.push(<line key="b" x1={p + r()} y1={s - p + r()} x2={s - p + r()} y2={s - p + r()} stroke={color} strokeWidth="2.2" strokeLinecap="round" opacity=".8" />);
-    if (n >= 3) l.push(<line key="r" x1={s - p + r()} y1={s - p + r()} x2={s - p + r()} y2={p + r()} stroke={color} strokeWidth="2.2" strokeLinecap="round" opacity=".8" />);
-    if (n >= 4) l.push(<line key="t" x1={s - p + r()} y1={p + r()} x2={p + r()} y2={p + r()} stroke={color} strokeWidth="2.2" strokeLinecap="round" opacity=".8" />);
+    if (n >= 1) l.push(<line key="l" x1={p + r()} y1={p + r()} x2={p + r()} y2={s - p + r()} stroke={color} strokeWidth="2" strokeLinecap="round" opacity=".7" />);
+    if (n >= 2) l.push(<line key="b" x1={p + r()} y1={s - p + r()} x2={s - p + r()} y2={s - p + r()} stroke={color} strokeWidth="2" strokeLinecap="round" opacity=".7" />);
+    if (n >= 3) l.push(<line key="r" x1={s - p + r()} y1={s - p + r()} x2={s - p + r()} y2={p + r()} stroke={color} strokeWidth="2" strokeLinecap="round" opacity=".7" />);
+    if (n >= 4) l.push(<line key="t" x1={s - p + r()} y1={p + r()} x2={p + r()} y2={p + r()} stroke={color} strokeWidth="2" strokeLinecap="round" opacity=".7" />);
     return <svg key={k} width={s} height={s} viewBox={`0 0 ${s} ${s}`}>{l}</svg> };
   const div = <div key="div" style={{ display: "flex", alignItems: "center", gap: 0, margin: "8px 0", width: "100%", padding: "4px 0" }}>
-    <div style={{ flex: 1, height: 2, background: "linear-gradient(90deg, transparent, #C0392B)", borderRadius: 2 }} />
-    <span style={{ fontSize: 9, color: "#C0392B", fontWeight: 700, letterSpacing: 1.5, padding: "0 8px", whiteSpace: "nowrap" }}>BUENAS</span>
-    <div style={{ flex: 1, height: 2, background: "linear-gradient(270deg, transparent, #C0392B)", borderRadius: 2 }} /></div>;
+    <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${color})`, opacity: .4 }} />
+    <span style={{ fontSize: 8, color, fontWeight: 600, letterSpacing: 2, padding: "0 8px", whiteSpace: "nowrap", fontFamily: F.sans }}>BUENAS</span>
+    <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, transparent, ${color})`, opacity: .4 }} /></div>;
   while (drawn < count) { const rem = count - drawn, batch = Math.min(5, rem);
     if (!divDone && drawn < divAt && drawn + batch > divAt) { const b = divAt - drawn; if (b > 0) { els.push(b === 5 ? sq(`s${drawn}`) : part(b, `p${drawn}`)); drawn += b } els.push(div); divDone = true; continue }
     if (!divDone && drawn + batch === divAt) { els.push(batch === 5 ? sq(`s${drawn}`) : part(batch, `p${drawn}`)); drawn += batch; els.push(div); divDone = true; continue }
