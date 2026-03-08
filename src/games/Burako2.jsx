@@ -462,10 +462,9 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                       <span style={{ color: t.txtF, fontSize: 13, opacity: 0.4 }}>·</span>
                     ) : h.base !== undefined ? (
                       <>
-                        <div style={{ fontSize: 11, fontFamily: F.sans, color: t.txtM, lineHeight: 1.3 }}>
-                          {h.base} <span style={{ color: t.txtF }}>+</span> {h.pts}
-                        </div>
-                        <div style={{ height: 1, background: t.txt, opacity: .15, width: "50%", margin: "3px 0" }} />
+                        <div style={{ fontSize: 12, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.base}</div>
+                        <div style={{ fontSize: 12, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.pts}</div>
+                        <div style={{ height: 1, background: t.txt, opacity: .15, width: "50%", margin: "2px 0" }} />
                         <span style={{ fontFamily: F.serif, fontSize: 17, fontWeight: 400, color: t.ok }}>{handVal(h)}</span>
                       </>
                     ) : (
