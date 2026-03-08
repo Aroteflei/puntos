@@ -10,12 +10,11 @@ const GAMES = {
   generala: { name: "Generala", emoji: "🎲" },
 };
 
-const LOCK_HOURS = 6;
-
 function App() {
   const [sel, setSel] = useState(null);
   const [dk, setDk] = useState(false);
   const [contGame, setContGame] = useState(null);
+  const [lockedGame, setLockedGame] = useState(null);
   const [ready, setReady] = useState(false);
   const t = dk ? dark : light;
   const L = strings["es"];
@@ -33,9 +32,10 @@ function App() {
       else if (bk2?.teams?.length) setContGame("burako2");
       else if (ge?.ps?.length) setContGame("generala");
 
-      // Game lock-in: if picked a game within LOCK_HOURS, go directly to it
-      if (lock?.game && lock?.ts && (Date.now() - lock.ts < LOCK_HOURS * 60 * 60 * 1000) && GAMES[lock.game]) {
-        setSel(lock.game);
+      // Game lock-in: permanent until user explicitly changes
+      if (lock?.game && GAMES[lock.game]) {
+        setLockedGame(lock.game);
+        setSel(lock.game); // auto-navigate into game
       }
       setReady(true);
     });
@@ -47,12 +47,18 @@ function App() {
   const tog = () => setDk(!dk);
 
   const pickGame = async (key) => {
-    await ST.save("app-game", { game: key, ts: Date.now() });
+    await ST.save("app-game", { game: key });
+    setLockedGame(key);
     setSel(key);
   };
 
-  const changeGame = async () => {
+  // Go back to Home, keep the lock (only shows locked game on Home)
+  const goBackHome = () => setSel(null);
+
+  // Fully unlock: clear lock, show all games on Home
+  const unlockGames = async () => {
     await ST.del("app-game");
+    setLockedGame(null);
     setSel(null);
   };
 
@@ -75,16 +81,18 @@ function App() {
           button:active{transform:scale(0.97)!important}
         `}</style>
 
-        {sel === "truco" ? <Truco onBack={changeGame} onContinueChange={handleContinueChange} onChangeGame={changeGame} />
-          : sel === "burako2" ? <Burako2 onBack={changeGame} onContinueChange={handleContinueChange} onChangeGame={changeGame} />
-          : sel === "generala" ? <Generala onBack={changeGame} onContinueChange={handleContinueChange} onChangeGame={changeGame} />
-          : <Home {...{ t, dk, tog, L, pickGame, contGame, clearCurrent }} />}
+        {sel === "truco" ? <Truco onBack={goBackHome} onContinueChange={handleContinueChange} onChangeGame={goBackHome} />
+          : sel === "burako2" ? <Burako2 onBack={goBackHome} onContinueChange={handleContinueChange} onChangeGame={goBackHome} />
+          : sel === "generala" ? <Generala onBack={goBackHome} onContinueChange={handleContinueChange} onChangeGame={goBackHome} />
+          : <Home {...{ t, dk, tog, L, pickGame, contGame, clearCurrent, lockedGame, unlockGames }} />}
       </div>
     </Ctx.Provider>
   );
 }
 
-function Home({ t, dk, tog, L, pickGame, contGame, clearCurrent }) {
+function Home({ t, dk, tog, L, pickGame, contGame, clearCurrent, lockedGame, unlockGames }) {
+  const gamesToShow = lockedGame ? [[lockedGame, GAMES[lockedGame]]] : Object.entries(GAMES);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "64px 24px 48px", maxWidth: 400, margin: "0 auto" }}>
 
@@ -92,8 +100,8 @@ function Home({ t, dk, tog, L, pickGame, contGame, clearCurrent }) {
       <h1 style={{ fontFamily: F.serif, fontSize: 48, fontWeight: 400, color: t.pri, margin: 0, letterSpacing: -.5, animation: "fadeUp .4s ease" }}>PUNTOS</h1>
       <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 400, letterSpacing: 3, color: t.txtM, textTransform: "uppercase", marginTop: 4, animation: "fadeUp .4s ease .05s both" }}>marcador</span>
 
-      {/* Continue last game */}
-      {contGame && GAMES[contGame] && (
+      {/* Continue last game — only if it matches locked game (or no lock) */}
+      {contGame && GAMES[contGame] && (!lockedGame || contGame === lockedGame) && (
         <div onClick={() => pickGame(contGame)} style={{ width: "100%", marginTop: 40, padding: "14px 0", borderBottom: `1px solid ${t.pri}20`, cursor: "pointer", display: "flex", alignItems: "center", animation: "fadeUp .4s ease .1s both" }}>
           <span style={{ flex: 1, fontFamily: F.sans, fontSize: 14, fontWeight: 500, color: t.pri }}>Continuar: {GAMES[contGame].name}</span>
           <button onClick={e => { e.stopPropagation(); clearCurrent() }} style={{ background: "none", border: "none", color: t.txtF, cursor: "pointer", fontSize: 14, padding: "4px 8px", fontFamily: F.sans }}>×</button>
@@ -101,10 +109,10 @@ function Home({ t, dk, tog, L, pickGame, contGame, clearCurrent }) {
       )}
 
       {/* Game list */}
-      <div style={{ width: "100%", marginTop: contGame ? 8 : 40 }}>
-        {Object.entries(GAMES).map(([key, g], i) => (
+      <div style={{ width: "100%", marginTop: (contGame && (!lockedGame || contGame === lockedGame)) ? 8 : 40 }}>
+        {gamesToShow.map(([key, g], i) => (
           <div key={key} onClick={() => pickGame(key)}
-            style={{ padding: "20px 0", borderBottom: i < Object.keys(GAMES).length - 1 ? `1px solid ${t.brd}` : "none",
+            style={{ padding: "20px 0", borderBottom: i < gamesToShow.length - 1 ? `1px solid ${t.brd}` : "none",
               display: "flex", alignItems: "center", cursor: "pointer", animation: `fadeUp .4s ease ${(i + 2) * .06}s both` }}>
             <span style={{ flex: 1, fontFamily: F.serif, fontSize: 22, color: t.txt }}>{g.name}</span>
             <span style={{ color: t.txtF, fontSize: 14, fontFamily: F.sans }}>→</span>
@@ -112,8 +120,16 @@ function Home({ t, dk, tog, L, pickGame, contGame, clearCurrent }) {
         ))}
       </div>
 
+      {/* Cambiar juego — only visible when locked to a game */}
+      {lockedGame && (
+        <button onClick={unlockGames} style={{ background: "none", border: "none", color: t.txtF, cursor: "pointer",
+          fontSize: 12, fontFamily: F.sans, marginTop: 32, padding: "4px 8px", animation: "fadeUp .4s ease .3s both" }}>
+          Cambiar juego
+        </button>
+      )}
+
       {/* Dark mode toggle */}
-      <div style={{ marginTop: 48, display: "flex", gap: 4, fontFamily: F.sans, fontSize: 12, animation: "fadeUp .4s ease .4s both" }}>
+      <div style={{ marginTop: lockedGame ? 16 : 48, display: "flex", gap: 4, fontFamily: F.sans, fontSize: 12, animation: "fadeUp .4s ease .4s both" }}>
         <button onClick={() => { if (dk) tog() }} style={{ background: "none", border: "none", color: dk ? t.txtF : t.pri, cursor: "pointer", padding: "4px 8px", fontWeight: dk ? 400 : 600, fontFamily: F.sans, fontSize: 12 }}>Light</button>
         <span style={{ color: t.txtF }}>/</span>
         <button onClick={() => { if (!dk) tog() }} style={{ background: "none", border: "none", color: dk ? t.pri : t.txtF, cursor: "pointer", padding: "4px 8px", fontWeight: dk ? 600 : 400, fontFamily: F.sans, fontSize: 12 }}>Dark</button>

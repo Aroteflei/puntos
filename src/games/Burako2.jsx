@@ -3,6 +3,13 @@ import { useApp, ST, clone, vibWin, bajadaReq, F, B, EN, Modal, UndoBar } from '
 
 const DEF_CFG = { tgt: 3000, pura: 200, canasta: 100, cierre: 100, muerto: 100 };
 
+// Avatar for teams: "AS" for "Arif - Sofi", "A" for "Arif"
+const teamAvatar = (name) => {
+  const parts = name.split(/\s*-\s*/);
+  if (parts.length >= 2) return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+  return name.charAt(0).toUpperCase();
+};
+
 function Burako2({ onBack, onContinueChange, onChangeGame }) {
   const { t, sounds, L } = useApp();
   const [setup, setSetup] = useState(true);
@@ -348,127 +355,169 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   );
 
   // ══════════════════════════════════════════════════
-  // GAME — NOTEBOOK STYLE
+  // GAME — CARD GRID STYLE
   // ══════════════════════════════════════════════════
+  const COL1 = 36;
+  const gridCols = `${COL1}px repeat(${teams.length}, 1fr)`;
+  const leadTotal = Math.max(...teams.map(tm => total(tm)), 0);
+
   return (
     <div style={{ minHeight: "100dvh", background: t.bg, display: "flex", flexDirection: "column" }}>
 
-      {/* Minimal top bar */}
-      <div style={{ display: "flex", alignItems: "center", padding: "8px 12px", flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
+      {/* Top bar with game info */}
+      <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
         <button onClick={goBack} style={{ background: "none", border: "none", color: t.txtM, fontSize: 15, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation" }}>←</button>
+        <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
+          {maxHands > 0 ? `${maxHands} ${maxHands === 1 ? "mano" : "manos"} · ` : ""}A {cfg.tgt} pts
+        </span>
         <div style={{ flex: 1 }} />
         {!winner && <button onClick={() => setModal("menu")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Menu</button>}
       </div>
 
       {/* Winner banner */}
       {winner && (
-        <div style={{ textAlign: "center", padding: 12, background: t.pri, color: "#fff", flexShrink: 0, animation: "scaleIn .3s ease" }}>
+        <div style={{ textAlign: "center", padding: 14, background: t.pri, color: "#fff", flexShrink: 0, animation: "scaleIn .3s ease" }}>
           <div style={{ fontSize: 18, fontFamily: F.serif }}>¡{winner.name} {mode === "par" ? L.winPl : L.winSg}!</div>
-          <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 6 }}>
+          <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 8, flexWrap: "wrap" }}>
             <button onClick={doShare} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>Compartir</button>
             <button onClick={nuevaPartida} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.nuevaPartida}</button>
           </div>
         </div>
       )}
 
-      {/* ══════ NOTEBOOK LEDGER ══════ */}
-      <div ref={ledgerRef} style={{ flex: 1, overflowY: "auto", padding: "0 6px 90px" }}>
+      {/* ══════ CARD GRID LEDGER ══════ */}
+      <div ref={ledgerRef} style={{ flex: 1, overflowY: "auto", padding: "10px 8px 20px" }}>
+        <div style={{ minWidth: Math.max(260, COL1 + teams.length * 100) }}>
 
-        {/* Team headers — sticky */}
-        <div style={{ display: "flex", position: "sticky", top: 0, zIndex: 2, background: t.bg }}>
-          {teams.map((tm, i) => (
-            <React.Fragment key={i}>
-              {i > 0 && <div style={{ width: 1, background: t.brd, flexShrink: 0 }} />}
-              <div style={{ flex: 1, textAlign: "center", padding: "8px 4px 6px" }}>
-                <EN name={tm.name} onSave={n => ren(i, n)} sz={mode === "par" ? 13 : 15} />
+          {/* Team headers — sticky */}
+          <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: 4, marginBottom: 4, position: "sticky", top: 0, zIndex: 2 }}>
+            <div style={{ padding: 4 }} />
+            {teams.map((tm, i) => (
+              <div key={i} style={{
+                padding: "10px 4px 8px", textAlign: "center",
+                background: t.card, borderRadius: "6px 6px 0 0",
+                border: `1px solid ${t.brd}`, borderBottom: "none",
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: "50%",
+                  background: t.bgS, border: `1.5px solid ${t.brd}`, color: t.pri,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 4px", fontSize: 11, fontWeight: 700, fontFamily: F.sans,
+                }}>{teamAvatar(tm.name)}</div>
+                <EN name={tm.name} onSave={n => ren(i, n)} sz={mode === "par" ? 11 : 13} />
                 {hasBajada && (
-                  <div style={{ fontSize: 10, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
+                  <div style={{ fontSize: 9, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
                     {L.dropWith}: {bajadaReq(total(tm))}
                   </div>
                 )}
+                {/* Progress bar */}
+                <div style={{
+                  margin: "6px auto 0", width: "80%", height: 3, borderRadius: 2,
+                  background: `${t.pri}15`, overflow: "hidden",
+                }}>
+                  <div style={{
+                    height: "100%", borderRadius: 2,
+                    width: `${Math.min(100, (total(tm) / cfg.tgt) * 100)}%`,
+                    background: t.pri, transition: "width .3s",
+                  }} />
+                </div>
               </div>
-            </React.Fragment>
-          ))}
-        </div>
-        <div style={{ height: 1, background: t.pri, opacity: .3 }} />
+            ))}
+          </div>
 
-        {/* Hand rows */}
-        {Array.from({ length: maxHands }).map((_, hi) => (
-          <div key={hi}>
-            <div style={{ display: "flex" }}>
+          {/* Hand rows */}
+          {maxHands === 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: 4, marginBottom: 4 }}>
+              <div />
+              {teams.map((_, ti) => (
+                <div key={ti} style={{
+                  textAlign: "center", padding: "24px 4px",
+                  background: t.card, border: `1px dashed ${t.brd}`, borderRadius: 4,
+                }}>
+                  <span style={{ color: t.txtF, fontSize: 12, fontFamily: F.sans, opacity: 0.5 }}>—</span>
+                </div>
+              ))}
+            </div>
+          ) : Array.from({ length: maxHands }).map((_, hi) => (
+            <div key={hi} style={{ display: "grid", gridTemplateColumns: gridCols, gap: 4, marginBottom: 4 }}>
+              {/* Row number */}
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 10, color: t.txtF, fontFamily: F.sans, fontWeight: 500,
+              }}>{hi + 1}</div>
+              {/* Team cells */}
               {teams.map((tm, ti) => {
                 const h = tm.hands[hi];
                 return (
-                  <React.Fragment key={ti}>
-                    {ti > 0 && <div style={{ width: 1, background: t.brd, opacity: .3, flexShrink: 0 }} />}
-                    <div
-                      onClick={() => !adding && startEdit(hi)}
-                      style={{ flex: 1, padding: "10px 12px", cursor: "pointer", minHeight: 50 }}
-                    >
-                      {!h ? (
-                        <div style={{ height: 34, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <span style={{ fontSize: 11, color: t.brd }}>—</span>
+                  <div key={ti} onClick={() => !adding && startEdit(hi)} style={{
+                    textAlign: "center", cursor: "pointer",
+                    background: h ? t.bgS : t.card,
+                    border: h ? `1px solid ${t.brd}` : `1px dashed ${t.brd}`,
+                    borderRadius: 4,
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    minHeight: 64, padding: "8px 4px",
+                    transition: "all .2s",
+                  }}>
+                    {!h ? (
+                      <span style={{ color: t.txtF, fontSize: 13, opacity: 0.4 }}>·</span>
+                    ) : h.base !== undefined ? (
+                      <>
+                        <div style={{ fontSize: 11, fontFamily: F.sans, color: t.txtM, lineHeight: 1.3 }}>
+                          {h.base} <span style={{ color: t.txtF }}>+</span> {h.pts}
                         </div>
-                      ) : h.base !== undefined ? (
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                          <div style={{
-                            border: `1px solid ${t.brd}`, borderRadius: 3, padding: "1px 10px",
-                            fontSize: 13, fontFamily: F.sans, fontWeight: 500, color: t.txt,
-                            textAlign: "center", minWidth: 44,
-                          }}>{h.base}</div>
-                          <div style={{
-                            border: `1px solid ${t.brd}`, borderRadius: 3, padding: "1px 10px",
-                            fontSize: 13, fontFamily: F.sans, fontWeight: 500, color: t.txt,
-                            textAlign: "center", minWidth: 44, marginTop: 2,
-                          }}>{h.pts}</div>
-                          <div style={{ height: 1, background: t.txt, opacity: .15, margin: "4px 8px 2px", width: "50%" }} />
-                          <div style={{ fontSize: 15, fontFamily: F.serif, color: t.ok }}>{handVal(h)}</div>
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 34 }}>
-                          <span style={{ fontSize: 16, fontFamily: F.serif, color: handVal(h) >= 0 ? t.ok : t.err }}>
-                            {handVal(h)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </React.Fragment>
+                        <div style={{ height: 1, background: t.txt, opacity: .15, width: "50%", margin: "3px 0" }} />
+                        <span style={{ fontFamily: F.serif, fontSize: 17, fontWeight: 400, color: t.ok }}>{handVal(h)}</span>
+                      </>
+                    ) : (
+                      <span style={{ fontFamily: F.serif, fontSize: 17, fontWeight: 400, color: handVal(h) >= 0 ? t.ok : t.err }}>
+                        {handVal(h)}
+                      </span>
+                    )}
+                  </div>
                 );
               })}
             </div>
-            <div style={{ height: 1, background: t.brd, opacity: .15, margin: "0 12px" }} />
-          </div>
-        ))}
-
-        {/* Total row */}
-        <div style={{ height: 1, background: t.pri, opacity: .3, margin: "4px 0" }} />
-        <div style={{ display: "flex", paddingBottom: 6 }}>
-          {teams.map((tm, i) => (
-            <React.Fragment key={i}>
-              {i > 0 && <div style={{ width: 1, background: t.pri, opacity: .3, flexShrink: 0 }} />}
-              <div style={{ flex: 1, textAlign: "center", padding: "8px 4px" }}>
-                <div style={{ fontFamily: F.serif, fontSize: 28, color: t.pri, lineHeight: 1, letterSpacing: -1 }}>
-                  {total(tm)}
-                </div>
-              </div>
-            </React.Fragment>
           ))}
+
+          {/* Total row */}
+          <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: 4, marginTop: 6 }}>
+            <div style={{
+              padding: "10px 2px", fontSize: 8, fontWeight: 600, color: "#fff", letterSpacing: 1.5,
+              fontFamily: F.sans, background: t.pri, borderRadius: "0 0 0 6px",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>TOTAL</div>
+            {teams.map((tm, ti) => {
+              const isLeader = teams.length > 1 && total(tm) === leadTotal && leadTotal > 0;
+              return (
+                <div key={ti} style={{
+                  padding: "6px 4px", textAlign: "center",
+                  background: t.bgS,
+                  border: isLeader ? `1.5px solid ${t.pri}` : `1px solid ${t.brd}`,
+                  borderRadius: ti === teams.length - 1 ? "0 0 6px 0" : 0,
+                }}>
+                  <span style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 400, color: t.pri }}>{total(tm)}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Action buttons — inside scroll, right after total */}
-        <div style={{
-          position: "sticky", bottom: 0, zIndex: 3, display: "flex", gap: 8, justifyContent: "center",
-          padding: "10px 12px 12px", maxWidth: 280, margin: "0 auto", background: `linear-gradient(180deg, ${t.bg}00, ${t.bg} 26%, ${t.bg} 100%)`
-        }}>
-          <B onClick={initHand} s={{ flex: 1, minHeight: 32, padding: "8px 12px", fontSize: 13 }}>+ Mano</B>
-          {maxHands > 0 && (
-            <button onClick={() => setModal("undo")} style={{
-              background: "transparent", border: `1px solid ${t.brd}`, borderRadius: 6,
-              color: t.txtM, fontSize: 12, padding: "8px 12px", cursor: "pointer",
-              fontFamily: F.sans, fontWeight: 500, touchAction: "manipulation",
-            }}>Deshacer</button>
-          )}
-        </div>
+        {/* Action buttons */}
+        {!winner && (
+          <div style={{
+            display: "flex", gap: 8, justifyContent: "center",
+            padding: "16px 12px", maxWidth: 260, margin: "0 auto",
+          }}>
+            <B onClick={initHand} s={{ flex: 1, minHeight: 40, fontSize: 14 }}>+ Mano</B>
+            {maxHands > 0 && (
+              <button onClick={() => setModal("undo")} style={{
+                background: "transparent", border: `1px solid ${t.brd}`, borderRadius: 6,
+                color: t.txtM, fontSize: 12, padding: "8px 14px", cursor: "pointer",
+                fontFamily: F.sans, fontWeight: 500, touchAction: "manipulation",
+              }}>Deshacer</button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ══════ MODALS ══════ */}
