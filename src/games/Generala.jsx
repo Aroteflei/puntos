@@ -81,7 +81,6 @@ function Generala({ onBack, onContinueChange }) {
     <Hdr title="Generala" emoji="🎲" onBack={goBack} sub={turnsLeft > 0 ? `${turnsLeft} ${L.turnsLeft}` : `¡${L.done}!`} icons={<>
       <IcoBtn onClick={doShare} t={t}>📤</IcoBtn>
       <IcoBtn onClick={() => setModal("new")} t={t}>🔄</IcoBtn>
-      {hist.length > 0 && <IcoBtn onClick={() => setShowH(!showH)} t={t}>📋</IcoBtn>}
     </>} />
 
     {modal && <Modal onClose={() => setModal(null)}><div style={{ background: t.card, borderRadius: 16, padding: 24, textAlign: "center", boxShadow: t.shH }}>

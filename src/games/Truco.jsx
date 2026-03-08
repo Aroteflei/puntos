@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useApp, ST, clone, fmtDate, shareResult, vib, vibWin, B, EN, Hdr, IcoBtn, Modal, UndoBar } from '../lib.jsx';
+import { useApp, ST, clone, fmtDate, shareResult, vib, vibWin, B, EN, Hdr, IcoBtn, Modal } from '../lib.jsx';
 
 // ─── TALLY MARKS (Truco-specific) ──────────────
-// Square with diagonal = 5. Partial builds up: left→bottom→right→top.
-// Deterministic jitter based on count (no flicker on re-render).
 function TrucoTally({ count, color, divAt }) {
   const SZ = 40, PD = 3, GAP = 6;
 
@@ -84,7 +82,7 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, L }) {
       <div style={{
         flex: 1, display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "flex-start",
-        padding: ph ? "10px 6px" : "14px 10px",
+        padding: ph ? "14px 10px" : "20px 14px",
         overflowY: "auto", WebkitOverflowScrolling: "touch",
       }}>
         {target === 30 && (
@@ -94,33 +92,24 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, L }) {
       </div>
 
       {/* Score */}
-      <div style={{ textAlign: "center", padding: ph ? "6px 0" : "10px 0", borderTop: `1px solid ${t.brd}` }}>
+      <div style={{ textAlign: "center", padding: ph ? "12px 0" : "16px 0", borderTop: `1px solid ${t.brd}` }}>
         <div style={{
           fontFamily: "'Playfair Display'", fontWeight: 800,
-          fontSize: ph ? 50 : 62, color: t.pri, lineHeight: 1,
+          fontSize: ph ? 60 : 72, color: t.pri, lineHeight: 1,
         }}>{player.p}</div>
       </div>
 
-      {/* Buttons */}
-      <div style={{ padding: ph ? "6px 8px 12px" : "8px 14px 16px", borderTop: `1px solid ${t.brd}` }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: ph ? 5 : 7 }}>
-          {[1, 2, 3].map(v => (
-            <button key={v} onClick={() => onAdd(idx, v)} style={{
-              background: t.pri, color: "#fff", border: "none",
-              borderRadius: 12, height: ph ? 48 : 54,
-              fontSize: ph ? 18 : 20, fontWeight: 800, fontFamily: "'Playfair Display'",
-              cursor: "pointer", touchAction: "manipulation",
-              boxShadow: "0 1px 3px rgba(0,0,0,.1)",
-            }}>+{v}</button>
-          ))}
-        </div>
-        <button onClick={() => onAdd(idx, -1)} style={{
-          width: "100%", marginTop: ph ? 3 : 5,
-          background: "transparent", color: t.txtF,
-          border: "none", borderRadius: 8, padding: "5px 0",
-          fontSize: 12, fontFamily: "'DM Sans'", fontWeight: 600,
-          cursor: "pointer", touchAction: "manipulation",
-        }}>−1</button>
+      {/* Buttons — full-width rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: ph ? 6 : 8, padding: ph ? "8px 10px 14px" : "10px 16px 18px", borderTop: `1px solid ${t.brd}` }}>
+        {[1, 2, 3].map(v => (
+          <button key={v} onClick={() => onAdd(idx, v)} style={{
+            background: t.pri, color: "#fff", border: "none",
+            borderRadius: 14, height: ph ? 52 : 56, width: "100%",
+            fontSize: ph ? 20 : 22, fontWeight: 800, fontFamily: "'Playfair Display'",
+            cursor: "pointer", touchAction: "manipulation",
+            boxShadow: "0 1px 3px rgba(0,0,0,.1)",
+          }}>+{v}</button>
+        ))}
       </div>
     </div>
   );
@@ -136,11 +125,16 @@ function Truco({ onBack, onContinueChange }) {
   const [names, setNames] = useState(["Nosotros", "Ellos"]);
   const [sc, setSc] = useState([]);
   const [modal, setModal] = useState(null);
-  const [hist, setHist] = useState([]);
-  const [showH, setShowH] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [lastSc, setLastSc] = useState(null);
   const [loading, setLoading] = useState(true);
   const ph = typeof window !== "undefined" && window.innerWidth <= 480;
+
+  // Auto-hide undo after 4 seconds
+  useEffect(() => {
+    if (!lastSc) return;
+    const id = setTimeout(() => setLastSc(null), 4000);
+    return () => clearTimeout(id);
+  }, [lastSc]);
 
   // ── Persistence ──
   useEffect(() => {
@@ -153,7 +147,6 @@ function Truco({ onBack, onContinueChange }) {
       }
       setLoading(false);
     });
-    ST.load("truco-hist").then(d => { if (Array.isArray(d)) setHist(d) });
   }, []);
 
   useEffect(() => {
@@ -161,8 +154,6 @@ function Truco({ onBack, onContinueChange }) {
     ST.save("truco-game", { started: true, target, names, sc });
     onContinueChange?.("truco");
   }, [started, target, names, sc]);
-
-  useEffect(() => { if (hist.length) ST.save("truco-hist", hist) }, [hist]);
 
   const persist = (nSc = sc, nNames = names) => {
     if (started) ST.save("truco-game", { started: true, target, names: nNames, sc: nSc });
@@ -182,10 +173,9 @@ function Truco({ onBack, onContinueChange }) {
   const goBack = async () => { if (started) persist(); onContinueChange?.(started ? "truco" : null); onBack(); };
 
   const add = (i, v) => {
-    const prev = clone(sc);
+    setLastSc(clone(sc));
     const u = sc.map((r, idx) => idx === i ? { ...r, p: Math.max(0, r.p + v) } : r);
     setSc(u);
-    setToast({ text: `${u[i].name}: ${v > 0 ? "+" : ""}${v}`, undo: () => { setSc(prev); persist(prev); } });
     persist(u);
     if (sounds) vib();
     if (sounds && u[i].p >= target) vibWin();
@@ -200,17 +190,13 @@ function Truco({ onBack, onContinueChange }) {
 
   const winner = sc.find(s => s.p >= target);
 
-  const rematch = () => { const r = sc.map(s => ({ ...s, p: 0 })); setSc(r); setModal(null); setToast({ text: L.rematch, undo: null }); persist(r); };
+  const rematch = () => { const r = sc.map(s => ({ ...s, p: 0 })); setSc(r); setModal(null); persist(r); };
 
   const saveNew = async () => {
-    const nh = [{ scores: sc.map(s => ({ name: s.name, p: s.p })), target, date: fmtDate(), done: !!winner }, ...hist];
-    setHist(nh); await ST.save("truco-hist", nh);
     const r = sc.map(s => ({ ...s, p: 0 })); setSc(r); setModal(null); persist(r);
   };
 
   const resetZ = async () => { setStarted(false); setStep(0); setSc([]); setModal(null); await ST.del("truco-game"); onContinueChange?.(null); };
-
-  const delH = async (i) => { const nh = hist.filter((_, k) => k !== i); setHist(nh); if (nh.length) await ST.save("truco-hist", nh); else await ST.del("truco-hist"); };
 
   const doShare = () => shareResult("Truco - " + target + " pts", sc.map(s => `${s.name}: ${s.p}`));
 
@@ -262,7 +248,6 @@ function Truco({ onBack, onContinueChange }) {
       <Hdr title="Truco" emoji="🂡" onBack={goBack} sub={`A ${target}`} icons={<>
         <IcoBtn onClick={doShare} t={t}>📤</IcoBtn>
         <IcoBtn onClick={() => setModal("new")} t={t}>🔄</IcoBtn>
-        {hist.length > 0 && <IcoBtn onClick={() => setShowH(!showH)} t={t}>📋</IcoBtn>}
       </>} />
 
       {/* Modals */}
@@ -277,20 +262,6 @@ function Truco({ onBack, onContinueChange }) {
           {modal === "new" && <B v="err" onClick={() => setModal("reset")} s={{ marginTop: 8, width: "100%", fontSize: 12 }}>{L.resetNoSave}</B>}
         </div>
       </Modal>}
-
-      {/* History */}
-      {showH && hist.length > 0 && (
-        <div style={{ margin: "0 16px", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: "0 0 12px 12px", padding: 10, borderTop: "none" }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: t.pri, margin: "0 0 6px", fontFamily: "'Playfair Display'" }}>{L.hist}</p>
-          {hist.map((h, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", borderBottom: `1px solid ${t.brd}30`, fontSize: 12 }}>
-              <div style={{ flex: 1 }}>{h.scores.map((s, k) => <span key={k} style={{ marginRight: 8 }}>{s.name}: <b>{s.p}</b></span>)}</div>
-              <span style={{ fontSize: 10, color: t.txtF }}>{h.date}</span>
-              <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 18, padding: 6 }}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Winner */}
       {winner && (
@@ -311,7 +282,17 @@ function Truco({ onBack, onContinueChange }) {
         <Col player={sc[1]} idx={1} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} L={L} />
       </div>
 
-      <UndoBar toast={toast} onUndo={() => toast?.undo?.()} onClose={() => setToast(null)} />
+      {/* Simple floating undo button */}
+      {lastSc && (
+        <button onClick={() => { setSc(lastSc); persist(lastSc); setLastSc(null); }}
+          style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+            background: t.card, border: `1px solid ${t.brd}`, borderRadius: 12,
+            padding: "8px 20px", fontSize: 13, fontWeight: 600, color: t.txtM,
+            cursor: "pointer", boxShadow: t.shH, zIndex: 50,
+            fontFamily: "'DM Sans'", touchAction: "manipulation" }}>
+          {L.undo}
+        </button>
+      )}
     </div>
   );
 }

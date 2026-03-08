@@ -13,21 +13,15 @@ const GAMES = {
 function App() {
   const [sel, setSel] = useState(null);
   const [dk, setDk] = useState(false);
-  const [sounds, setSounds] = useState(true);
-  const [lang, setLang] = useState("es");
-  const [showSettings, setShowSettings] = useState(false);
-  const [showFb, setShowFb] = useState(false);
   const [contGame, setContGame] = useState(null);
   const t = dk ? dark : light;
-  const L = strings[lang];
+  const L = strings["es"];
   const wakeLockRef = useRef(null);
 
   const handleContinueChange = (game) => setContGame(game);
 
   useEffect(() => {
-    ST.load("app-sounds").then(d => { if (d !== null) setSounds(d) });
     ST.load("app-dark").then(d => { if (d !== null) setDk(d) });
-    ST.load("app-lang").then(d => { if (d) setLang(d) });
     Promise.all([ST.load("truco-game"), ST.load("burako-game"), ST.load("generala-game")]).then(([tr, bk, ge]) => {
       if (tr?.started) setContGame("truco");
       else if (bk?.teams?.length) setContGame("burako");
@@ -37,15 +31,12 @@ function App() {
   }, []);
 
   useEffect(() => { ST.save("app-dark", dk) }, [dk]);
-  useEffect(() => { ST.save("app-sounds", sounds) }, [sounds]);
-  useEffect(() => { ST.save("app-lang", lang) }, [lang]);
 
   const tog = () => setDk(!dk);
-  const toggleLang = () => setLang(l => l === "es" ? "en" : "es");
   const clearCurrent = async () => { if (!contGame) return; await ST.del(`${contGame}-game`); setContGame(null); };
 
   return (
-    <Ctx.Provider value={{ t, dk, tog, sounds, setSounds, L, lang }}>
+    <Ctx.Provider value={{ t, dk, tog, sounds: true, L, lang: "es" }}>
       <div style={{ minHeight: "100vh", background: t.bg, color: t.txt, fontFamily: "'DM Sans',sans-serif", transition: "background .3s,color .3s" }}>
         <link href={FONTS} rel="stylesheet" />
         <style>{`input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield}*{box-sizing:border-box}::selection{background:${t.priL};color:#fff}
@@ -56,53 +47,23 @@ function App() {
         {sel === "truco" ? <Truco onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
           : sel === "burako" ? <Burako onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
           : sel === "generala" ? <Generala onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
-          : <Home {...{ t, dk, tog, sounds, setSounds, L, lang, setSel, contGame, showSettings, setShowSettings, showFb, setShowFb, toggleLang, clearCurrent }} />}
+          : <Home {...{ t, dk, tog, L, setSel, contGame, clearCurrent }} />}
       </div>
     </Ctx.Provider>
   );
 }
 
-function Home({ t, dk, tog, sounds, setSounds, L, lang, setSel, contGame, showSettings, setShowSettings, showFb, setShowFb, toggleLang, clearCurrent }) {
+function Home({ t, dk, tog, L, setSel, contGame, clearCurrent }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "44px 20px 40px" }}>
-      {/* Bottom toolbar */}
-      <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 10, zIndex: 50 }}>
-        <button onClick={() => setShowFb(true)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12, width: 52, height: 52, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>💬</button>
-        <button onClick={() => setShowSettings(true)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 12, width: 52, height: 52, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>⚙️</button>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "44px 20px 40px", position: "relative" }}>
 
-      {/* Feedback modal */}
-      {showFb && <Modal onClose={() => setShowFb(false)}>
-        <div style={{ background: t.card, borderRadius: 16, padding: 24, boxShadow: t.shH }}>
-          <p style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Playfair Display'", color: t.pri, margin: "0 0 8px" }}>{L.feedback}</p>
-          <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 12px" }}>{L.suggest}</p>
-          <textarea placeholder={L.write} rows={4} style={{ width: "100%", background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt, borderRadius: 10, padding: 10, fontSize: 13, fontFamily: "inherit", outline: "none", resize: "vertical" }} />
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <B v="gh" onClick={() => setShowFb(false)} s={{ flex: 1 }}>{L.close}</B>
-            <B onClick={() => setShowFb(false)} s={{ flex: 1 }}>{L.send}</B>
-          </div>
-        </div>
-      </Modal>}
-
-      {/* Settings modal */}
-      {showSettings && <Modal onClose={() => setShowSettings(false)}>
-        <div style={{ background: t.card, borderRadius: 16, padding: 24, boxShadow: t.shH }}>
-          <p style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Playfair Display'", color: t.pri, margin: "0 0 16px" }}>{L.settings}</p>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 14 }}>{L.darkMode}</span>
-            <button onClick={tog} style={{ background: dk ? t.pri : t.bgS, color: dk ? "#fff" : t.txt, border: `1px solid ${t.brd}`, borderRadius: 8, padding: "6px 14px", fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans'" }}>{dk ? "🌙 On" : "☀️ Off"}</button>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 14 }}>{L.soundVib}</span>
-            <button onClick={() => setSounds(!sounds)} style={{ background: sounds ? t.pri : t.bgS, color: sounds ? "#fff" : t.txt, border: `1px solid ${t.brd}`, borderRadius: 8, padding: "6px 14px", fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans'" }}>{sounds ? "🔊 On" : "🔇 Off"}</button>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 14 }}>{L.lang}</span>
-            <button onClick={toggleLang} style={{ background: t.bgS, color: t.txt, border: `1px solid ${t.brd}`, borderRadius: 8, padding: "6px 14px", fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans'" }}>{lang === "es" ? "🇦🇷 Español" : "🇺🇸 English"}</button>
-          </div>
-          <B v="gh" onClick={() => setShowSettings(false)} s={{ width: "100%", marginTop: 8 }}>{L.close}</B>
-        </div>
-      </Modal>}
+      {/* Dark mode toggle */}
+      <button onClick={tog} style={{
+        position: "absolute", top: 16, right: 20,
+        background: "none", border: "none",
+        color: t.txtM, fontSize: 22, cursor: "pointer",
+        padding: 8, touchAction: "manipulation",
+      }}>{dk ? "☀️" : "🌙"}</button>
 
       {/* Title */}
       <h1 style={{ fontFamily: "'Playfair Display'", fontSize: 52, fontWeight: 800, color: t.pri, margin: "0 0 6px", letterSpacing: -1 }}>PUNTOS</h1>
@@ -138,8 +99,6 @@ function Home({ t, dk, tog, sounds, setSounds, L, lang, setSel, contGame, showSe
           </div>
         ))}
       </div>
-
-      <p style={{ fontSize: 11, color: t.txtF, marginTop: 32 }}>{L.more}</p>
     </div>
   );
 }

@@ -6,9 +6,8 @@ export const FONTS = "https://fonts.googleapis.com/css2?family=Playfair+Display:
 // ─── i18n ──────────────────────────────────────
 export const strings = {
   es: {
-    chooseGame: "Elegí tu juego ✨", more: "Más juegos próximamente ✨", feedback: "Feedback", suggest: "¿Sugerencia o bug?",
-    write: "Escribí acá...", close: "Cerrar", send: "Enviar", settings: "Ajustes", darkMode: "Modo oscuro",
-    soundVib: "Sonidos/vibración", lang: "Idioma", contGame: "Continuar partida de", unfinished: "Tenés una partida sin terminar",
+    chooseGame: "Elegí tu juego", close: "Cerrar",
+    contGame: "Continuar partida de", unfinished: "Tenés una partida sin terminar",
     howMany: "¿A cuántos puntos?", names: "Nombres", next: "Siguiente →", back: "← Atrás", start: "Empezar",
     newGame: "¿Nueva partida?", savesHist: "Se guarda en historial.", resetQ: "¿Reiniciar a cero?", losesAll: "Se pierde todo.",
     cancel: "Cancelar", yesNew: "Sí, nueva", reset: "Reiniciar", resetNoSave: "Reiniciar sin guardar",
@@ -26,11 +25,11 @@ export const strings = {
     served: "servida",
     turnWarningTitle: "Atención", turnWarning: "Le toca a {expected}. ¿Seguir?",
     rematch: "Revancha", continueLast: "Continuar última partida", openNow: "Abrir ahora", handNum: "Mano", redo: "Rehacer",
+    whoClosed: "¿Quién cerró?", confirm: "Confirmar", yes: "Sí", no: "No", handSummary: "Resumen de la mano",
   },
   en: {
-    chooseGame: "Choose your game ✨", more: "More games coming soon ✨", feedback: "Feedback", suggest: "Suggestion or bug?",
-    write: "Write here...", close: "Close", send: "Send", settings: "Settings", darkMode: "Dark mode",
-    soundVib: "Sound/vibration", lang: "Language", contGame: "Continue game of", unfinished: "You have an unfinished game",
+    chooseGame: "Choose your game", close: "Close",
+    contGame: "Continue game of", unfinished: "You have an unfinished game",
     howMany: "How many points?", names: "Names", next: "Next →", back: "← Back", start: "Start",
     newGame: "New game?", savesHist: "Saves to history.", resetQ: "Reset to zero?", losesAll: "Loses everything.",
     cancel: "Cancel", yesNew: "Yes, new", reset: "Reset", resetNoSave: "Reset without saving",
@@ -48,6 +47,7 @@ export const strings = {
     served: "served",
     turnWarningTitle: "Heads up", turnWarning: "{expected}'s turn. Continue?",
     rematch: "Rematch", continueLast: "Continue last game", openNow: "Open now", handNum: "Hand", redo: "Redo",
+    whoClosed: "Who closed?", confirm: "Confirm", yes: "Yes", no: "No", handSummary: "Hand summary",
   }
 };
 

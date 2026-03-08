@@ -3,17 +3,217 @@ import { useApp, ST, clone, fmtDate, shareResult, vib, vibWin, bajadaReq, B, EN,
 
 const BK_D = { pura: 200, canasta: 100, cierre: 100, muerto: 100 };
 
-// NI right-side controls width: 44 + 3 + 64 + 3 + 44 = 158
-const CTL_W = 158;
+// ─── HAND WIZARD (step-by-step) ──────────────
+function HandWizard({ teams, cfg, calc, hf, setHf, onSave, onCancel, editIdx, L, t }) {
+  const N = teams.length;
+  // Steps: N teams × 4 fields (puras, canastas, puntos, muerto) + 1 cierre + 1 confirm
+  const totalSteps = N * 4 + 2;
+  const [step, setStep] = useState(0);
 
+  const getStepInfo = (s) => {
+    if (s < N * 4) {
+      const teamIdx = Math.floor(s / 4);
+      const field = s % 4; // 0=puras, 1=canastas, 2=puntos, 3=muerto
+      return { type: "field", teamIdx, field };
+    }
+    if (s === N * 4) return { type: "cierre" };
+    return { type: "confirm" };
+  };
+
+  const info = getStepInfo(step);
+
+  const upField = (teamIdx, key, value) => {
+    const u = [...hf];
+    u[teamIdx] = { ...u[teamIdx], [key]: value };
+    setHf(u);
+  };
+
+  const goNext = () => { if (step < totalSteps - 1) setStep(step + 1); };
+  const goBack = () => { if (step > 0) setStep(step - 1); else onCancel(); };
+
+  const progress = (step + 1) / totalSteps;
+
+  const fieldKeys = ["pura", "canasta", "puntos"];
+  const fieldLabels = [L.puras, L.canastas, L.puntos];
+  const fieldSteps = [1, 1, 5];
+  const fieldMins = [0, 0, undefined];
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: t.bg, zIndex: 80,
+      display: "flex", flexDirection: "column",
+    }}>
+      {/* Progress bar */}
+      <div style={{ height: 4, background: t.bgS, flexShrink: 0 }}>
+        <div style={{ height: "100%", width: `${progress * 100}%`,
+          background: t.pri, transition: "width .3s", borderRadius: 2 }} />
+      </div>
+
+      {/* Header */}
+      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <button onClick={goBack} style={{
+          background: t.card, border: `1px solid ${t.brd}`, color: t.txt,
+          fontSize: 16, borderRadius: 10, width: 44, height: 44,
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          touchAction: "manipulation",
+        }}>←</button>
+        <span style={{ fontSize: 12, color: t.txtM, fontFamily: "'DM Sans'" }}>
+          {editIdx !== null ? L.editHand : L.newHand} · {step + 1}/{totalSteps}
+        </span>
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", overflow: "auto" }}>
+
+        {/* ── Number field (puras/canastas/puntos) ── */}
+        {info.type === "field" && info.field < 3 && (
+          <div style={{ textAlign: "center", width: "100%", maxWidth: 380 }}>
+            <div style={{ fontSize: 14, color: t.txtM, marginBottom: 4, fontFamily: "'DM Sans'" }}>{teams[info.teamIdx].name}</div>
+            <div style={{ fontSize: 22, fontFamily: "'Playfair Display'", fontWeight: 700, color: t.pri, marginBottom: 32 }}>
+              {fieldLabels[info.field]}
+            </div>
+
+            <div style={{ fontSize: 64, fontFamily: "'Playfair Display'", fontWeight: 800, color: t.pri, marginBottom: 24, lineHeight: 1 }}>
+              {hf[info.teamIdx]?.[fieldKeys[info.field]] || 0}
+            </div>
+
+            <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+              <button onClick={() => {
+                const cur = hf[info.teamIdx]?.[fieldKeys[info.field]] || 0;
+                const min = fieldMins[info.field];
+                const nv = min !== undefined ? Math.max(min, cur - fieldSteps[info.field]) : cur - fieldSteps[info.field];
+                upField(info.teamIdx, fieldKeys[info.field], nv);
+                vib();
+              }} style={{
+                flex: 1, height: 64, fontSize: 28, borderRadius: 16,
+                background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt,
+                cursor: "pointer", touchAction: "manipulation", fontWeight: 700,
+              }}>−</button>
+              <button onClick={() => {
+                const cur = hf[info.teamIdx]?.[fieldKeys[info.field]] || 0;
+                upField(info.teamIdx, fieldKeys[info.field], cur + fieldSteps[info.field]);
+                vib();
+              }} style={{
+                flex: 1, height: 64, fontSize: 28, borderRadius: 16,
+                background: t.bgS, border: `1px solid ${t.brd}`, color: t.txt,
+                cursor: "pointer", touchAction: "manipulation", fontWeight: 700,
+              }}>+</button>
+            </div>
+
+            {/* Running subtotal */}
+            <div style={{ fontSize: 13, color: t.txtM, marginBottom: 24, fontFamily: "'DM Sans'" }}>
+              {L.sub}: {calc(hf[info.teamIdx]) >= 0 ? "+" : ""}{calc(hf[info.teamIdx])}
+            </div>
+
+            <B onClick={goNext} s={{ width: "100%", maxWidth: 380, minHeight: 56, fontSize: 17 }}>{L.next}</B>
+          </div>
+        )}
+
+        {/* ── Muerto (yes/no) ── */}
+        {info.type === "field" && info.field === 3 && (
+          <div style={{ textAlign: "center", width: "100%", maxWidth: 380 }}>
+            <div style={{ fontSize: 14, color: t.txtM, marginBottom: 4, fontFamily: "'DM Sans'" }}>{teams[info.teamIdx].name}</div>
+            <div style={{ fontSize: 22, fontFamily: "'Playfair Display'", fontWeight: 700, color: t.pri, marginBottom: 40 }}>
+              {L.playedDead}
+            </div>
+
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={() => { upField(info.teamIdx, "muerto", true); vib(); goNext(); }}
+                style={{
+                  flex: 1, height: 72, fontSize: 20, fontWeight: 700, borderRadius: 16,
+                  background: hf[info.teamIdx]?.muerto ? t.pri : t.bgS,
+                  color: hf[info.teamIdx]?.muerto ? "#fff" : t.txt,
+                  border: hf[info.teamIdx]?.muerto ? "none" : `1px solid ${t.brd}`,
+                  cursor: "pointer", touchAction: "manipulation", fontFamily: "'DM Sans'",
+                }}>{L.yes}</button>
+              <button onClick={() => { upField(info.teamIdx, "muerto", false); vib(); goNext(); }}
+                style={{
+                  flex: 1, height: 72, fontSize: 20, fontWeight: 700, borderRadius: 16,
+                  background: !hf[info.teamIdx]?.muerto ? t.err : t.bgS,
+                  color: !hf[info.teamIdx]?.muerto ? "#fff" : t.txt,
+                  border: !hf[info.teamIdx]?.muerto ? "none" : `1px solid ${t.brd}`,
+                  cursor: "pointer", touchAction: "manipulation", fontFamily: "'DM Sans'",
+                }}>No</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Who closed? ── */}
+        {info.type === "cierre" && (
+          <div style={{ textAlign: "center", width: "100%", maxWidth: 380 }}>
+            <div style={{ fontSize: 22, fontFamily: "'Playfair Display'", fontWeight: 700, color: t.pri, marginBottom: 32 }}>
+              {L.whoClosed}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {teams.map((tm, i) => (
+                <button key={i} onClick={() => {
+                  const u = hf.map((h, j) => ({ ...h, cierre: j === i }));
+                  setHf(u);
+                  vib();
+                  goNext();
+                }} style={{
+                  width: "100%", height: 64, fontSize: 18, fontWeight: 700, borderRadius: 16,
+                  background: hf[i]?.cierre ? t.ok : t.card,
+                  color: hf[i]?.cierre ? "#fff" : t.txt,
+                  border: `1px solid ${hf[i]?.cierre ? t.ok : t.brd}`,
+                  cursor: "pointer", touchAction: "manipulation",
+                  fontFamily: "'Playfair Display'",
+                }}>{tm.name}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Confirmation ── */}
+        {info.type === "confirm" && (
+          <div style={{ width: "100%", maxWidth: 380 }}>
+            <div style={{ fontSize: 22, fontFamily: "'Playfair Display'", fontWeight: 700, color: t.pri, marginBottom: 20, textAlign: "center" }}>
+              {L.handSummary}
+            </div>
+
+            {teams.map((tm, i) => {
+              const h = hf[i];
+              const s = calc(h);
+              return (
+                <div key={i} style={{ background: t.card, borderRadius: 14, padding: 16, marginBottom: 12, border: `1px solid ${t.brd}` }}>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: t.pri, fontFamily: "'Playfair Display'", marginBottom: 8 }}>{tm.name}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", fontSize: 14, color: t.txt }}>
+                    <span style={{ color: t.txtM }}>{L.puras}:</span><span>{h.pura || 0}</span>
+                    <span style={{ color: t.txtM }}>{L.canastas}:</span><span>{h.canasta || 0}</span>
+                    <span style={{ color: t.txtM }}>{L.puntos}:</span><span>{h.puntos || 0}</span>
+                    <span style={{ color: t.txtM }}>{L.closed}:</span><span>{h.cierre ? "✓" : "—"}</span>
+                    <span style={{ color: t.txtM }}>{L.playedDead}:</span><span>{h.muerto ? "✓" : "—"}</span>
+                  </div>
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${t.brd}`, display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 14, color: t.txtM }}>{L.sub}</span>
+                    <span style={{ fontFamily: "'Playfair Display'", fontSize: 22, fontWeight: 700, color: s >= 0 ? t.ok : t.err }}>
+                      {s >= 0 ? "+" : ""}{s}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+
+            <B onClick={onSave} s={{ width: "100%", minHeight: 56, fontSize: 17, marginTop: 8 }}>
+              {L.save} ✓
+            </B>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN ──────────────────────────────────────
 function Burako({ onBack, onContinueChange }) {
   const { t, sounds, L } = useApp();
   const [setup, setSetup] = useState(true); const [sStep, setSStep] = useState(0);
   const [pC, setPC] = useState(2); const [tgt, setTgt] = useState(3000); const [cfg, setCfg] = useState({ ...BK_D });
-  const [showCfg, setShowCfg] = useState(false); const [teamNames, setTeamNames] = useState(["Pareja 1", "Pareja 2"]);
+  const [teamNames, setTeamNames] = useState(["Pareja 1", "Pareja 2"]);
   const [teams, setTeams] = useState([]); const [adding, setAdding] = useState(false); const [editIdx, setEditIdx] = useState(null);
-  const [hf, setHf] = useState([]); const [modal, setModal] = useState(null); const [hist, setHist] = useState([]);
-  const [showH, setShowH] = useState(false); const [toast, setToast] = useState(null);
+  const [hf, setHf] = useState([]); const [modal, setModal] = useState(null);
+  const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true); const [redoHand, setRedoHand] = useState(null);
   const teamNameRefs = useRef([]);
 
@@ -26,10 +226,8 @@ function Burako({ onBack, onContinueChange }) {
       if (d?.teams?.length) { setTeams(d.teams); setTgt(d.tgt); setCfg(d.cfg); setPC(d.pC); setSetup(false); onContinueChange?.("burako"); }
       setLoading(false);
     });
-    ST.load("burako-hist").then(d => { if (d) setHist(d) });
   }, []);
   useEffect(() => { if (teams.length && !setup) { ST.save("burako-game", { teams, tgt, cfg, pC }); onContinueChange?.("burako"); } }, [teams, tgt, cfg, pC, setup]);
-  useEffect(() => { if (hist.length) ST.save("burako-hist", hist); else ST.del("burako-hist") }, [hist]);
 
   // ── Game logic ──
   const start = () => { const fresh = teamNames.map(n => ({ name: n, hands: [] })); setTeams(fresh); setSetup(false); ST.save("burako-game", { teams: fresh, tgt, cfg, pC }); onContinueChange?.("burako") };
@@ -37,9 +235,6 @@ function Burako({ onBack, onContinueChange }) {
   const startEdit = (hi) => { setHf(teams.map(tm => ({ ...tm.hands[hi] }))); setEditIdx(hi); setAdding(true) };
   const calc = (h) => { if (!h) return 0; let s = (h.pura || 0) * cfg.pura + (h.canasta || 0) * cfg.canasta + (h.puntos || 0); if (h.cierre) s += cfg.cierre; if (!h.muerto) s -= cfg.muerto; return s };
   const total = (tm) => tm.hands.reduce((s, h) => s + calc(h), 0);
-  const setCierre = (i) => setHf(hf.map((h, j) => ({ ...h, cierre: j === i })));
-  const upHf = (i, k, v) => { const u = [...hf]; u[i] = { ...u[i], [k]: v }; setHf(u) };
-  const someoneClosed = hf.some(h => h?.cierre);
   const ren = (i, n) => { const u = [...teams]; u[i].name = n; setTeams(u) };
   const maxHands = Math.max(...teams.map(tm => tm.hands.length), 0);
   const winner = teams.find(tm => total(tm) >= tgt);
@@ -66,14 +261,11 @@ function Burako({ onBack, onContinueChange }) {
   };
 
   const saveNew = async () => {
-    const nh = [{ teams: teams.map(tm => ({ name: tm.name, t: total(tm) })), tgt, date: fmtDate(), done: !!winner }, ...hist];
-    setHist(nh); await ST.save("burako-hist", nh);
     const r = teams.map(tm => ({ ...tm, hands: [] })); setTeams(r); setModal(null);
     await ST.save("burako-game", { teams: r, tgt, cfg, pC }); onContinueChange?.("burako");
   };
 
   const resetZ = async () => { setTeams([]); setSetup(true); setModal(null); await ST.del("burako-game"); onContinueChange?.(null) };
-  const delH = i => setHist(h => h.filter((_, j) => j !== i));
   const doShare = () => shareResult(`Burako - ${(tgt / 1000).toFixed(tgt % 1000 ? 1 : 0)}K`, teams.map(tm => `${tm.name}: ${total(tm)}`));
   const goBack = async () => { if (teams.length && !setup) await ST.save("burako-game", { teams, tgt, cfg, pC }); onContinueChange?.(teams.length ? "burako" : null); onBack() };
 
@@ -139,17 +331,15 @@ function Burako({ onBack, onContinueChange }) {
   // ════════════════════════════════════════════════
   // GAME SCREEN
   // ════════════════════════════════════════════════
-  const G = 4; // grid gap
-  const COL1 = 52; // hand number column width
+  const G = 4;
+  const COL1 = 52;
   const gridCols = `${COL1}px repeat(${teams.length}, 1fr)`;
 
   return (
     <div style={{ minHeight: "100vh", background: t.bg }}>
       <Hdr title="Burako" emoji="🃏" onBack={goBack} sub={`A ${(tgt / 1000).toFixed(tgt % 1000 ? 1 : 0)}K`} icons={<>
-        <IcoBtn onClick={() => setShowCfg(!showCfg)} t={t}>⚙️</IcoBtn>
         <IcoBtn onClick={doShare} t={t}>📤</IcoBtn>
         <IcoBtn onClick={() => setModal("new")} t={t}>🔄</IcoBtn>
-        {hist.length > 0 && <IcoBtn onClick={() => setShowH(!showH)} t={t}>📋</IcoBtn>}
       </>} />
 
       {/* ── Modals ── */}
@@ -169,30 +359,6 @@ function Burako({ onBack, onContinueChange }) {
         </div>
       </Modal>}
 
-      {/* ── Config panel ── */}
-      {showCfg && (
-        <div style={{ margin: "8px 16px", background: t.card, border: `1px solid ${t.brd}`, borderRadius: 12, padding: 12, boxShadow: t.sh }}>
-          <NI label={L.puras} value={cfg.pura} onChange={v => setCfg({ ...cfg, pura: v })} step={10} min={0} />
-          <NI label={L.canastas} value={cfg.canasta} onChange={v => setCfg({ ...cfg, canasta: v })} step={10} min={0} />
-          <NI label={L.closed} value={cfg.cierre} onChange={v => setCfg({ ...cfg, cierre: v })} step={10} min={0} />
-          <NI label={L.penaltyDead} value={cfg.muerto} onChange={v => setCfg({ ...cfg, muerto: v })} step={10} min={0} />
-          <B onClick={() => setShowCfg(false)} s={{ width: "100%", marginTop: 6 }}>{L.close}</B>
-        </div>
-      )}
-
-      {/* ── History ── */}
-      {showH && hist.length > 0 && (
-        <div style={{ margin: "8px 16px", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 12, padding: 10 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: t.pri, margin: "0 0 6px", fontFamily: "'Playfair Display'" }}>{L.hist}</p>
-          {hist.map((h, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", borderBottom: `1px solid ${t.brd}30`, fontSize: 13 }}>
-              <div style={{ flex: 1 }}>{h.teams.map((s, j) => <span key={j} style={{ marginRight: 10 }}>{s.name}: <b>{s.t}</b></span>)}</div>
-              <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* ── Winner ── */}
       {winner && (
         <div style={{ textAlign: "center", padding: 12, margin: "8px 16px", background: `linear-gradient(135deg, ${t.pri}, ${t.priL})`, borderRadius: 14, color: "#fff" }}>
@@ -208,7 +374,7 @@ function Burako({ onBack, onContinueChange }) {
       {/* ══════ LEDGER ══════ */}
       <div style={{ padding: "12px 12px 0", overflowX: "auto" }}>
         <div>
-          {/* Header row (sticky) */}
+          {/* Header row */}
           <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: G, marginBottom: G, position: "sticky", top: 0, zIndex: 2 }}>
             <div style={{ padding: "8px 4px", textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`,
               borderRadius: "10px 0 0 0", fontSize: 11, color: t.txtM, fontFamily: "'DM Sans'", fontWeight: 600,
@@ -268,101 +434,21 @@ function Burako({ onBack, onContinueChange }) {
         </div>
       </div>
 
-      {/* ══════ HAND FORM / ACTIONS ══════ */}
+      {/* ══════ ACTIONS ══════ */}
       <div style={{ padding: "12px 12px 24px" }}>
-        {adding ? (
-          <div style={{ background: t.card, border: `1px solid ${t.brd}`, borderRadius: 14, padding: 14, boxShadow: t.sh }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: t.pri, margin: "0 0 10px", fontFamily: "'Playfair Display'" }}>
-              {editIdx !== null ? `${L.editHand} ${editIdx + 1}` : L.newHand}
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {teams.map((tm, i) => {
-                const other = hf.some((h, j) => j !== i && h?.cierre);
-                return (
-                  <div key={i} style={{ background: t.bgS, borderRadius: 12, padding: 12, border: `1px solid ${t.brd}` }}>
-                    {/* Team name + bajada */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: t.pri, fontFamily: "'Playfair Display'" }}>{tm.name}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: t.pri, fontFamily: "'DM Sans'" }}>{L.dropWith} {bajadaReq(total(tm))}</span>
-                    </div>
-
-                    {/* NI controls */}
-                    <NI label={L.puras} value={hf[i]?.pura || 0} onChange={v => upHf(i, "pura", v)} min={0} hint={`(${cfg.pura})`} />
-                    <NI label={L.canastas} value={hf[i]?.canasta || 0} onChange={v => upHf(i, "canasta", v)} min={0} hint={`(${cfg.canasta})`} />
-                    <NI label={L.puntos} value={hf[i]?.puntos || 0} onChange={v => upHf(i, "puntos", v)} step={5} />
-
-                    {/* Muerto Sí/No — aligned to NI controls (width CTL_W) */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ fontSize: 13, color: t.txtM }}>{L.playedDead}</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 3, width: CTL_W }}>
-                        <button onClick={() => upHf(i, "muerto", true)} style={{
-                          flex: 1, height: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans'",
-                          cursor: "pointer", touchAction: "manipulation",
-                          background: hf[i]?.muerto ? t.pri : t.bgS,
-                          color: hf[i]?.muerto ? "#fff" : t.txt,
-                          border: hf[i]?.muerto ? "none" : `1px solid ${t.brd}`,
-                        }}>Sí</button>
-                        <button onClick={() => upHf(i, "muerto", false)} style={{
-                          flex: 1, height: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans'",
-                          cursor: "pointer", touchAction: "manipulation",
-                          background: !hf[i]?.muerto ? t.err : t.bgS,
-                          color: !hf[i]?.muerto ? "#fff" : t.txt,
-                          border: !hf[i]?.muerto ? "none" : `1px solid ${t.brd}`,
-                        }}>No</button>
-                      </div>
-                    </div>
-
-                    {/* Cerró — also width CTL_W, right-aligned */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ fontSize: 13, color: t.txtM }}>{L.closed}</span>
-                      <div style={{ width: CTL_W }}>
-                        {hf[i]?.cierre
-                          ? <button onClick={() => { const u = [...hf]; u[i] = { ...u[i], cierre: false }; setHf(u) }} style={{
-                              width: "100%", height: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans'",
-                              cursor: "pointer", touchAction: "manipulation",
-                              background: t.ok, color: "#fff", border: "none",
-                            }}>✓ {L.closed}</button>
-                          : other
-                            ? <div style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "center",
-                                fontSize: 12, color: t.txtF, fontStyle: "italic" }}>{L.notClosed}</div>
-                            : <button onClick={() => setCierre(i)} style={{
-                                width: "100%", height: 44, borderRadius: 10, fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans'",
-                                cursor: "pointer", touchAction: "manipulation",
-                                background: "transparent", color: t.pri, border: `1.5px solid ${t.pri}`,
-                              }}>{L.closed}</button>
-                        }
-                      </div>
-                    </div>
-
-                    {/* Subtotal */}
-                    <div style={{ padding: "6px 8px", background: t.card, borderRadius: 8, border: `1px solid ${t.brd}`,
-                      display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 12, color: t.txtM, fontFamily: "'DM Sans'" }}>{L.sub}</span>
-                      <span style={{ fontFamily: "'Playfair Display'", fontSize: 18, fontWeight: 700,
-                        color: calc(hf[i]) >= 0 ? t.ok : t.err }}>{calc(hf[i]) >= 0 ? "+" : ""}{calc(hf[i])}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Save / Cancel */}
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <B onClick={saveHand} disabled={!someoneClosed} s={{ flex: 1, minHeight: 48 }}>
-                {someoneClosed ? L.save : L.chooseClosed}
-              </B>
-              <B v="gh" onClick={() => { setAdding(false); setHf([]); setEditIdx(null) }} s={{ minHeight: 48 }}>{L.cancel}</B>
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-            <B onClick={initHand} s={{ padding: "12px 24px", minHeight: 48 }}>{L.newHand}</B>
-            {maxHands > 0 && <B v="err" onClick={() => setModal("undo")} s={{ minHeight: 48 }}>{L.undo}</B>}
-            {redoHand && <B v="gh" onClick={() => { const r = clone(teams); r.forEach((tm, i) => { if (redoHand[i]) tm.hands.push(redoHand[i]); }); setTeams(r); setRedoHand(null); }} s={{ minHeight: 48 }}>{L.redo}</B>}
-          </div>
-        )}
+        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+          <B onClick={initHand} s={{ padding: "12px 24px", minHeight: 48 }}>{L.newHand}</B>
+          {maxHands > 0 && <B v="err" onClick={() => setModal("undo")} s={{ minHeight: 48 }}>{L.undo}</B>}
+          {redoHand && <B v="gh" onClick={() => { const r = clone(teams); r.forEach((tm, i) => { if (redoHand[i]) tm.hands.push(redoHand[i]); }); setTeams(r); setRedoHand(null); }} s={{ minHeight: 48 }}>{L.redo}</B>}
+        </div>
       </div>
+
+      {/* ── Hand wizard overlay ── */}
+      {adding && <HandWizard
+        teams={teams} cfg={cfg} calc={calc} hf={hf} setHf={setHf}
+        onSave={saveHand} onCancel={() => { setAdding(false); setHf([]); setEditIdx(null) }}
+        editIdx={editIdx} L={L} t={t}
+      />}
 
       <UndoBar toast={toast} onUndo={() => toast?.undo?.()} onClose={() => setToast(null)} />
     </div>
