@@ -42,7 +42,13 @@ function ComboBadge({ k, color, t }) {
   );
 }
 
-function Generala({ onBack, onContinueChange }) {
+// ─── Avatar initial: show number for "Jugador N", first letter otherwise ───
+const avatarLabel = (name) => {
+  const m = name.match(/^Jugador\s+(\d+)$/i);
+  return m ? m[1] : name.charAt(0).toUpperCase();
+};
+
+function Generala({ onBack, onContinueChange, onChangeGame }) {
   const { t, sounds, L } = useApp();
   const [sStep, setSStep] = useState(0); const [pCount, setPCount] = useState(2);
   const [pNames, setPNames] = useState(["Jugador 1", "Jugador 2"]);
@@ -69,7 +75,15 @@ function Generala({ onBack, onContinueChange }) {
   const setSc = (pi, k, v) => { const prev = clone(ps); const u = clone(ps); u[pi].scores[k] = v; setPs(u); setSheet(null); setToast({ text: `${u[pi].name} · ${GC.find(c => c.k === k)?.l}`, undo: () => setPs(prev) }); if (sounds) vib() };
   const tot = p => Object.values(p.scores).reduce((s, v) => s + (typeof v === "number" ? v : 0), 0);
   const ren = (i, n) => { const u = clone(ps); u[i].name = n; setPs(u) };
-  const allSame = (c) => { const v = ps.map(p => p.scores[c.k]); if (v.some(x => x === null || x === "x")) return false; return v.every(x => x === v[0]) && ps.length > 1 };
+
+  // Strikethrough: show when all players have same value (including all "x")
+  const allSame = (c) => {
+    const v = ps.map(p => p.scores[c.k]);
+    if (v.some(x => x === null)) return false;
+    if (ps.length <= 1) return false;
+    return v.every(x => x === v[0]);
+  };
+
   const allDone = GC.every(c => ps.every(p => p.scores[c.k] !== null));
   const filledCount = ps.length > 0 ? Math.min(...ps.map(p => GC.filter(c => p.scores[c.k] !== null).length)) : 0;
   const turnCounts = ps.map(p => GC.filter(c => p.scores[c.k] !== null).length);
@@ -81,13 +95,21 @@ function Generala({ onBack, onContinueChange }) {
     return window.confirm(msg);
   };
   const turnsLeft = 11 - filledCount;
-  const rematch = async () => { const next = ps.map(p => ({ name: p.name, scores: freshScores() })); setPs(next); setModal(null); setToast({ text: L.rematch, undo: null }); await ST.save("generala-game", { ps: next }); onContinueChange?.("generala") };
-  const saveNew = async () => { const nextHist = [{ players: ps.map(p => ({ name: p.name, t: tot(p) })), date: fmtDate() }, ...hist];
-    setHist(nextHist); await ST.save("generala-hist", nextHist); setStarted(false); setSStep(0); setModal(null); ST.del("generala-game"); onContinueChange?.(null) };
+
+  // Single "Nueva partida": saves to history + resets scores + keeps players
+  const nuevaPartida = async () => {
+    const nextHist = [{ players: ps.map(p => ({ name: p.name, t: tot(p) })), date: fmtDate() }, ...hist];
+    setHist(nextHist); await ST.save("generala-hist", nextHist);
+    const next = ps.map(p => ({ name: p.name, scores: freshScores() }));
+    setPs(next); setModal(null);
+    setToast({ text: L.nuevaPartida, undo: null });
+    await ST.save("generala-game", { ps: next }); onContinueChange?.("generala");
+  };
+
   const resetZ = async () => { setStarted(false); setSStep(0); setModal(null); setPs([]); await ST.del("generala-game"); onContinueChange?.(null) };
   const delH = i => setHist(h => h.filter((_, j) => j !== i));
   const doShare = () => shareResult("Generala", ps.map(p => `${p.name}: ${tot(p)}`));
-  const goBack = () => { onContinueChange?.(started ? "generala" : null); onBack() };
+  const goBack = () => { onContinueChange?.(started ? "generala" : null); if (onChangeGame) onChangeGame(); else onBack() };
   const maxTot = ps.length ? Math.max(...ps.map(p => tot(p))) : 0;
 
   if (loading) return <div style={{ background: t.bg, minHeight: "100vh" }}><Hdr title="Generala" onBack={goBack} /><div style={{ padding: 24, textAlign: "center", color: t.txtM }}>…</div></div>;
@@ -117,22 +139,24 @@ function Generala({ onBack, onContinueChange }) {
   const gridCols = `${COL1}px repeat(${ps.length}, minmax(60px, 1fr))`;
 
   return <div style={{ minHeight: "100dvh", background: t.bg }}>
-    {/* Minimal header */}
+    {/* Minimal header — hide buttons when game done */}
     <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
       <button onClick={goBack} style={{ background: "none", border: "none", color: t.txtM, fontSize: 15, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation" }}>←</button>
       <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
         {turnsLeft > 0 ? `${turnsLeft} ${L.turnsLeft}` : L.done}
       </span>
       <div style={{ flex: 1 }} />
-      <button onClick={doShare} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Compartir</button>
-      <button onClick={() => setModal("new")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Nueva</button>
+      {!allDone && <>
+        <button onClick={doShare} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Compartir</button>
+        <button onClick={() => setModal("new")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Nueva</button>
+      </>}
     </div>
 
     {modal && <Modal onClose={() => setModal(null)}><div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
       <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{modal === "new" ? L.newGame : L.resetQ}</p>
       <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "new" ? L.savesHist : L.losesAll}</p>
       <div style={{ display: "flex", gap: 10 }}><B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
-        {modal === "new" ? <B onClick={saveNew} s={{ flex: 1 }}>{L.yesNew}</B> : <B v="err" onClick={resetZ} s={{ flex: 1 }}>{L.reset}</B>}</div>
+        {modal === "new" ? <B onClick={nuevaPartida} s={{ flex: 1 }}>{L.nuevaPartida}</B> : <B v="err" onClick={resetZ} s={{ flex: 1 }}>{L.reset}</B>}</div>
       {modal === "new" && <B v="err" onClick={() => setModal("reset")} s={{ marginTop: 8, width: "100%", fontSize: 12 }}>{L.resetNoSave}</B>}
     </div></Modal>}
 
@@ -163,13 +187,12 @@ function Generala({ onBack, onContinueChange }) {
         <div style={{ flex: 1 }}>{h.players.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.t}</b></span>)}</div>
         <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 14, padding: 2 }}>×</button></div>)}</div>}
 
-    {/* Winner banner */}
+    {/* Winner banner — singular "gana" */}
     {allDone && <div style={{ textAlign: "center", padding: 14, background: t.pri, color: "#fff", animation: "scaleIn .3s ease" }}>
-      <div style={{ fontSize: 18, fontFamily: F.serif }}>¡{ps.reduce((b, p) => tot(p) > tot(b) ? p : b, ps[0]).name} {L.wins}!</div>
+      <div style={{ fontSize: 18, fontFamily: F.serif }}>¡{ps.reduce((b, p) => tot(p) > tot(b) ? p : b, ps[0]).name} {L.winSg}!</div>
       <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 8, flexWrap: "wrap" }}>
         <button onClick={doShare} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.share}</button>
-        <button onClick={rematch} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.rematch}</button>
-        <button onClick={() => setModal("new")} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.yesNew}</button></div></div>}
+        <button onClick={nuevaPartida} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.nuevaPartida}</button></div></div>}
 
     {/* ══════ SCORE GRID ══════ */}
     <div style={{ padding: "10px 8px 20px", overflowX: "auto" }}>
@@ -183,7 +206,7 @@ function Generala({ onBack, onContinueChange }) {
               background: t.bgS, border: `1px solid ${t.brd}`, color: t.pri,
               display: "flex", alignItems: "center", justifyContent: "center",
               margin: "0 auto 4px", fontSize: 12, fontWeight: 700, fontFamily: F.sans,
-            }}>{p.name.charAt(0).toUpperCase()}</div>
+            }}>{avatarLabel(p.name)}</div>
             <EN name={p.name} onSave={n => ren(i, n)} sz={11} /></div>)}
         </div>
 
@@ -200,15 +223,21 @@ function Generala({ onBack, onContinueChange }) {
                 <div style={{ fontSize: 8, color: t.txtF, fontFamily: F.sans }}>{cat.n ? `${L.upTo} ${cat.m}` : gV(cat).join("/")}</div>
               </div>
             </div>
-            {/* Score cells */}
+            {/* Score cells — Doble Gen blocked if Generala not filled */}
             {ps.map((p, pi) => { const val = p.scores[cat.k];
-              return <div key={pi} onClick={() => { if (val === null && !askTurnGuard(pi)) return; setSheet({ pi, cat: cat.k }) }}
-                style={{ textAlign: "center", cursor: "pointer",
+              const isDobleBlocked = cat.k === "doble" && p.scores["gen"] === null;
+              return <div key={pi} onClick={() => {
+                if (isDobleBlocked) return;
+                if (val === null && !askTurnGuard(pi)) return;
+                setSheet({ pi, cat: cat.k });
+              }}
+                style={{ textAlign: "center", cursor: isDobleBlocked ? "default" : "pointer",
                   background: val !== null ? t.bgS : t.card,
                   border: val !== null ? `1px solid ${t.brd}` : `1px dashed ${t.brd}`,
                   borderRadius: 4,
                   display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48,
                   transition: "all .2s",
+                  opacity: isDobleBlocked ? 0.25 : 1,
                 }}>
                 {val === "x" ? <span style={{ color: t.err, fontSize: 15, fontWeight: 700, fontFamily: F.sans }}>✗</span>
                   : val !== null ? <span style={{ fontFamily: F.serif, fontSize: 17, fontWeight: 400, color: t.pri }}>{val}</span>
@@ -225,7 +254,7 @@ function Generala({ onBack, onContinueChange }) {
           {ps.map((p, pi) => {
             const isLeader = ps.length > 1 && tot(p) === maxTot && maxTot > 0;
             return <div key={pi} style={{ padding: "6px 4px", textAlign: "center",
-              background: isLeader ? t.bgS : t.bgS,
+              background: t.bgS,
               border: isLeader ? `1.5px solid ${t.pri}` : `1px solid ${t.brd}`,
               borderRadius: pi === ps.length - 1 ? "0 0 6px 0" : 0 }}>
               <span style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 400, color: t.pri }}>{tot(p)}</span>

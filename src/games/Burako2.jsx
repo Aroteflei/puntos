@@ -3,7 +3,7 @@ import { useApp, ST, clone, vibWin, bajadaReq, F, B, EN, Modal, UndoBar } from '
 
 const DEF_CFG = { tgt: 3000, pura: 200, canasta: 100, cierre: 100, muerto: 100 };
 
-function Burako2({ onBack, onContinueChange }) {
+function Burako2({ onBack, onContinueChange, onChangeGame }) {
   const { t, sounds, L } = useApp();
   const [setup, setSetup] = useState(true);
   const [mode, setMode] = useState("par"); // "2j"|"3j"|"par"
@@ -107,10 +107,11 @@ function Burako2({ onBack, onContinueChange }) {
     }});
   };
 
-  const rematch = async () => {
+  const nuevaPartida = () => {
     const r = teams.map(tm => ({ ...tm, hands: [] }));
     setTeams(r); setModal(null);
-    await ST.save("burako2-game", { teams: r, cfg, mode });
+    setToast({ text: L.nuevaPartida });
+    ST.save("burako2-game", { teams: r, cfg, mode });
   };
 
   const resetZ = async () => {
@@ -120,7 +121,8 @@ function Burako2({ onBack, onContinueChange }) {
 
   const goBack = async () => {
     if (teams.length && !setup) await ST.save("burako2-game", { teams, cfg, mode });
-    onContinueChange?.(teams.length ? "burako2" : null); onBack();
+    onContinueChange?.(teams.length ? "burako2" : null);
+    onChangeGame?.();
   };
 
   // ── Screenshot share ──
@@ -170,7 +172,7 @@ function Burako2({ onBack, onContinueChange }) {
       if (hasBajada) {
         ctx.fillStyle = '#7A7A78';
         ctx.font = '10px system-ui, sans-serif';
-        ctx.fillText(`Baja: ${bajadaReq(total(tm))}`, cx, Y0 + 32);
+        ctx.fillText(`Baja con: ${bajadaReq(total(tm))}`, cx, Y0 + 32);
       }
     });
 
@@ -258,7 +260,7 @@ function Burako2({ onBack, onContinueChange }) {
           await navigator.share({ files: [file], title: 'Burako - Puntos' });
           return;
         }
-      } catch {}
+      } catch (e) { if (e?.name === "AbortError") return; }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = file.name;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -355,16 +357,16 @@ function Burako2({ onBack, onContinueChange }) {
       <div style={{ display: "flex", alignItems: "center", padding: "8px 12px", flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
         <button onClick={goBack} style={{ background: "none", border: "none", color: t.txtM, fontSize: 15, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation" }}>←</button>
         <div style={{ flex: 1 }} />
-        <button onClick={() => setModal("menu")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Menu</button>
+        {!winner && <button onClick={() => setModal("menu")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Menu</button>}
       </div>
 
       {/* Winner banner */}
       {winner && (
         <div style={{ textAlign: "center", padding: 12, background: t.pri, color: "#fff", flexShrink: 0, animation: "scaleIn .3s ease" }}>
-          <div style={{ fontSize: 18, fontFamily: F.serif }}>¡{winner.name} ganan!</div>
+          <div style={{ fontSize: 18, fontFamily: F.serif }}>¡{winner.name} {mode === "par" ? L.winPl : L.winSg}!</div>
           <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 6 }}>
             <button onClick={doShare} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>Compartir</button>
-            <button onClick={rematch} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>Revancha</button>
+            <button onClick={nuevaPartida} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.nuevaPartida}</button>
           </div>
         </div>
       )}
@@ -381,7 +383,7 @@ function Burako2({ onBack, onContinueChange }) {
                 <EN name={tm.name} onSave={n => ren(i, n)} sz={mode === "par" ? 13 : 15} />
                 {hasBajada && (
                   <div style={{ fontSize: 10, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
-                    Baja: {bajadaReq(total(tm))}
+                    {L.dropWith}: {bajadaReq(total(tm))}
                   </div>
                 )}
               </div>
@@ -477,7 +479,7 @@ function Burako2({ onBack, onContinueChange }) {
           {[
             { label: "Compartir", action: doShare },
             { label: "Configuración", action: () => setModal("settings") },
-            { label: "Revancha", action: () => setModal("new") },
+            { label: L.nuevaPartida, action: () => setModal("new") },
             { label: "Reiniciar", action: () => setModal("reset") },
           ].map((item, i) => (
             <button key={i} onClick={item.action} style={{
@@ -519,12 +521,12 @@ function Burako2({ onBack, onContinueChange }) {
       {(modal === "new" || modal === "reset" || modal === "undo") && <Modal onClose={() => setModal(null)}>
         <div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
           <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>
-            {modal === "new" ? "¿Revancha?" : modal === "undo" ? L.undoQ : L.resetQ}</p>
+            {modal === "new" ? `${L.nuevaPartida}?` : modal === "undo" ? L.undoQ : L.resetQ}</p>
           <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>
-            {modal === "undo" ? L.undoDesc : modal === "new" ? "Se reinician los puntos" : L.losesAll}</p>
+            {modal === "undo" ? L.undoDesc : modal === "new" ? "Se reinician los puntos a cero." : L.losesAll}</p>
           <div style={{ display: "flex", gap: 10 }}>
             <B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
-            {modal === "new" ? <B onClick={rematch} s={{ flex: 1 }}>Revancha</B>
+            {modal === "new" ? <B onClick={nuevaPartida} s={{ flex: 1 }}>{L.nuevaPartida}</B>
               : modal === "undo" ? <B v="err" onClick={undoLast} s={{ flex: 1 }}>{L.yesUndo}</B>
               : <B v="err" onClick={resetZ} s={{ flex: 1 }}>{L.reset}</B>}
           </div>
@@ -547,6 +549,8 @@ function Burako2({ onBack, onContinueChange }) {
 // ─── HAND ENTRY ──
 function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
   const isEdit = editIdx !== null;
+  const formRef = useRef(null);
+
   const buildVals = () => teams.map((tm) => {
     if (isEdit && tm.hands[editIdx]) {
       const h = tm.hands[editIdx];
@@ -564,6 +568,14 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
   useEffect(() => {
     setVals(buildVals());
   }, [teams, editIdx]);
+
+  // Auto-focus first input on mount
+  useEffect(() => {
+    setTimeout(() => {
+      const first = formRef.current?.querySelector('input[type="number"]');
+      first?.focus();
+    }, 100);
+  }, []);
 
   const getHandObj = (v) => {
     if (v.mode === "neg") {
@@ -587,8 +599,20 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
     setVals(u);
   };
 
+  // Enter advances through inputs, last Enter saves
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const inputs = formRef.current?.querySelectorAll('input[type="number"]');
+    if (!inputs) return;
+    const list = Array.from(inputs);
+    const idx = list.indexOf(e.target);
+    if (idx >= 0 && idx < list.length - 1) list[idx + 1].focus();
+    else onSave(vals.map(v => getHandObj(v)));
+  };
+
   return (
-    <div style={{
+    <div ref={formRef} style={{
       position: "fixed", inset: 0, background: t.bg, zIndex: 80,
       display: "flex", flexDirection: "column", overflow: "auto", animation: "fadeUp .2s ease",
     }}>
@@ -625,6 +649,8 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
                   <div style={{ fontSize: 11, color: t.txtM, marginBottom: 4, fontFamily: F.sans, letterSpacing: 1, textTransform: "uppercase" }}>Base</div>
                   <input type="number" inputMode="numeric" value={vals[i].base}
                     onChange={e => upVal(i, "base", e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    enterKeyHint="next"
                     placeholder="0"
                     style={{
                       width: "100%", background: "transparent", border: "none", borderBottom: `1.5px solid ${t.brd}`,
@@ -635,6 +661,8 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
                   <div style={{ fontSize: 11, color: t.txtM, marginBottom: 4, fontFamily: F.sans, letterSpacing: 1, textTransform: "uppercase" }}>Puntos</div>
                   <input type="number" inputMode="numeric" value={vals[i].pts}
                     onChange={e => upVal(i, "pts", e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    enterKeyHint={i === teams.length - 1 ? "done" : "next"}
                     placeholder="0"
                     style={{
                       width: "100%", background: "transparent", border: "none", borderBottom: `1.5px solid ${t.brd}`,
@@ -652,6 +680,8 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
                 <div style={{ fontSize: 11, color: t.txtM, marginBottom: 4, fontFamily: F.sans, letterSpacing: 1, textTransform: "uppercase" }}>Puntos a restar</div>
                 <input type="number" inputMode="numeric" value={vals[i].neg}
                   onChange={e => upVal(i, "neg", e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  enterKeyHint={i === teams.length - 1 ? "done" : "next"}
                   placeholder="0"
                   style={{
                     width: "100%", background: "transparent", border: "none", borderBottom: `1.5px solid ${t.err}`,

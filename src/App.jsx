@@ -1,21 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Ctx, FONTS, F, strings, light, dark, ST, initWakeLock, B, Modal, useApp } from './lib.jsx';
 import Truco from './games/Truco.jsx';
-import Burako from './games/Burako.jsx';
 import Generala from './games/Generala.jsx';
 import Burako2 from './games/Burako2.jsx';
 
 const GAMES = {
   truco: { name: "Truco", emoji: "🂡" },
-  burako: { name: "Burako", emoji: "🃏" },
-  burako2: { name: "Burako 2", emoji: "🃏" },
+  burako2: { name: "Burako", emoji: "🃏" },
   generala: { name: "Generala", emoji: "🎲" },
 };
+
+const LOCK_HOURS = 6;
 
 function App() {
   const [sel, setSel] = useState(null);
   const [dk, setDk] = useState(false);
   const [contGame, setContGame] = useState(null);
+  const [ready, setReady] = useState(false);
   const t = dk ? dark : light;
   const L = strings["es"];
   const wakeLockRef = useRef(null);
@@ -24,11 +25,19 @@ function App() {
 
   useEffect(() => {
     ST.load("app-dark").then(d => { if (d !== null) setDk(d) });
-    Promise.all([ST.load("truco-game"), ST.load("burako-game"), ST.load("burako2-game"), ST.load("generala-game")]).then(([tr, bk, bk2, ge]) => {
+    Promise.all([
+      ST.load("truco-game"), ST.load("burako2-game"), ST.load("generala-game"), ST.load("app-game"),
+    ]).then(([tr, bk2, ge, lock]) => {
+      // Continue game detection
       if (tr?.started) setContGame("truco");
-      else if (bk?.teams?.length) setContGame("burako");
       else if (bk2?.teams?.length) setContGame("burako2");
       else if (ge?.ps?.length) setContGame("generala");
+
+      // Game lock-in: if picked a game within LOCK_HOURS, go directly to it
+      if (lock?.game && lock?.ts && (Date.now() - lock.ts < LOCK_HOURS * 60 * 60 * 1000) && GAMES[lock.game]) {
+        setSel(lock.game);
+      }
+      setReady(true);
     });
     initWakeLock().then(l => { wakeLockRef.current = l });
   }, []);
@@ -36,7 +45,24 @@ function App() {
   useEffect(() => { ST.save("app-dark", dk) }, [dk]);
 
   const tog = () => setDk(!dk);
-  const clearCurrent = async () => { if (!contGame) return; await ST.del(`${contGame}-game`); setContGame(null); };
+
+  const pickGame = async (key) => {
+    await ST.save("app-game", { game: key, ts: Date.now() });
+    setSel(key);
+  };
+
+  const changeGame = async () => {
+    await ST.del("app-game");
+    setSel(null);
+  };
+
+  const clearCurrent = async () => {
+    if (!contGame) return;
+    await ST.del(`${contGame}-game`);
+    setContGame(null);
+  };
+
+  if (!ready) return <div style={{ minHeight: "100vh", background: t.bg }} />;
 
   return (
     <Ctx.Provider value={{ t, dk, tog, sounds: true, L, lang: "es" }}>
@@ -49,17 +75,16 @@ function App() {
           button:active{transform:scale(0.97)!important}
         `}</style>
 
-        {sel === "truco" ? <Truco onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
-          : sel === "burako" ? <Burako onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
-          : sel === "burako2" ? <Burako2 onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
-          : sel === "generala" ? <Generala onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
-          : <Home {...{ t, dk, tog, L, setSel, contGame, clearCurrent }} />}
+        {sel === "truco" ? <Truco onBack={changeGame} onContinueChange={handleContinueChange} onChangeGame={changeGame} />
+          : sel === "burako2" ? <Burako2 onBack={changeGame} onContinueChange={handleContinueChange} onChangeGame={changeGame} />
+          : sel === "generala" ? <Generala onBack={changeGame} onContinueChange={handleContinueChange} onChangeGame={changeGame} />
+          : <Home {...{ t, dk, tog, L, pickGame, contGame, clearCurrent }} />}
       </div>
     </Ctx.Provider>
   );
 }
 
-function Home({ t, dk, tog, L, setSel, contGame, clearCurrent }) {
+function Home({ t, dk, tog, L, pickGame, contGame, clearCurrent }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "64px 24px 48px", maxWidth: 400, margin: "0 auto" }}>
 
@@ -68,8 +93,8 @@ function Home({ t, dk, tog, L, setSel, contGame, clearCurrent }) {
       <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 400, letterSpacing: 3, color: t.txtM, textTransform: "uppercase", marginTop: 4, animation: "fadeUp .4s ease .05s both" }}>marcador</span>
 
       {/* Continue last game */}
-      {contGame && (
-        <div onClick={() => setSel(contGame)} style={{ width: "100%", marginTop: 40, padding: "14px 0", borderBottom: `1px solid ${t.pri}20`, cursor: "pointer", display: "flex", alignItems: "center", animation: "fadeUp .4s ease .1s both" }}>
+      {contGame && GAMES[contGame] && (
+        <div onClick={() => pickGame(contGame)} style={{ width: "100%", marginTop: 40, padding: "14px 0", borderBottom: `1px solid ${t.pri}20`, cursor: "pointer", display: "flex", alignItems: "center", animation: "fadeUp .4s ease .1s both" }}>
           <span style={{ flex: 1, fontFamily: F.sans, fontSize: 14, fontWeight: 500, color: t.pri }}>Continuar: {GAMES[contGame].name}</span>
           <button onClick={e => { e.stopPropagation(); clearCurrent() }} style={{ background: "none", border: "none", color: t.txtF, cursor: "pointer", fontSize: 14, padding: "4px 8px", fontFamily: F.sans }}>×</button>
         </div>
@@ -78,7 +103,7 @@ function Home({ t, dk, tog, L, setSel, contGame, clearCurrent }) {
       {/* Game list */}
       <div style={{ width: "100%", marginTop: contGame ? 8 : 40 }}>
         {Object.entries(GAMES).map(([key, g], i) => (
-          <div key={key} onClick={() => setSel(key)}
+          <div key={key} onClick={() => pickGame(key)}
             style={{ padding: "20px 0", borderBottom: i < Object.keys(GAMES).length - 1 ? `1px solid ${t.brd}` : "none",
               display: "flex", alignItems: "center", cursor: "pointer", animation: `fadeUp .4s ease ${(i + 2) * .06}s both` }}>
             <span style={{ flex: 1, fontFamily: F.serif, fontSize: 22, color: t.txt }}>{g.name}</span>

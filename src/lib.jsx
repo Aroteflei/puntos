@@ -13,11 +13,11 @@ export const strings = {
     newGame: "¿Nueva partida?", savesHist: "Se guarda en historial.", resetQ: "¿Reiniciar a cero?", losesAll: "Se pierde todo.",
     cancel: "Cancelar", yesNew: "Sí, nueva", reset: "Reiniciar", resetNoSave: "Reiniciar sin guardar",
     undoQ: "¿Deshacer última mano?", undoDesc: "Se borra la última mano.", undo: "Deshacer", yesUndo: "Sí, deshacer",
-    remain: "faltan", toWin: "para ganar", wins: "ganan", hist: "Historial", newHand: "+ Nueva mano",
+    remain: "faltan", toWin: "para ganar", wins: "ganan", winSg: "gana", winPl: "ganan", hist: "Historial", newHand: "+ Nueva mano", nuevaPartida: "Nueva partida",
     editHand: "Editar mano", save: "Guardar", chooseClosed: "Elegí quién cerró",
     puras: "Puras", canastas: "Canastas", puntos: "Puntos", playedDead: "¿Jugó muerto?", closed: "Cerró",
     notClosed: "No cerró", sub: "Subtotal", dropWith: "Baja con",
-    howPlay: "¿Cómo juegan?", pairs: "2 Parejas", threePlayers: "3 Jugadores", target: "Objetivo",
+    changeGame: "Cambiar juego", howPlay: "¿Cómo juegan?", pairs: "2 Parejas", threePlayers: "3 Jugadores", target: "Objetivo",
     custom: "Personalizado", values: "Valores", penaltyDead: "Penalidad muerto",
     howManyPlayers: "¿Cuántos jugadores?", turnsLeft: "turnos restantes", done: "¡Terminado!",
     chooseScore: "Elegí el puntaje", cross: "Tachar", erase: "Borrar", share: "Compartir", shareResult: "Compartir resultado",
@@ -35,11 +35,11 @@ export const strings = {
     newGame: "New game?", savesHist: "Saves to history.", resetQ: "Reset to zero?", losesAll: "Loses everything.",
     cancel: "Cancel", yesNew: "Yes, new", reset: "Reset", resetNoSave: "Reset without saving",
     undoQ: "Undo last hand?", undoDesc: "Removes last hand.", undo: "Undo", yesUndo: "Yes, undo",
-    remain: "left", toWin: "to win", wins: "win!", hist: "History", newHand: "+ New hand",
+    remain: "left", toWin: "to win", wins: "win!", winSg: "wins", winPl: "win", hist: "History", newHand: "+ New hand", nuevaPartida: "New game",
     editHand: "Edit hand", save: "Save", chooseClosed: "Choose who closed",
     puras: "Pure runs", canastas: "Runs", puntos: "Points", playedDead: "Played dead hand?", closed: "Closed",
     notClosed: "Didn't close", sub: "Subtotal", dropWith: "Opens with",
-    howPlay: "How do you play?", pairs: "2 Pairs", threePlayers: "3 Players", target: "Target",
+    changeGame: "Change game", howPlay: "How do you play?", pairs: "2 Pairs", threePlayers: "3 Players", target: "Target",
     custom: "Custom", values: "Values", penaltyDead: "Dead hand penalty",
     howManyPlayers: "How many players?", turnsLeft: "turns left", done: "Done!",
     chooseScore: "Choose score", cross: "Cross out", erase: "Clear", share: "Share", shareResult: "Share result",
@@ -95,39 +95,116 @@ export const bajadaReq = (score) => score >= 2000 ? 120 : score >= 1000 ? 90 : 5
 export const clone = (v) => JSON.parse(JSON.stringify(v));
 export const fmtDate = () => { const d = new Date(); return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}` };
 
-// Share result - with multiple fallbacks
+// Share result - Instagram 4:5 card with multiple fallbacks
 export async function shareResult(title, lines) {
   const text = title + "\n" + lines.join("\n");
 
   try {
+    const W = 1080, H = 1350;
     const c = document.createElement("canvas");
-    c.width = 1200; c.height = 630;
+    c.width = W; c.height = H;
     const ctx = c.getContext("2d");
-    ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, c.width, c.height);
 
-    const wrap = (ct, str, maxW) => {
-      const words = String(str).split(" "); const out = []; let line = "";
-      for (let i = 0; i < words.length; i++) {
-        const test = line ? (line + " " + words[i]) : words[i];
-        if (ct.measureText(test).width <= maxW) line = test;
-        else { if (line) out.push(line); line = words[i]; }
-      }
-      if (line) out.push(line); return out;
-    };
+    // Background
+    ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
 
-    ctx.fillStyle = "#1A1A1A"; ctx.font = "72px Georgia, serif";
-    const titleLines = wrap(ctx, title, 1040);
-    let y = 140;
-    titleLines.slice(0, 2).forEach((ln) => { const w = ctx.measureText(ln).width; ctx.fillText(ln, (c.width - w) / 2, y); y += 84; });
+    // Top accent bar
+    ctx.fillStyle = "#1A5C52"; ctx.fillRect(0, 0, W, 6);
+
+    // "PUNTOS" logo
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#1A5C52";
+    ctx.font = "72px Georgia, serif";
+    ctx.fillText("PUNTOS", W / 2, 140);
+
+    // Subtitle
+    ctx.fillStyle = "#B5B5B2";
+    ctx.font = "500 14px system-ui, sans-serif";
+    const sub = "MARCADOR";
+    const subSpaced = sub.split("").join("  ");
+    ctx.fillText(subSpaced, W / 2, 170);
+
+    // Game title
+    ctx.fillStyle = "#1A1A1A";
+    ctx.font = "42px Georgia, serif";
+    ctx.fillText(title, W / 2, 260);
+
+    // Separator
     ctx.strokeStyle = "#E8E8E6"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(140, y + 10); ctx.lineTo(c.width - 140, y + 10); ctx.stroke(); y += 70;
-    ctx.fillStyle = "#1A5C52"; ctx.font = "600 44px system-ui, sans-serif";
-    for (let i = 0; i < lines.length && i < 8; i++) {
-      const wrapped = wrap(ctx, lines[i], 980);
-      for (let j = 0; j < wrapped.length && j < 8; j++) { const ln = wrapped[j]; const w = ctx.measureText(ln).width; ctx.fillText(ln, (c.width - w) / 2, y); y += 58; }
-    }
-    ctx.fillStyle = "#B5B5B2"; ctx.font = "500 26px system-ui, sans-serif";
-    ctx.fillText("puntos", c.width - 180, c.height - 48);
+    ctx.beginPath(); ctx.moveTo(W / 2 - 80, 290); ctx.lineTo(W / 2 + 80, 290); ctx.stroke();
+
+    // Parse player:score pairs
+    const parsed = lines.map(line => {
+      const idx = line.lastIndexOf(":");
+      if (idx < 0) return { name: line, score: "" };
+      return { name: line.substring(0, idx).trim(), score: line.substring(idx + 1).trim() };
+    });
+
+    const scores = parsed.map(p => parseInt(p.score) || 0);
+    const maxSc = Math.max(...scores);
+
+    // Score card
+    const rowH = 88;
+    const cardW = 740;
+    const cardPad = 28;
+    const cardH = parsed.length * rowH + cardPad * 2;
+    const cardX = (W - cardW) / 2;
+    const cardY = 340;
+
+    // Card bg with rounded corners
+    const rr = (x, y, w, h, r) => {
+      ctx.beginPath(); ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+    };
+    rr(cardX, cardY, cardW, cardH, 16);
+    ctx.fillStyle = "#FAFAF8"; ctx.fill();
+    ctx.strokeStyle = "#E8E8E6"; ctx.lineWidth = 1; ctx.stroke();
+
+    parsed.forEach((p, i) => {
+      const rY = cardY + cardPad + i * rowH;
+      const isWin = scores[i] === maxSc && maxSc > 0;
+
+      // Row separator
+      if (i > 0) {
+        ctx.strokeStyle = "#E8E8E6"; ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(cardX + 28, rY); ctx.lineTo(cardX + cardW - 28, rY); ctx.stroke();
+      }
+
+      // Winner dot
+      if (isWin) {
+        ctx.fillStyle = "#1A5C52";
+        ctx.beginPath(); ctx.arc(cardX + 20, rY + rowH / 2, 5, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Name
+      ctx.fillStyle = isWin ? "#1A5C52" : "#1A1A1A";
+      ctx.font = `${isWin ? 600 : 400} 30px Georgia, serif`;
+      ctx.textAlign = "left";
+      ctx.fillText(p.name, cardX + 40, rY + rowH / 2 + 10, cardW - 200);
+
+      // Score
+      ctx.fillStyle = isWin ? "#1A5C52" : "#7A7A78";
+      ctx.font = `${isWin ? 700 : 400} 40px Georgia, serif`;
+      ctx.textAlign = "right";
+      ctx.fillText(p.score, cardX + cardW - 36, rY + rowH / 2 + 14);
+    });
+
+    // Date/time
+    const now = new Date();
+    const ds = now.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const ts = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    ctx.fillStyle = "#B5B5B2";
+    ctx.font = "500 20px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${ds} · ${ts}`, W / 2, H - 80);
+
+    // Watermark
+    ctx.fillStyle = "#E8E8E6";
+    ctx.font = "16px system-ui, sans-serif";
+    ctx.fillText("puntos app", W / 2, H - 44);
 
     const blob = await new Promise(r => c.toBlob(r, "image/png"));
     const file = new File([blob], "marcador.png", { type: "image/png" });
@@ -151,14 +228,14 @@ export function B({ children, onClick, disabled, v = "pri", s, ...r }) {
     letterSpacing: .2, fontFamily: F.sans, cursor: disabled ? "default" : "pointer", transition: "opacity .15s", opacity: disabled ? .35 : 1, touchAction: "manipulation", ...vars[v], ...s }} {...r}>{children}</button>;
 }
 
-export function EN({ name, onSave, sz = 18 }) {
+export function EN({ name, onSave, sz = 18, fw }) {
   const { t } = useApp(); const [ed, setEd] = useState(false); const [val, setVal] = useState(name);
   useEffect(() => setVal(name), [name]);
   if (ed) return <input autoFocus value={val} onChange={e => setVal(e.target.value)} onBlur={() => { onSave(val); setEd(false) }}
     onKeyDown={e => { if (e.key === "Enter") { onSave(val); setEd(false) } }}
-    style={{ background: "transparent", border: "none", borderBottom: `1.5px solid ${t.pri}`, color: t.txt, fontSize: sz, fontFamily: F.serif,
+    style={{ background: "transparent", border: "none", borderBottom: `1.5px solid ${t.pri}`, color: t.txt, fontSize: sz, fontWeight: fw || 400, fontFamily: F.serif,
       borderRadius: 0, padding: "2px 0", outline: "none", width: "100%" }} />;
-  return <span onClick={() => setEd(true)} style={{ fontSize: sz, color: t.txt, cursor: "pointer",
+  return <span onClick={() => setEd(true)} style={{ fontSize: sz, fontWeight: fw || 400, color: t.txt, cursor: "pointer",
     fontFamily: F.serif, textDecoration: "underline dashed", textDecorationColor: t.brd, textUnderlineOffset: 3 }}>{name}</span>;
 }
 
@@ -200,10 +277,17 @@ export function Modal({ children, onClose }) {
 
 export function UndoBar({ toast, onUndo, onClose }) {
   const { t, L } = useApp();
-  useEffect(() => { if (!toast) return; const id = setTimeout(() => onClose?.(), 2500); return () => clearTimeout(id); }, [toast, onClose]);
+  const [fading, setFading] = useState(false);
+  useEffect(() => {
+    if (!toast) { setFading(false); return; }
+    setFading(false);
+    const fadeId = setTimeout(() => setFading(true), 4500);
+    const closeId = setTimeout(() => onClose?.(), 5000);
+    return () => { clearTimeout(fadeId); clearTimeout(closeId); };
+  }, [toast, onClose]);
   if (!toast) return null;
   return <div style={{ position: "fixed", left: 12, right: 12, bottom: 24, zIndex: 120, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-    <div style={{ pointerEvents: "auto", maxWidth: 320, width: "auto", background: t.txt, boxShadow: t.shH, borderRadius: 8, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, animation: "fadeUp .2s ease" }}>
+    <div style={{ pointerEvents: "auto", maxWidth: 320, width: "auto", background: t.txt, boxShadow: t.shH, borderRadius: 8, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, animation: "fadeUp .2s ease", transition: "opacity .5s ease", opacity: fading ? 0 : 1 }}>
       <div style={{ fontSize: 12, color: t.bg, whiteSpace: "nowrap", fontFamily: F.sans, fontWeight: 500 }}>{toast.text}</div>
       {toast.redo && <button onClick={() => { toast.redo?.(); onClose?.(); }} style={{ background: "transparent", border: `1px solid rgba(255,255,255,.2)`, color: t.bg, borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: F.sans, whiteSpace: "nowrap" }}>{L.redo}</button>}
       {toast.undo && <button onClick={() => { onUndo?.(); onClose?.(); }} style={{ background: "transparent", border: `1px solid rgba(255,255,255,.2)`, color: t.bg, borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: F.sans, whiteSpace: "nowrap" }}>{L.undo}</button>}

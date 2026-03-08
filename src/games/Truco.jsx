@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useApp, ST, clone, shareResult, vib, vibWin, F, B, EN, Modal } from '../lib.jsx';
+import { useApp, ST, clone, shareResult, vib, vibWin, F, B, EN, Modal, UndoBar } from '../lib.jsx';
 
-function TrucoTally({ count, color, divAt }) {
-  const SZ = 36, PD = 3, GAP = 4;
+function TrucoTally({ count, color, divAt, buenasColor }) {
+  const SZ = 48, PD = 4, GAP = 5;
 
   const jitter = useMemo(() => {
     const a = [];
@@ -33,11 +33,12 @@ function TrucoTally({ count, color, divAt }) {
     return <svg key={key} width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}>{segs}</svg>;
   };
 
+  const bc = buenasColor || color;
   const divider = (
     <div key="div" style={{ display: "flex", alignItems: "center", width: "100%", margin: `${GAP}px 0`, padding: "0 2px" }}>
-      <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${color})`, opacity: .4 }} />
-      <span style={{ fontSize: 8, color, fontWeight: 600, letterSpacing: 2, padding: "0 6px", fontFamily: F.sans }}>BUENAS</span>
-      <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, transparent, ${color})`, opacity: .4 }} />
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${bc})`, opacity: .4 }} />
+      <span style={{ fontSize: 8, color: bc, fontWeight: 600, letterSpacing: 2, padding: "0 6px", fontFamily: F.sans }}>BUENAS</span>
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, transparent, ${bc})`, opacity: .4 }} />
     </div>
   );
 
@@ -81,29 +82,29 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t }) {
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", opacity: dim ? 0.3 : 1, transition: "opacity .3s" }}>
-      <div style={{ textAlign: "center", padding: ph ? "10px 6px 8px" : "12px 10px 10px", borderBottom: `1px solid ${t.brd}` }}>
-        <EN name={player.name} onSave={n => onRen(idx, n)} sz={ph ? 14 : 16} />
+      <div style={{ textAlign: "center", padding: "12px 10px 10px", borderBottom: `1px solid ${t.brd}` }}>
+        <EN name={player.name} onSave={n => onRen(idx, n)} sz={18} fw={700} />
       </div>
 
       <div style={{
-        flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        padding: ph ? "6px 6px" : "10px 10px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 0,
+        flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
+        padding: "10px 10px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 120,
       }}>
-        {target === 30 && <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: 2, color: t.txtM, marginBottom: 4, fontFamily: F.sans }}>MALAS</div>}
-        <TrucoTally count={player.p} color={t.txt} divAt={target === 30 ? 15 : null} />
+        {target === 30 && <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: 2, color: t.err, marginBottom: 4, fontFamily: F.sans }}>MALAS</div>}
+        <TrucoTally count={player.p} color={t.txt} divAt={target === 30 ? 15 : null} buenasColor={t.ok} />
       </div>
 
-      <div style={{ textAlign: "center", padding: ph ? "8px 0" : "10px 0", borderTop: `1px solid ${t.brd}` }}>
+      <div style={{ textAlign: "center", padding: "10px 0", borderTop: `1px solid ${t.brd}` }}>
         <div style={{ fontFamily: F.serif, fontSize: ph ? 48 : 64, color: t.pri, lineHeight: 1, letterSpacing: -1 }}>
           {player.p}
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: ph ? 4 : 6, padding: ph ? "8px 6px 10px" : "8px 12px 14px", borderTop: `1px solid ${t.brd}` }}>
+      <div style={{ display: "flex", gap: 6, padding: "8px 12px 14px", borderTop: `1px solid ${t.brd}` }}>
         {[1, 2, 3].map(v => (
           <button key={v} onClick={() => !atTarget && onAdd(idx, v)} disabled={atTarget} style={{
             background: "transparent", color: atTarget ? t.txtF : t.pri, border: `1px solid ${atTarget ? t.brd : t.pri}`,
-            borderRadius: 6, height: ph ? 44 : 48, flex: 1, fontSize: ph ? 18 : 20,
+            borderRadius: 6, height: 48, flex: 1, fontSize: 20,
             fontFamily: F.serif, cursor: atTarget ? "default" : "pointer", touchAction: "manipulation",
             opacity: atTarget ? 0.3 : 1, transition: "all .15s",
           }}>+{v}</button>
@@ -139,7 +140,7 @@ function toRawNames(names, teamSize) {
   return defaultRawNames(teamSize);
 }
 
-function Truco({ onBack, onContinueChange }) {
+function Truco({ onBack, onContinueChange, onChangeGame }) {
   const { t, sounds, L } = useApp();
   const [target, setTarget] = useState(15);
   const [step, setStep] = useState(0);
@@ -148,17 +149,12 @@ function Truco({ onBack, onContinueChange }) {
   const [rawNames, setRawNames] = useState(defaultRawNames(1));
   const [sc, setSc] = useState([]);
   const [modal, setModal] = useState(null);
-  const [lastState, setLastState] = useState(null);
+  const [toast, setToast] = useState(null);
+  const lastStateRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [picapicaStep, setPicapicaStep] = useState(0);
   const nameRefs = useRef([]);
   const ph = typeof window !== "undefined" && window.innerWidth <= 480;
-
-  useEffect(() => {
-    if (!lastState) return;
-    const id = setTimeout(() => setLastState(null), 4000);
-    return () => clearTimeout(id);
-  }, [lastState]);
 
   useEffect(() => {
     ST.load("truco-game").then(d => {
@@ -227,12 +223,13 @@ function Truco({ onBack, onContinueChange }) {
   const goBack = async () => {
     if (started) persist();
     onContinueChange?.(started ? "truco" : null);
-    onBack();
+    onChangeGame?.();
   };
 
   const add = (i, v) => {
     if (sc[i].p >= target) return;
-    setLastState({ sc: clone(sc), picapicaStep });
+    lastStateRef.current = { sc: clone(sc), picapicaStep };
+    setToast({ text: `${sc[i].name}: +${v}`, undo: true });
     const newP = Math.min(target, Math.max(0, sc[i].p + v));
     const nextSc = sc.map((row, idx) => idx === i ? { ...row, p: newP } : row);
 
@@ -266,34 +263,26 @@ function Truco({ onBack, onContinueChange }) {
 
   const winner = sc.find(s => s.p >= target);
 
-  const rematch = () => {
+  const nuevaPartida = () => {
     const nextSc = sc.map(s => ({ ...s, p: 0 }));
     setSc(nextSc);
     setPicapicaStep(0);
     setModal(null);
+    lastStateRef.current = null;
+    setToast({ text: L.nuevaPartida });
     persist({ sc: nextSc, picapicaStep: 0 });
-  };
-
-  const saveNew = () => {
-    const nextSc = sc.map(s => ({ ...s, p: 0 }));
-    setSc(nextSc);
-    setPicapicaStep(0);
-    setModal(null);
-    persist({ sc: nextSc, picapicaStep: 0 });
-  };
-
-  const resetZ = async () => {
-    setStarted(false);
-    setStep(0);
-    setSc([]);
-    setRawNames(defaultRawNames(teamSize));
-    setPicapicaStep(0);
-    setModal(null);
-    await ST.del("truco-game");
-    onContinueChange?.(null);
   };
 
   const doShare = () => shareResult(`Truco - ${target} pts`, sc.map((s) => `${s.name}: ${s.p}`));
+
+  const handleUndo = () => {
+    const ls = lastStateRef.current;
+    if (!ls) return;
+    setSc(ls.sc);
+    setPicapicaStep(ls.picapicaStep);
+    persist({ sc: ls.sc, picapicaStep: ls.picapicaStep });
+    lastStateRef.current = null;
+  };
 
   const picaActive = inPicaPhase(teamSize, sc);
   const picaLabel = picaActive ? (picapicaStep % 2 === 0 ? "Mano picapica" : "Mano normal") : null;
@@ -415,29 +404,29 @@ function Truco({ onBack, onContinueChange }) {
         }}>←</button>
         <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>A {target}</span>
         <div style={{ flex: 1 }} />
-        <button onClick={doShare} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Compartir</button>
-        <button onClick={() => setModal("new")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Nueva</button>
+        {!winner && <>
+          <button onClick={doShare} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Compartir</button>
+          <button onClick={() => setModal("new")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Nueva</button>
+        </>}
       </div>
 
       {modal && <Modal onClose={() => setModal(null)}>
         <div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
-          <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{modal === "new" ? L.newGame : L.resetQ}</p>
-          <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "new" ? L.savesHist : L.losesAll}</p>
+          <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{L.nuevaPartida}?</p>
+          <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>Se reinician los puntos a cero.</p>
           <div style={{ display: "flex", gap: 10 }}>
             <B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
-            {modal === "new" ? <B onClick={saveNew} s={{ flex: 1 }}>{L.yesNew}</B> : <B v="err" onClick={resetZ} s={{ flex: 1 }}>{L.reset}</B>}
+            <B onClick={nuevaPartida} s={{ flex: 1 }}>{L.nuevaPartida}</B>
           </div>
-          {modal === "new" && <B v="err" onClick={() => setModal("reset")} s={{ marginTop: 8, width: "100%", fontSize: 12 }}>{L.resetNoSave}</B>}
         </div>
       </Modal>}
 
       {winner && (
         <div style={{ textAlign: "center", padding: ph ? 10 : 14, background: t.pri, color: "#fff", flexShrink: 0, animation: "scaleIn .3s ease" }}>
-          <div style={{ fontSize: ph ? 16 : 18, fontFamily: F.serif }}>¡{winner.name} {L.wins}!</div>
+          <div style={{ fontSize: ph ? 16 : 18, fontFamily: F.serif }}>¡{winner.name} {L.winPl}!</div>
           <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 6 }}>
             <button onClick={doShare} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>Compartir</button>
-            <button onClick={rematch} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.rematch}</button>
-            <button onClick={() => setModal("new")} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.yesNew}</button>
+            <button onClick={nuevaPartida} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.nuevaPartida}</button>
           </div>
         </div>
       )}
@@ -455,21 +444,7 @@ function Truco({ onBack, onContinueChange }) {
         <Col player={sc[1]} idx={1} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} />
       </div>
 
-      {lastState && (
-        <button onClick={() => {
-          setSc(lastState.sc);
-          setPicapicaStep(lastState.picapicaStep);
-          persist({ sc: lastState.sc, picapicaStep: lastState.picapicaStep });
-          setLastState(null);
-        }} style={{
-          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-          background: t.txt, borderRadius: 8, padding: "8px 20px", border: "none",
-          fontSize: 12, fontWeight: 500, color: t.bg, cursor: "pointer", boxShadow: t.shH, zIndex: 50,
-          fontFamily: F.sans, touchAction: "manipulation", animation: "fadeUp .2s ease",
-        }}>
-          {L.undo}
-        </button>
-      )}
+      <UndoBar toast={toast} onUndo={handleUndo} onClose={() => { setToast(null); lastStateRef.current = null; }} />
     </div>
   );
 }
