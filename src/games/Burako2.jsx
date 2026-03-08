@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useApp, ST, clone, bajadaReq, B, EN, Modal, UndoBar } from '../lib.jsx';
+import { useApp, ST, clone, vibWin, bajadaReq, B, EN, Modal, UndoBar } from '../lib.jsx';
 
 const DEF_CFG = { tgt: 3000, pura: 200, canasta: 100, cierre: 100, muerto: 100 };
 
