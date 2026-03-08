@@ -50,13 +50,7 @@ function HandWizard({ teams, cfg, calc, hf, setHf, onSave, onCancel, editIdx, L,
       </div>
 
       {/* Header */}
-      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        <button onClick={goBack} style={{
-          background: t.card, border: `1px solid ${t.brd}`, color: t.txt,
-          fontSize: 16, borderRadius: 10, width: 44, height: 44,
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          touchAction: "manipulation",
-        }}>←</button>
+      <div style={{ padding: "10px 16px 4px", flexShrink: 0 }}>
         <span style={{ fontSize: 12, color: t.txtM, fontFamily: "'DM Sans'" }}>
           {editIdx !== null ? L.editHand : L.newHand} · {step + 1}/{totalSteps}
         </span>
@@ -100,12 +94,49 @@ function HandWizard({ teams, cfg, calc, hf, setHf, onSave, onCancel, editIdx, L,
               }}>+</button>
             </div>
 
-            {/* Running subtotal */}
-            <div style={{ fontSize: 13, color: t.txtM, marginBottom: 24, fontFamily: "'DM Sans'" }}>
-              {L.sub}: {calc(hf[info.teamIdx]) >= 0 ? "+" : ""}{calc(hf[info.teamIdx])}
+            {/* Running breakdown */}
+            <div style={{
+              background: t.card, border: `1px solid ${t.brd}`, borderRadius: 12,
+              padding: "10px 14px", marginBottom: 20, width: "100%", maxWidth: 380,
+            }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontFamily: "'DM Sans'" }}>
+                {(hf[info.teamIdx]?.pura || 0) > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", color: t.txtM }}>
+                    <span>{hf[info.teamIdx].pura} {L.puras}</span>
+                    <span style={{ color: t.ok }}>+{hf[info.teamIdx].pura * cfg.pura}</span>
+                  </div>
+                )}
+                {(hf[info.teamIdx]?.canasta || 0) > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", color: t.txtM }}>
+                    <span>{hf[info.teamIdx].canasta} {L.canastas}</span>
+                    <span style={{ color: t.ok }}>+{hf[info.teamIdx].canasta * cfg.canasta}</span>
+                  </div>
+                )}
+                {(hf[info.teamIdx]?.puntos || 0) !== 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", color: t.txtM }}>
+                    <span>{L.puntos}</span>
+                    <span style={{ color: hf[info.teamIdx].puntos >= 0 ? t.ok : t.err }}>
+                      {hf[info.teamIdx].puntos >= 0 ? "+" : ""}{hf[info.teamIdx].puntos}
+                    </span>
+                  </div>
+                )}
+                <div style={{ borderTop: `1px solid ${t.brd}`, paddingTop: 4, marginTop: 2,
+                  display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
+                  <span style={{ color: t.txt, fontSize: 14 }}>Total</span>
+                  <span style={{
+                    fontFamily: "'Playfair Display'", fontSize: 18, fontWeight: 800,
+                    color: calc(hf[info.teamIdx]) >= 0 ? t.ok : t.err,
+                  }}>
+                    {calc(hf[info.teamIdx]) >= 0 ? "+" : ""}{calc(hf[info.teamIdx])}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <B onClick={goNext} s={{ width: "100%", maxWidth: 380, minHeight: 56, fontSize: 17 }}>{L.next}</B>
+            <div style={{ display: "flex", gap: 10, width: "100%", maxWidth: 380 }}>
+              <B v="gh" onClick={goBack} s={{ flex: 1, minHeight: 56, fontSize: 17 }}>{L.back}</B>
+              <B onClick={goNext} s={{ flex: 1, minHeight: 56, fontSize: 17 }}>{L.next}</B>
+            </div>
           </div>
         )}
 
@@ -135,6 +166,7 @@ function HandWizard({ teams, cfg, calc, hf, setHf, onSave, onCancel, editIdx, L,
                   cursor: "pointer", touchAction: "manipulation", fontFamily: "'DM Sans'",
                 }}>No</button>
             </div>
+            <B v="gh" onClick={goBack} s={{ width: "100%", maxWidth: 380, marginTop: 16, minHeight: 48 }}>{L.back}</B>
           </div>
         )}
 
@@ -162,6 +194,7 @@ function HandWizard({ teams, cfg, calc, hf, setHf, onSave, onCancel, editIdx, L,
                 }}>{tm.name}</button>
               ))}
             </div>
+            <B v="gh" onClick={goBack} s={{ width: "100%", maxWidth: 380, marginTop: 16, minHeight: 48 }}>{L.back}</B>
           </div>
         )}
 
@@ -195,9 +228,10 @@ function HandWizard({ teams, cfg, calc, hf, setHf, onSave, onCancel, editIdx, L,
               );
             })}
 
-            <B onClick={onSave} s={{ width: "100%", minHeight: 56, fontSize: 17, marginTop: 8 }}>
-              {L.save} ✓
-            </B>
+            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              <B v="gh" onClick={goBack} s={{ flex: 1, minHeight: 56, fontSize: 17 }}>{L.back}</B>
+              <B onClick={onSave} s={{ flex: 1, minHeight: 56, fontSize: 17 }}>{L.save} ✓</B>
+            </div>
           </div>
         )}
       </div>
@@ -336,11 +370,14 @@ function Burako({ onBack, onContinueChange }) {
   const gridCols = `${COL1}px repeat(${teams.length}, 1fr)`;
 
   return (
-    <div style={{ minHeight: "100vh", background: t.bg }}>
-      <Hdr title="Burako" emoji="🃏" onBack={goBack} sub={`A ${(tgt / 1000).toFixed(tgt % 1000 ? 1 : 0)}K`} icons={<>
-        <IcoBtn onClick={doShare} t={t}>📤</IcoBtn>
-        <IcoBtn onClick={() => setModal("new")} t={t}>🔄</IcoBtn>
-      </>} />
+    <div style={{ minHeight: "100dvh", background: t.bg }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8, flexShrink: 0 }}>
+        <button onClick={goBack} style={{ background: "none", border: "none", color: t.txtM, fontSize: 18, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation" }}>←</button>
+        <span style={{ fontSize: 12, color: t.txtM, fontFamily: "'DM Sans'", fontWeight: 600 }}>A {(tgt / 1000).toFixed(tgt % 1000 ? 1 : 0)}K</span>
+        <div style={{ flex: 1 }} />
+        <button onClick={doShare} style={{ background: "none", border: "none", color: t.txtM, fontSize: 14, cursor: "pointer", padding: 4, touchAction: "manipulation" }}>📤</button>
+        <button onClick={() => setModal("new")} style={{ background: "none", border: "none", color: t.txtM, fontSize: 14, cursor: "pointer", padding: 4, touchAction: "manipulation" }}>🔄</button>
+      </div>
 
       {/* ── Modals ── */}
       {modal && <Modal onClose={() => setModal(null)}>
@@ -421,8 +458,8 @@ function Burako({ onBack, onContinueChange }) {
           {/* Total row */}
           <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: G, marginTop: G }}>
             <div style={{ padding: "10px 4px", textAlign: "center", background: t.pri, borderRadius: "0 0 0 10px",
-              color: "#fff", fontFamily: "'Playfair Display'", fontWeight: 800, fontSize: 11,
-              display: "flex", alignItems: "center", justifyContent: "center", letterSpacing: 1 }}>Σ</div>
+              color: "#fff", fontFamily: "'DM Sans'", fontWeight: 800, fontSize: 9,
+              display: "flex", alignItems: "center", justifyContent: "center", letterSpacing: 1 }}>TOTAL</div>
             {teams.map((tm, i) => (
               <div key={i} style={{ padding: "8px 6px", textAlign: "center", background: t.bgS, border: `1px solid ${t.brd}`,
                 borderRadius: i === teams.length - 1 ? "0 0 10px 0" : 0 }}>
@@ -435,11 +472,11 @@ function Burako({ onBack, onContinueChange }) {
       </div>
 
       {/* ══════ ACTIONS ══════ */}
-      <div style={{ padding: "12px 12px 24px" }}>
-        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-          <B onClick={initHand} s={{ padding: "12px 24px", minHeight: 48 }}>{L.newHand}</B>
-          {maxHands > 0 && <B v="err" onClick={() => setModal("undo")} s={{ minHeight: 48 }}>{L.undo}</B>}
-          {redoHand && <B v="gh" onClick={() => { const r = clone(teams); r.forEach((tm, i) => { if (redoHand[i]) tm.hands.push(redoHand[i]); }); setTeams(r); setRedoHand(null); }} s={{ minHeight: 48 }}>{L.redo}</B>}
+      <div style={{ padding: "12px 16px 24px" }}>
+        <div style={{ display: "flex", gap: 8, maxWidth: 400, margin: "0 auto" }}>
+          <B onClick={initHand} s={{ flex: 1, minHeight: 48, padding: "12px 16px" }}>{L.newHand}</B>
+          {maxHands > 0 && <B v="err" onClick={() => setModal("undo")} s={{ flex: 1, minHeight: 48, padding: "12px 16px" }}>{L.undo}</B>}
+          {redoHand && <B v="gh" onClick={() => { const r = clone(teams); r.forEach((tm, i) => { if (redoHand[i]) tm.hands.push(redoHand[i]); }); setTeams(r); setRedoHand(null); }} s={{ flex: 1, minHeight: 48, padding: "12px 16px" }}>{L.redo}</B>}
         </div>
       </div>
 
