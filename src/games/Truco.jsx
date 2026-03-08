@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useApp, ST, clone, fmtDate, shareResult, vib, vibWin, B, EN, Hdr, IcoBtn, Modal } from '../lib.jsx';
+import { useApp, ST, clone, fmtDate, shareResult, vib, vibWin, B, EN, IcoBtn, Modal } from '../lib.jsx';
 
 // ─── TALLY MARKS (Truco-specific) ──────────────
 function TrucoTally({ count, color, divAt }) {
-  const SZ = 40, PD = 3, GAP = 6;
+  const SZ = 36, PD = 3, GAP = 4;
 
   const jitter = useMemo(() => {
     const a = [];
@@ -37,9 +37,9 @@ function TrucoTally({ count, color, divAt }) {
   };
 
   const divider = (
-    <div key="div" style={{ display: "flex", alignItems: "center", width: "100%", margin: `${GAP + 2}px 0`, padding: "0 2px" }}>
+    <div key="div" style={{ display: "flex", alignItems: "center", width: "100%", margin: `${GAP}px 0`, padding: "0 2px" }}>
       <div style={{ flex: 1, height: 2, background: "linear-gradient(90deg, transparent, #C0392B)", borderRadius: 1 }} />
-      <span style={{ fontSize: 9, color: "#C0392B", fontWeight: 700, letterSpacing: 2, padding: "0 10px", fontFamily: "'DM Sans'" }}>BUENAS</span>
+      <span style={{ fontSize: 8, color: "#C0392B", fontWeight: 700, letterSpacing: 2, padding: "0 6px", fontFamily: "'DM Sans'" }}>BUENAS</span>
       <div style={{ flex: 1, height: 2, background: "linear-gradient(270deg, transparent, #C0392B)", borderRadius: 1 }} />
     </div>
   );
@@ -60,54 +60,57 @@ function TrucoTally({ count, color, divAt }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: GAP }}>
-      {els.length > 0 ? els : <div style={{ color, opacity: 0.15, fontSize: 28 }}>—</div>}
+      {els.length > 0 ? els : <div style={{ color, opacity: 0.15, fontSize: 24 }}>—</div>}
     </div>
   );
 }
 
 // ─── SCORE COLUMN ──────────────────────────────
-function Col({ player, idx, target, winner, ph, onAdd, onRen, t, L }) {
+function Col({ player, idx, target, winner, ph, onAdd, onRen, t }) {
   const dim = winner && winner !== player;
+  const atTarget = player.p >= target;
   return (
     <div style={{
       flex: 1, display: "flex", flexDirection: "column",
       opacity: dim ? 0.3 : 1, transition: "opacity .3s",
     }}>
       {/* Name */}
-      <div style={{ textAlign: "center", padding: ph ? "12px 6px 8px" : "16px 10px 10px", borderBottom: `1px solid ${t.brd}` }}>
-        <EN name={player.name} onSave={n => onRen(idx, n)} sz={ph ? 16 : 19} />
+      <div style={{ textAlign: "center", padding: ph ? "8px 6px 6px" : "12px 10px 8px", borderBottom: `1px solid ${t.brd}` }}>
+        <EN name={player.name} onSave={n => onRen(idx, n)} sz={ph ? 15 : 18} />
       </div>
 
       {/* Tally (flex-grow, scrollable) */}
       <div style={{
         flex: 1, display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "flex-start",
-        padding: ph ? "14px 10px" : "20px 14px",
+        alignItems: "center", justifyContent: "center",
+        padding: ph ? "6px 6px" : "10px 10px",
         overflowY: "auto", WebkitOverflowScrolling: "touch",
+        minHeight: 0,
       }}>
         {target === 30 && (
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: t.txtM, marginBottom: 8, fontFamily: "'DM Sans'" }}>MALAS</div>
+          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 2, color: t.txtM, marginBottom: 4, fontFamily: "'DM Sans'" }}>MALAS</div>
         )}
         <TrucoTally count={player.p} color={t.pri} divAt={target === 30 ? 15 : null} />
       </div>
 
       {/* Score */}
-      <div style={{ textAlign: "center", padding: ph ? "12px 0" : "16px 0", borderTop: `1px solid ${t.brd}` }}>
+      <div style={{ textAlign: "center", padding: ph ? "6px 0" : "10px 0", borderTop: `1px solid ${t.brd}` }}>
         <div style={{
           fontFamily: "'Playfair Display'", fontWeight: 800,
-          fontSize: ph ? 60 : 72, color: t.pri, lineHeight: 1,
+          fontSize: ph ? 48 : 64, color: t.pri, lineHeight: 1,
         }}>{player.p}</div>
       </div>
 
-      {/* Buttons — full-width rows */}
-      <div style={{ display: "flex", flexDirection: "column", gap: ph ? 6 : 8, padding: ph ? "8px 10px 14px" : "10px 16px 18px", borderTop: `1px solid ${t.brd}` }}>
+      {/* Buttons — full-width rows, disabled when at target */}
+      <div style={{ display: "flex", flexDirection: "column", gap: ph ? 4 : 6, padding: ph ? "6px 8px 10px" : "8px 14px 14px", borderTop: `1px solid ${t.brd}` }}>
         {[1, 2, 3].map(v => (
-          <button key={v} onClick={() => onAdd(idx, v)} style={{
-            background: t.pri, color: "#fff", border: "none",
-            borderRadius: 14, height: ph ? 52 : 56, width: "100%",
-            fontSize: ph ? 20 : 22, fontWeight: 800, fontFamily: "'Playfair Display'",
-            cursor: "pointer", touchAction: "manipulation",
-            boxShadow: "0 1px 3px rgba(0,0,0,.1)",
+          <button key={v} onClick={() => !atTarget && onAdd(idx, v)} disabled={atTarget} style={{
+            background: atTarget ? t.bgS : t.pri, color: atTarget ? t.txtF : "#fff", border: "none",
+            borderRadius: 12, height: ph ? 44 : 50, width: "100%",
+            fontSize: ph ? 18 : 20, fontWeight: 800, fontFamily: "'Playfair Display'",
+            cursor: atTarget ? "default" : "pointer", touchAction: "manipulation",
+            boxShadow: atTarget ? "none" : "0 1px 3px rgba(0,0,0,.1)",
+            opacity: atTarget ? 0.4 : 1,
           }}>+{v}</button>
         ))}
       </div>
@@ -173,12 +176,15 @@ function Truco({ onBack, onContinueChange }) {
   const goBack = async () => { if (started) persist(); onContinueChange?.(started ? "truco" : null); onBack(); };
 
   const add = (i, v) => {
+    // Don't allow adding past target
+    if (sc[i].p >= target) return;
     setLastSc(clone(sc));
-    const u = sc.map((r, idx) => idx === i ? { ...r, p: Math.max(0, r.p + v) } : r);
+    const newP = Math.min(target, Math.max(0, sc[i].p + v));
+    const u = sc.map((r, idx) => idx === i ? { ...r, p: newP } : r);
     setSc(u);
     persist(u);
     if (sounds) vib();
-    if (sounds && u[i].p >= target) vibWin();
+    if (sounds && newP >= target) vibWin();
   };
 
   const ren = (i, n) => {
@@ -201,11 +207,15 @@ function Truco({ onBack, onContinueChange }) {
   const doShare = () => shareResult("Truco - " + target + " pts", sc.map(s => `${s.name}: ${s.p}`));
 
   // ── Loading ──
-  if (loading) return <div><Hdr title="Truco" emoji="🂡" onBack={goBack} /><div style={{ padding: 40, textAlign: "center", color: t.txtM }}>…</div></div>;
+  if (loading) return <div style={{ minHeight: "100vh", background: t.bg }}><div style={{ padding: 40, textAlign: "center", color: t.txtM }}>…</div></div>;
 
   // ── Setup ──
   if (!started) return (
-    <div><Hdr title="Truco" emoji="🂡" onBack={goBack} />
+    <div style={{ minHeight: "100vh", background: t.bg }}>
+      <div style={{ padding: "16px 16px 0" }}>
+        <button onClick={goBack} style={{ background: t.card, border: `1px solid ${t.brd}`, color: t.txt, fontSize: 16, borderRadius: 10,
+          width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation" }}>←</button>
+      </div>
       <div style={{ maxWidth: 420, margin: "0 auto", padding: "20px 20px 56px", display: "flex", flexDirection: "column", gap: 16 }}>
         {step === 0 && <>
           <p style={{ fontSize: 17, color: t.pri, textAlign: "center", margin: 0, fontFamily: "'Playfair Display'", fontWeight: 700 }}>{L.howMany}</p>
@@ -240,15 +250,22 @@ function Truco({ onBack, onContinueChange }) {
   );
 
   // ════════════════════════════════════════════
-  // GAME SCREEN
+  // GAME SCREEN — minimal header, full-screen layout
   // ════════════════════════════════════════════
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: t.bg, overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", background: t.bg, overflow: "hidden" }}>
 
-      <Hdr title="Truco" emoji="🂡" onBack={goBack} sub={`A ${target}`} icons={<>
-        <IcoBtn onClick={doShare} t={t}>📤</IcoBtn>
-        <IcoBtn onClick={() => setModal("new")} t={t}>🔄</IcoBtn>
-      </>} />
+      {/* Minimal header — just back arrow and target, share/new tucked small */}
+      <div style={{ display: "flex", alignItems: "center", padding: ph ? "8px 10px" : "10px 14px", gap: 8, flexShrink: 0 }}>
+        <button onClick={goBack} style={{
+          background: "none", border: "none", color: t.txtM, fontSize: 18,
+          cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
+        }}>←</button>
+        <span style={{ fontSize: 12, color: t.txtM, fontFamily: "'DM Sans'", fontWeight: 600 }}>A {target}</span>
+        <div style={{ flex: 1 }} />
+        <button onClick={doShare} style={{ background: "none", border: "none", color: t.txtM, fontSize: 14, cursor: "pointer", padding: 4, touchAction: "manipulation" }}>📤</button>
+        <button onClick={() => setModal("new")} style={{ background: "none", border: "none", color: t.txtM, fontSize: 14, cursor: "pointer", padding: 4, touchAction: "manipulation" }}>🔄</button>
+      </div>
 
       {/* Modals */}
       {modal && <Modal onClose={() => setModal(null)}>
@@ -265,29 +282,29 @@ function Truco({ onBack, onContinueChange }) {
 
       {/* Winner */}
       {winner && (
-        <div style={{ textAlign: "center", padding: 12, background: `linear-gradient(135deg, ${t.pri}, ${t.priL})`, color: "#fff" }}>
-          <div style={{ fontSize: 20, fontFamily: "'Playfair Display'", fontWeight: 800 }}>🏆 ¡{winner.name} {L.wins}!</div>
-          <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 6 }}>
-            <B onClick={doShare} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 12, padding: "6px 12px", minHeight: 34 }}>📤</B>
-            <B onClick={rematch} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 12, padding: "6px 12px", minHeight: 34 }}>{L.rematch}</B>
-            <B onClick={() => setModal("new")} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 12, padding: "6px 12px", minHeight: 34 }}>{L.yesNew}</B>
+        <div style={{ textAlign: "center", padding: ph ? 8 : 12, background: `linear-gradient(135deg, ${t.pri}, ${t.priL})`, color: "#fff", flexShrink: 0 }}>
+          <div style={{ fontSize: ph ? 16 : 20, fontFamily: "'Playfair Display'", fontWeight: 800 }}>🏆 ¡{winner.name} {L.wins}!</div>
+          <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 4 }}>
+            <B onClick={doShare} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 11, padding: "4px 10px", minHeight: 30 }}>📤</B>
+            <B onClick={rematch} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 11, padding: "4px 10px", minHeight: 30 }}>{L.rematch}</B>
+            <B onClick={() => setModal("new")} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 11, padding: "4px 10px", minHeight: 30 }}>{L.yesNew}</B>
           </div>
         </div>
       )}
 
       {/* ── SCOREBOARD ── */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        <Col player={sc[0]} idx={0} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} L={L} />
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+        <Col player={sc[0]} idx={0} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} />
         <div style={{ width: 1, background: t.brd, flexShrink: 0 }} />
-        <Col player={sc[1]} idx={1} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} L={L} />
+        <Col player={sc[1]} idx={1} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} />
       </div>
 
       {/* Simple floating undo button */}
       {lastSc && (
         <button onClick={() => { setSc(lastSc); persist(lastSc); setLastSc(null); }}
-          style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-            background: t.card, border: `1px solid ${t.brd}`, borderRadius: 12,
-            padding: "8px 20px", fontSize: 13, fontWeight: 600, color: t.txtM,
+          style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)",
+            background: t.card, border: `1px solid ${t.brd}`, borderRadius: 10,
+            padding: "6px 16px", fontSize: 12, fontWeight: 600, color: t.txtM,
             cursor: "pointer", boxShadow: t.shH, zIndex: 50,
             fontFamily: "'DM Sans'", touchAction: "manipulation" }}>
           {L.undo}
