@@ -3,10 +3,12 @@ import { Ctx, FONTS, strings, light, dark, ST, initWakeLock, B, Modal, useApp } 
 import Truco from './games/Truco.jsx';
 import Burako from './games/Burako.jsx';
 import Generala from './games/Generala.jsx';
+import Burako2 from './games/Burako2.jsx';
 
 const GAMES = {
   truco: { name: "Truco", emoji: "🂡" },
   burako: { name: "Burako", emoji: "🃏" },
+  burako2: { name: "Burako 2", emoji: "🃏" },
   generala: { name: "Generala", emoji: "🎲" },
 };
 
@@ -22,9 +24,10 @@ function App() {
 
   useEffect(() => {
     ST.load("app-dark").then(d => { if (d !== null) setDk(d) });
-    Promise.all([ST.load("truco-game"), ST.load("burako-game"), ST.load("generala-game")]).then(([tr, bk, ge]) => {
+    Promise.all([ST.load("truco-game"), ST.load("burako-game"), ST.load("burako2-game"), ST.load("generala-game")]).then(([tr, bk, bk2, ge]) => {
       if (tr?.started) setContGame("truco");
       else if (bk?.teams?.length) setContGame("burako");
+      else if (bk2?.teams?.length) setContGame("burako2");
       else if (ge?.ps?.length) setContGame("generala");
     });
     initWakeLock().then(l => { wakeLockRef.current = l });
@@ -46,6 +49,7 @@ function App() {
 
         {sel === "truco" ? <Truco onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
           : sel === "burako" ? <Burako onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
+          : sel === "burako2" ? <Burako2 onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
           : sel === "generala" ? <Generala onBack={() => setSel(null)} onContinueChange={handleContinueChange} />
           : <Home {...{ t, dk, tog, L, setSel, contGame, clearCurrent }} />}
       </div>
