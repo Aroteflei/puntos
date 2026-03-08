@@ -28,8 +28,8 @@ function HandWizard({ teams, cfg, calc, hf, setHf, onSave, onCancel, editIdx, L,
     setHf(u);
   };
 
-  const goNext = () => { if (step < totalSteps - 1) setStep(step + 1); };
-  const goBack = () => { if (step > 0) setStep(step - 1); else onCancel(); };
+  const goNext = () => { if (step < totalSteps - 1) { setTyping(false); setStep(step + 1); } };
+  const goBack = () => { setTyping(false); if (step > 0) setStep(step - 1); else onCancel(); };
 
   const progress = (step + 1) / totalSteps;
 
@@ -37,6 +37,8 @@ function HandWizard({ teams, cfg, calc, hf, setHf, onSave, onCancel, editIdx, L,
   const fieldLabels = [L.puras, L.canastas, L.puntos];
   const fieldSteps = [1, 1, 5];
   const fieldMins = [0, 0, undefined];
+  const [typing, setTyping] = useState(false);
+  const inputRef = useRef(null);
 
   return (
     <div style={{
@@ -67,9 +69,26 @@ function HandWizard({ teams, cfg, calc, hf, setHf, onSave, onCancel, editIdx, L,
               {fieldLabels[info.field]}
             </div>
 
-            <div style={{ fontSize: 64, fontFamily: "'Playfair Display'", fontWeight: 800, color: t.pri, marginBottom: 24, lineHeight: 1 }}>
-              {hf[info.teamIdx]?.[fieldKeys[info.field]] || 0}
-            </div>
+            {typing ? (
+              <input ref={inputRef} type="number" autoFocus
+                defaultValue={hf[info.teamIdx]?.[fieldKeys[info.field]] || 0}
+                onBlur={e => { const v = parseInt(e.target.value) || 0; const min = fieldMins[info.field]; upField(info.teamIdx, fieldKeys[info.field], min !== undefined ? Math.max(min, v) : v); setTyping(false); }}
+                onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
+                style={{
+                  fontSize: 56, fontFamily: "'Playfair Display'", fontWeight: 800, color: t.pri,
+                  marginBottom: 24, lineHeight: 1, textAlign: "center", width: "100%", maxWidth: 200,
+                  background: t.card, border: `2px solid ${t.pri}`, borderRadius: 12, padding: "8px 4px",
+                  outline: "none",
+                }} />
+            ) : (
+              <div onClick={() => setTyping(true)} style={{
+                fontSize: 64, fontFamily: "'Playfair Display'", fontWeight: 800, color: t.pri,
+                marginBottom: 24, lineHeight: 1, cursor: "pointer",
+                borderBottom: `2px dashed ${t.pri}40`, paddingBottom: 4,
+              }}>
+                {hf[info.teamIdx]?.[fieldKeys[info.field]] || 0}
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
               <button onClick={() => {
