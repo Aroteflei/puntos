@@ -468,7 +468,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                         <div style={{ fontSize: 14, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.pts}</div>
                         {!isLast && <>
                           <div style={{ height: 1, background: t.txt, opacity: .12, width: "40%", margin: "3px 0 1px" }} />
-                          <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 400, color: t.txtM }}>{cumul}</span>
+                          <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 500, color: t.txtM }}>{cumul}</span>
                         </>}
                       </>
                     ) : (
@@ -479,7 +479,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                         <div style={{ fontSize: 14, lineHeight: 1.4, visibility: "hidden" }}>{'\u00A0'}</div>
                         {!isLast && <>
                           <div style={{ height: 1, background: t.txt, opacity: .12, width: "40%", margin: "3px 0 1px" }} />
-                          <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 400, color: t.txtM }}>{cumul}</span>
+                          <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 500, color: t.txtM }}>{cumul}</span>
                         </>}
                       </>
                     )}
@@ -492,7 +492,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
           {/* Total row */}
           <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: 4, marginTop: 6 }}>
             <div style={{
-              padding: "10px 2px", fontSize: 9, fontWeight: 600, color: "#fff", letterSpacing: 1.5,
+              padding: "10px 6px", fontSize: 9, fontWeight: 600, color: "#fff", letterSpacing: 1.5,
               fontFamily: F.sans, background: t.pri, borderRadius: "0 0 0 6px",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>TOTAL</div>
@@ -505,7 +505,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                   border: isLeader ? `1.5px solid ${t.pri}` : `1px solid ${t.brd}`,
                   borderRadius: ti === teams.length - 1 ? "0 0 6px 0" : 0,
                 }}>
-                  <span style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, color: t.pri }}>{total(tm)}</span>
+                  <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: t.pri }}>{total(tm)}</span>
                 </div>
               );
             })}
