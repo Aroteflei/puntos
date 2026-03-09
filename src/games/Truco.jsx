@@ -96,13 +96,6 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
         <EN name={player.name} onSave={n => onRen(idx, n)} sz={18} fw={700} />
       </div>
 
-      {/* Score number — compact in normal, centered in picapica */}
-      <div style={{ textAlign: "center", padding: picaPhase ? "12px 0" : "2px 0", flex: picaPhase ? 1 : undefined, display: "flex", alignItems: "center", justifyContent: "center", borderTop: `1px solid ${t.brd}` }}>
-        <div style={{ fontFamily: F.serif, fontSize: ph ? 34 : 40, color: t.pri, lineHeight: 1, letterSpacing: -1 }}>
-          {player.p}
-        </div>
-      </div>
-
       {/* Tallies — scrollable, tap to add +1 */}
       {!picaPhase && (
         <div style={{
@@ -127,6 +120,13 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
           )}
         </div>
       )}
+
+      {/* Score number — at bottom in normal, centered in picapica */}
+      <div style={{ textAlign: "center", padding: picaPhase ? "12px 0" : "4px 0 2px", flex: picaPhase ? 1 : undefined, display: "flex", alignItems: "center", justifyContent: "center", borderTop: `1px solid ${t.brd}` }}>
+        <div style={{ fontFamily: F.serif, fontSize: ph ? 34 : 40, color: t.pri, lineHeight: 1, letterSpacing: -1 }}>
+          {player.p}
+        </div>
+      </div>
 
       {/* Buttons */}
       {!picaPhase && !winner && (
