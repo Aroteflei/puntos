@@ -706,6 +706,20 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
     advanceNext();
   };
 
+  // Keep bottom bar visible above iOS keyboard
+  const [barBottom, setBarBottom] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const off = window.innerHeight - vv.height - vv.offsetTop;
+      setBarBottom(Math.max(0, off));
+    };
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    return () => { vv.removeEventListener("resize", onResize); vv.removeEventListener("scroll", onResize); };
+  }, []);
+
   return (
     <div ref={formRef} style={{
       position: "fixed", inset: 0, background: t.bg, zIndex: 80,
@@ -717,7 +731,7 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
         </span>
       </div>
 
-      <div style={{ flex: 1, padding: "0 24px", overflow: "auto" }}>
+      <div style={{ flex: 1, padding: "0 24px", overflow: "auto", paddingBottom: barBottom > 0 ? barBottom + 60 : 0 }}>
         {teams.map((tm, i) => (
           <div key={i} style={{ padding: "16px 0", borderBottom: i < teams.length - 1 ? `1px solid ${t.brd}` : "none" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -790,7 +804,11 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
         ))}
       </div>
 
-      <div style={{ padding: "8px 24px 24px", flexShrink: 0, display: "flex", gap: 10 }}>
+      <div style={{
+        position: "fixed", left: 0, right: 0, bottom: barBottom,
+        padding: "8px 24px", paddingBottom: barBottom > 0 ? 8 : 24,
+        display: "flex", gap: 10, background: t.bg, borderTop: `1px solid ${t.brd}`, zIndex: 81,
+      }}>
         <button onClick={onCancel} style={{
           flex: 0, minHeight: 48, padding: "0 20px", background: "transparent", border: `1px solid ${t.brd}`,
           borderRadius: 8, color: t.txtM, fontSize: 14, fontFamily: F.sans, cursor: "pointer", touchAction: "manipulation",
