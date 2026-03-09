@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp, ST, clone, shareResult, vib, vibWin, fmtDate, F, B, EN, Modal, UndoBar, HomeIcon } from '../lib.jsx';
 
-function TrucoTally({ count, color, divAt, buenasColor, collapsed }) {
+function TrucoTally({ count, color, divAt, buenasColor, collapsed, onClick }) {
   const SZ = 64, PD = 5, GAP = 6;
   const displayCount = collapsed ? Math.max(0, count - (divAt || 0)) : count;
   const showDiv = divAt && !collapsed;
@@ -72,49 +72,63 @@ function TrucoTally({ count, color, divAt, buenasColor, collapsed }) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: GAP }}>
+    <div onClick={onClick} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: GAP, cursor: onClick ? "pointer" : undefined }}>
       {els.length > 0 ? els : <div style={{ color, opacity: 0.15, fontSize: 24 }}>—</div>}
     </div>
   );
 }
 
-function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase }) {
+function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, collapsed, onToggleCollapse, showCollapseToggle }) {
   const dim = winner && winner !== player;
   const atTarget = player.p >= target;
-  const [collapsed, setCollapsed] = useState(false);
+  const hasBuenas = target === 30;
+
+  const handleTallyTap = () => {
+    if (!winner && !picaPhase && !atTarget) {
+      onAdd(idx, 1);
+    }
+  };
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", opacity: dim ? 0.3 : 1, transition: "opacity .3s" }}>
-      <div style={{ textAlign: "center", padding: "12px 10px 10px", borderBottom: `1px solid ${t.brd}` }}>
+      {/* Name */}
+      <div style={{ textAlign: "center", padding: "12px 10px 6px" }}>
         <EN name={player.name} onSave={n => onRen(idx, n)} sz={18} fw={700} />
       </div>
 
+      {/* Tallies — scrollable, tap to add +1 (above number so visible without scroll) */}
       {!picaPhase && (
         <div style={{
           flex: "1 1 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
-          padding: "10px 10px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 80, maxHeight: "42vh",
+          padding: "6px 10px 4px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 60,
+          borderTop: `1px solid ${t.brd}`,
         }}>
-          {target === 30 && !collapsed && (
+          {hasBuenas && collapsed && (
+            <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: 2, color: t.ok, marginBottom: 4, fontFamily: F.sans }}>BUENAS</div>
+          )}
+          {hasBuenas && !collapsed && player.p > 0 && (
             <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: 2, color: t.err, marginBottom: 4, fontFamily: F.sans }}>MALAS</div>
           )}
-          {target === 30 && player.p > 15 && (
-            <button onClick={() => setCollapsed(c => !c)} style={{
+          <TrucoTally count={player.p} color={t.txt} divAt={hasBuenas ? 15 : null} buenasColor={t.ok} collapsed={collapsed} onClick={handleTallyTap} />
+          {showCollapseToggle && (
+            <button onClick={(e) => { e.stopPropagation(); onToggleCollapse?.(); }} style={{
               background: "none", border: `1px solid ${t.brd}`, borderRadius: 10, fontSize: 10, color: t.txtM,
-              fontFamily: F.sans, cursor: "pointer", padding: "2px 8px", marginBottom: 6, touchAction: "manipulation",
+              fontFamily: F.sans, cursor: "pointer", padding: "2px 8px", marginTop: 6, touchAction: "manipulation",
             }}>
               {collapsed ? "Ver todo" : "Solo buenas"}
             </button>
           )}
-          <TrucoTally count={player.p} color={t.txt} divAt={target === 30 ? 15 : null} buenasColor={t.ok} collapsed={collapsed} />
         </div>
       )}
 
-      <div style={{ textAlign: "center", padding: picaPhase ? "16px 0" : "10px 0", borderTop: `1px solid ${t.brd}`, flex: picaPhase ? 1 : undefined, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontFamily: F.serif, fontSize: ph ? 48 : 64, color: t.pri, lineHeight: 1, letterSpacing: -1 }}>
+      {/* Score number — below tallies in normal mode, centered in picapica */}
+      <div style={{ textAlign: "center", padding: picaPhase ? "12px 0" : "4px 0 2px", flex: picaPhase ? 1 : undefined, display: "flex", alignItems: "center", justifyContent: "center", borderTop: !picaPhase ? `1px solid ${t.brd}` : undefined }}>
+        <div style={{ fontFamily: F.serif, fontSize: ph ? 40 : 52, color: t.pri, lineHeight: 1, letterSpacing: -1 }}>
           {player.p}
         </div>
       </div>
 
+      {/* Buttons */}
       {!picaPhase && !winner && (
         <div style={{ display: "flex", gap: 5, padding: "8px 8px 14px", borderTop: `1px solid ${t.brd}` }}>
           <button onClick={() => player.p > 0 && onAdd(idx, -1)} disabled={atTarget || player.p <= 0} style={{
@@ -195,9 +209,11 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const [picaDuels, setPicaDuels] = useState([]);
   const [picaCurrent, setPicaCurrent] = useState({ t0: 0, t1: 0 });
   const [picaRound, setPicaRound] = useState(0);
+  const [collapsed, setCollapsed] = useState(false);
   const [hist, setHist] = useState([]);
   const [showH, setShowH] = useState(false);
   const nameRefs = useRef([]);
+  const prevBothBuenasRef = useRef(false);
   const ph = typeof window !== "undefined" && window.innerWidth <= 480;
 
   useEffect(() => {
@@ -229,6 +245,16 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     ST.save("truco-game", { started: true, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound });
     onContinueChange?.("truco");
   }, [started, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound]);
+
+  // Auto-collapse both when both pass buenas (15+ in a game to 30)
+  const bothInBuenas = target === 30 && sc.length === 2 && sc[0]?.p >= 15 && sc[1]?.p >= 15;
+  const showCollapseToggle = bothInBuenas;
+  useEffect(() => {
+    if (bothInBuenas && !prevBothBuenasRef.current) {
+      setCollapsed(true);
+    }
+    prevBothBuenasRef.current = bothInBuenas;
+  }, [bothInBuenas]);
 
   const persist = (next = {}) => {
     if (!started) return;
@@ -280,24 +306,19 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     const newP = Math.min(target, Math.max(0, sc[i].p + v));
     const nextSc = sc.map((row, idx) => idx === i ? { ...row, p: newP } : row);
 
-    // Check pica pica transitions
-    const wasInRange = isInPicaRange(sc);
-    const nowInRange = isInPicaRange(nextSc);
-
-    if (!wasInRange && nowInRange && !picaPhase) {
-      // Entering pica pica
-      setPicaPhase(true);
-      setPicaDuels([]);
-      setPicaCurrent({ t0: 0, t1: 0 });
-      setPicaRound(0);
-      setPicaNotif("start");
-      setTimeout(() => setPicaNotif(null), 3500);
-    }
-    if (wasInRange && !nowInRange && picaPhase) {
-      // Exiting pica pica
-      setPicaPhase(false);
-      setPicaNotif("end");
-      setTimeout(() => setPicaNotif(null), 3500);
+    // Check pica pica entry — only when NOT already in picaPhase
+    // Exit is handled at cycle boundaries (advanceFromManoRedonda), not mid-cycle
+    if (!picaPhase) {
+      const wasInRange = isInPicaRange(sc);
+      const nowInRange = isInPicaRange(nextSc);
+      if (!wasInRange && nowInRange) {
+        setPicaPhase(true);
+        setPicaDuels([]);
+        setPicaCurrent({ t0: 0, t1: 0 });
+        setPicaRound(0);
+        setPicaNotif("start");
+        setTimeout(() => setPicaNotif(null), 3500);
+      }
     }
 
     setSc(nextSc);
@@ -317,47 +338,74 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
   const nextDuelo = () => {
     const completed = [...picaDuels, picaCurrent];
-    const cycleLen = picaMode === "suma" ? 4 : 2;
-    const dueloInCycle = picaRound % cycleLen;
-    const isDuelo = picaMode === "suma" ? dueloInCycle < 3 : dueloInCycle === 0;
+    const nextRound = picaRound + 1;
+    const nextDueloInCycle = nextRound % 4;
+    const nextIsManoRedonda = nextDueloInCycle === 3;
 
-    if (isDuelo && picaMode === "suma") {
-      // Suma mode: add both teams' duelo scores to main
-      const nextSc = sc.map((row, idx) => ({
+    // Calculate updated scores
+    let nextSc = sc;
+
+    if (picaMode === "suma") {
+      // Suma mode: add each duelo's scores to main immediately
+      nextSc = sc.map((row, idx) => ({
         ...row, p: Math.min(target, row.p + (idx === 0 ? picaCurrent.t0 : picaCurrent.t1))
       }));
-      setSc(nextSc);
-      persist({ sc: nextSc });
     }
 
-    const nextRound = picaRound + 1;
-    const nextDueloInCycle = nextRound % cycleLen;
-    const nextIsManoRedonda = picaMode === "suma" ? nextDueloInCycle === 3 : nextDueloInCycle === 1;
-
     if (nextIsManoRedonda && picaMode === "diff") {
-      // Diferencia mode: after 1 duelo set, calc diff and add to winner
+      // Diferencia mode: after 3 duelos, calc total diff and add to winner only
       const t0Total = completed.reduce((s, d) => s + d.t0, 0);
       const t1Total = completed.reduce((s, d) => s + d.t1, 0);
       if (t0Total !== t1Total) {
         const diff = Math.abs(t0Total - t1Total);
         const winnerIdx = t0Total > t1Total ? 0 : 1;
-        const nextSc = sc.map((row, idx) => idx === winnerIdx ? { ...row, p: Math.min(target, row.p + diff) } : row);
-        setSc(nextSc);
-        persist({ sc: nextSc });
+        nextSc = nextSc.map((row, idx) => idx === winnerIdx ? { ...row, p: Math.min(target, row.p + diff) } : row);
       }
     }
 
+    // Apply state — never exit picapica mid-cycle, let advanceFromManoRedonda handle it
+    if (nextSc !== sc) setSc(nextSc);
     setPicaDuels(completed);
     setPicaCurrent({ t0: 0, t1: 0 });
     setPicaRound(nextRound);
-    persist({ picaDuels: completed, picaCurrent: { t0: 0, t1: 0 }, picaRound: nextRound });
+
+    // Single persist call with all updates
+    persist({
+      sc: nextSc,
+      picaDuels: completed,
+      picaCurrent: { t0: 0, t1: 0 },
+      picaRound: nextRound,
+    });
     if (sounds) vib();
   };
 
-  const picaCycleLen = picaMode === "suma" ? 4 : 2;
-  const picaDueloInCycle = picaRound % picaCycleLen;
-  const isManoRedonda = picaMode === "suma" ? picaDueloInCycle === 3 : picaDueloInCycle === 1;
-  const picaDueloNum = picaMode === "suma" ? picaDueloInCycle + 1 : 1;
+  const advanceFromManoRedonda = () => {
+    // Move from mano redonda to the next duelo cycle
+    const nextRound = picaRound + 1;
+    // Check if still in pica range
+    const stillInRange = isInPicaRange(sc);
+    if (!stillInRange) {
+      setPicaPhase(false);
+      setPicaDuels([]);
+      setPicaCurrent({ t0: 0, t1: 0 });
+      setPicaRound(0);
+      setPicaNotif("end");
+      setTimeout(() => setPicaNotif(null), 3500);
+      persist({ picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0 });
+    } else {
+      // Reset duels for next cycle, advance round
+      setPicaDuels([]);
+      setPicaCurrent({ t0: 0, t1: 0 });
+      setPicaRound(nextRound);
+      persist({ picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: nextRound });
+    }
+    if (sounds) vib();
+  };
+
+  // Both modes: 3 duelos + 1 mano redonda = cycle of 4
+  const picaDueloInCycle = picaRound % 4;
+  const isManoRedonda = picaDueloInCycle === 3;
+  const picaDueloNum = picaDueloInCycle + 1;
 
   const ren = (i, nextName) => {
     const members = nextName.split("-").map((part) => part.trim()).filter(Boolean);
@@ -390,6 +438,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     setPicaDuels([]);
     setPicaCurrent({ t0: 0, t1: 0 });
     setPicaRound(0);
+    setCollapsed(false);
+    prevBothBuenasRef.current = false;
     setModal(null);
     lastStateRef.current = null;
     setToast({ text: L.revancha });
@@ -431,6 +481,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     setPicaDuels([]);
     setPicaCurrent({ t0: 0, t1: 0 });
     setPicaRound(0);
+    setCollapsed(false);
+    prevBothBuenasRef.current = false;
     await ST.del("truco-game");
     onContinueChange?.(null);
   };
@@ -634,10 +686,10 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
       )}
 
       {/* Main columns */}
-      <div style={{ flex: picaPhase ? undefined : 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
-        <Col player={sc[0]} idx={0} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} picaPhase={picaPhase && !isManoRedonda} />
+      <div style={{ flex: (picaPhase && !isManoRedonda) ? undefined : 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+        <Col player={sc[0]} idx={0} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} picaPhase={picaPhase && !isManoRedonda} collapsed={bothInBuenas && collapsed} onToggleCollapse={() => setCollapsed(c => !c)} showCollapseToggle={showCollapseToggle} />
         <div style={{ width: 1, background: t.brd, flexShrink: 0 }} />
-        <Col player={sc[1]} idx={1} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} picaPhase={picaPhase && !isManoRedonda} />
+        <Col player={sc[1]} idx={1} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} picaPhase={picaPhase && !isManoRedonda} collapsed={bothInBuenas && collapsed} onToggleCollapse={() => setCollapsed(c => !c)} showCollapseToggle={showCollapseToggle} />
       </div>
 
       {/* Pica pica duelo scorer */}
@@ -646,7 +698,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
           {/* Phase label */}
           <div style={{ textAlign: "center", marginBottom: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: t.pri, fontFamily: F.sans, letterSpacing: 1 }}>
-              PICAPICA · {L.duelo} {picaDueloNum}{picaMode === "suma" ? " de 3" : ""}
+              PICAPICA · {L.duelo} {picaDueloNum} de 3
             </span>
           </div>
 
@@ -698,11 +750,18 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
       {/* Mano redonda indicator */}
       {picaPhase && !winner && isManoRedonda && (
-        <div style={{ padding: "8px 16px", borderTop: `1px solid ${t.pri}30`, background: `${t.ok}10`, textAlign: "center", flexShrink: 0 }}>
-          <span style={{ fontSize: 12, color: t.ok, fontWeight: 600, fontFamily: F.sans }}>{L.manoRedonda}</span>
-          <span style={{ fontSize: 11, color: t.txtM, fontFamily: F.sans, marginLeft: 6 }}>
-            (usá los botones de arriba)
-          </span>
+        <div style={{ padding: "12px 16px", borderTop: `2px solid ${t.ok}`, background: `${t.ok}10`, textAlign: "center", flexShrink: 0 }}>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ fontSize: 13, color: t.ok, fontWeight: 700, fontFamily: F.sans, letterSpacing: 1 }}>MANO REDONDA</span>
+          </div>
+          <div style={{ fontSize: 11, color: t.txtM, fontFamily: F.sans, marginBottom: 10 }}>
+            Usá los botones de arriba para anotar
+          </div>
+          <button onClick={advanceFromManoRedonda} style={{
+            background: t.pri, color: "#fff", border: "none", borderRadius: 8,
+            fontSize: 13, fontFamily: F.sans, fontWeight: 600, padding: "10px 24px",
+            cursor: "pointer", touchAction: "manipulation",
+          }}>Siguiente picapica →</button>
         </div>
       )}
 
@@ -746,7 +805,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "new" ? "Se reinician los puntos a cero." : L.losesAll}</p>
         <div style={{ display: "flex", gap: 10 }}>
           <B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
-          {modal === "new" ? <B onClick={async () => { await saveToHistory(); const nextSc = sc.map(s => ({ ...s, p: 0 })); setSc(nextSc); setPicaPhase(false); setPicaDuels([]); setPicaCurrent({ t0: 0, t1: 0 }); setPicaRound(0); setModal(null); lastStateRef.current = null; setToast({ text: L.nuevaPartida }); persist({ sc: nextSc, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0 }); }} s={{ flex: 1 }}>{L.nuevaPartida}</B>
+          {modal === "new" ? <B onClick={async () => { await saveToHistory(); const nextSc = sc.map(s => ({ ...s, p: 0 })); setSc(nextSc); setPicaPhase(false); setPicaDuels([]); setPicaCurrent({ t0: 0, t1: 0 }); setPicaRound(0); setCollapsed(false); prevBothBuenasRef.current = false; setModal(null); lastStateRef.current = null; setToast({ text: L.nuevaPartida }); persist({ sc: nextSc, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0 }); }} s={{ flex: 1 }}>{L.nuevaPartida}</B>
             : <B v="err" onClick={resetAll} s={{ flex: 1 }}>{L.reset}</B>}
         </div>
       </div>
