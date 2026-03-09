@@ -90,7 +90,7 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
   };
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", opacity: dim ? 0.3 : 1, transition: "opacity .3s" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", opacity: dim ? 0.3 : 1, transition: "opacity .3s", paddingBottom: picaPhase ? 0 : 30 }}>
       {/* Name */}
       <div style={{ textAlign: "center", padding: "12px 10px 6px" }}>
         <EN name={player.name} onSave={n => onRen(idx, n)} sz={18} fw={700} />
@@ -99,7 +99,7 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
       {/* Tallies — scrollable, tap to add +1 */}
       {!picaPhase && (
         <div style={{
-          flex: "0 1 auto", display: "flex", flexDirection: "column", alignItems: "center",
+          flex: "1 1 0", display: "flex", flexDirection: "column", alignItems: "center",
           padding: "6px 10px 4px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 60,
           borderTop: `1px solid ${t.brd}`,
         }}>
@@ -130,7 +130,7 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
 
       {/* Buttons — pushed to bottom */}
       {!picaPhase && !winner && (
-        <div style={{ display: "flex", gap: 5, padding: "8px 8px 14px", borderTop: `1px solid ${t.brd}`, marginTop: "auto" }}>
+        <div style={{ display: "flex", gap: 5, padding: "8px 8px 14px", borderTop: `1px solid ${t.brd}` }}>
           <button onClick={() => player.p > 0 && onAdd(idx, -1)} disabled={atTarget || player.p <= 0} style={{
             background: "transparent", color: (player.p <= 0) ? t.txtF : t.err,
             border: `1px solid ${(player.p <= 0) ? t.brd : t.err}`,
