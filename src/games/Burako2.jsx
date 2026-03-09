@@ -607,6 +607,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
 function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
   const isEdit = editIdx !== null;
   const formRef = useRef(null);
+  const [focusIdx, setFocusIdx] = useState(0);
 
   const buildVals = () => teams.map((tm) => {
     if (isEdit && tm.hands[editIdx]) {
@@ -626,6 +627,9 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
     setVals(buildVals());
   }, [teams, editIdx]);
 
+  const getInputs = () => Array.from(formRef.current?.querySelectorAll('input[type="number"]') || []);
+  const inputCount = () => getInputs().length;
+  const isLast = focusIdx >= inputCount() - 1;
 
   const getHandObj = (v) => {
     if (v.mode === "neg") {
@@ -649,16 +653,28 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
     setVals(u);
   };
 
-  // Enter advances through inputs, last Enter saves
+  const advanceNext = () => {
+    const inputs = getInputs();
+    if (focusIdx < inputs.length - 1) {
+      inputs[focusIdx + 1].focus();
+      setFocusIdx(focusIdx + 1);
+    } else {
+      onSave(vals.map(v => getHandObj(v)));
+    }
+  };
+
+  // Track focus index when user taps an input directly
+  const handleFocus = (e) => {
+    const inputs = getInputs();
+    const idx = inputs.indexOf(e.target);
+    if (idx >= 0) setFocusIdx(idx);
+  };
+
+  // Enter advances through inputs, last Enter saves (desktop)
   const handleKeyDown = (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
-    const inputs = formRef.current?.querySelectorAll('input[type="number"]');
-    if (!inputs) return;
-    const list = Array.from(inputs);
-    const idx = list.indexOf(e.target);
-    if (idx >= 0 && idx < list.length - 1) list[idx + 1].focus();
-    else onSave(vals.map(v => getHandObj(v)));
+    advanceNext();
   };
 
   return (
@@ -700,7 +716,7 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
                   <input type="number" inputMode="numeric" value={vals[i].base}
                     autoFocus={i === 0}
                     onChange={e => upVal(i, "base", e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={handleKeyDown} onFocus={handleFocus}
                     enterKeyHint="next"
                     placeholder="0"
                     style={{
@@ -712,7 +728,7 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
                   <div style={{ fontSize: 11, color: t.txtM, marginBottom: 4, fontFamily: F.sans, letterSpacing: 1, textTransform: "uppercase" }}>Puntos</div>
                   <input type="number" inputMode="numeric" value={vals[i].pts}
                     onChange={e => upVal(i, "pts", e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={handleKeyDown} onFocus={handleFocus}
                     enterKeyHint={i === teams.length - 1 ? "done" : "next"}
                     placeholder="0"
                     style={{
@@ -732,7 +748,7 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
                 <input type="number" inputMode="numeric" value={vals[i].neg}
                   autoFocus={i === 0}
                   onChange={e => upVal(i, "neg", e.target.value)}
-                  onKeyDown={handleKeyDown}
+                  onKeyDown={handleKeyDown} onFocus={handleFocus}
                   enterKeyHint={i === teams.length - 1 ? "done" : "next"}
                   placeholder="0"
                   style={{
@@ -746,8 +762,13 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
       </div>
 
       <div style={{ padding: "8px 24px 24px", flexShrink: 0, display: "flex", gap: 10 }}>
-        <B v="gh" onClick={onCancel} s={{ flex: 1, minHeight: 48 }}>{L.back}</B>
-        <B onClick={() => onSave(vals.map(v => getHandObj(v)))} s={{ flex: 1, minHeight: 48 }}>{L.save}</B>
+        <button onClick={onCancel} style={{
+          flex: 0, minHeight: 48, padding: "0 20px", background: "transparent", border: `1px solid ${t.brd}`,
+          borderRadius: 8, color: t.txtM, fontSize: 14, fontFamily: F.sans, cursor: "pointer", touchAction: "manipulation",
+        }}>{L.back}</button>
+        <B onClick={advanceNext} s={{ flex: 1, minHeight: 48, fontSize: 16 }}>
+          {isLast ? "Guardar ✓" : "Siguiente →"}
+        </B>
       </div>
     </div>
   );
