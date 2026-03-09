@@ -122,7 +122,6 @@ const TEAM_SIZE_OPTIONS = [
 
 const defaultRawNames = (teamSize) => Array.from({ length: teamSize * 2 }, (_, i) => `Jugador ${i + 1}`);
 const maxScore = (scores) => Math.max(...scores.map((s) => s.p), 0);
-const inPicaPhase = (teamSize, scores) => teamSize === 3 && maxScore(scores) >= 5 && maxScore(scores) < 25;
 
 function buildTeamName(rawNames, teamSize, teamIdx) {
   const start = teamIdx * teamSize;
@@ -153,6 +152,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const lastStateRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [picapicaStep, setPicapicaStep] = useState(0);
+  const [picaRange, setPicaRange] = useState([5, 25]);
+  const [picaMode, setPicaMode] = useState("suma");
   const [hist, setHist] = useState([]);
   const [showH, setShowH] = useState(false);
   const nameRefs = useRef([]);
@@ -169,6 +170,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         setRawNames(savedRawNames);
         setSc(savedScore);
         setPicapicaStep(d.picapicaStep ?? 0);
+        if (Array.isArray(d.picaRange) && d.picaRange.length === 2) setPicaRange(d.picaRange);
+        if (d.picaMode === "suma" || d.picaMode === "diff") setPicaMode(d.picaMode);
         setStarted(true);
         onContinueChange?.("truco");
       }
@@ -179,9 +182,9 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
   useEffect(() => {
     if (!started) return;
-    ST.save("truco-game", { started: true, target, teamSize, rawNames, sc, picapicaStep });
+    ST.save("truco-game", { started: true, target, teamSize, rawNames, sc, picapicaStep, picaRange, picaMode });
     onContinueChange?.("truco");
-  }, [started, target, teamSize, rawNames, sc, picapicaStep]);
+  }, [started, target, teamSize, rawNames, sc, picapicaStep, picaRange, picaMode]);
 
   const persist = (next = {}) => {
     if (!started) return;
@@ -192,6 +195,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
       rawNames,
       sc,
       picapicaStep,
+      picaRange,
+      picaMode,
       ...next,
     });
   };
@@ -219,7 +224,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     setSc(fresh);
     setPicapicaStep(0);
     setStarted(true);
-    await ST.save("truco-game", { started: true, target, teamSize, rawNames: safeRawNames, sc: fresh, picapicaStep: 0 });
+    await ST.save("truco-game", { started: true, target, teamSize, rawNames: safeRawNames, sc: fresh, picapicaStep: 0, picaRange, picaMode });
     onContinueChange?.("truco");
   };
 
@@ -238,8 +243,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
     let nextPicaStep = picapicaStep;
     if (teamSize === 3) {
-      const wasInPhase = inPicaPhase(teamSize, sc);
-      const nowInPhase = inPicaPhase(teamSize, nextSc);
+      const wasInPhase = maxScore(sc) >= picaRange[0] && maxScore(sc) < picaRange[1];
+      const nowInPhase = maxScore(nextSc) >= picaRange[0] && maxScore(nextSc) < picaRange[1];
       if (!nowInPhase) nextPicaStep = 0;
       else if (wasInPhase) nextPicaStep = picapicaStep + 1;
       else nextPicaStep = 0;
@@ -301,9 +306,13 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     lastStateRef.current = null;
   };
 
-  const picaActive = inPicaPhase(teamSize, sc);
-  const picaLabel = picaActive ? (picapicaStep % 2 === 0 ? "Mano picapica" : "Mano normal") : null;
-  const picaHint = picaActive ? "En 6 jugadores alterna una mano sí y una no entre 5 y 25." : null;
+  const picaActive = teamSize === 3 && started && sc.length > 0 && maxScore(sc) >= picaRange[0] && maxScore(sc) < picaRange[1];
+  const picaLabel = picaActive
+    ? (picaMode === "suma"
+      ? (picapicaStep % 4 < 3 ? `Picapica · Duelo ${(picapicaStep % 4) + 1} de 3` : "Mano redonda")
+      : (picapicaStep % 2 === 0 ? "Picapica" : "Mano redonda"))
+    : null;
+  const picaHint = picaActive ? `De ${picaRange[0]} a ${picaRange[1]}` : null;
   const rawCount = teamSize * 2;
 
   if (loading) return <div style={{ minHeight: "100vh", background: t.bg }}><div style={{ padding: 40, textAlign: "center", color: t.txtM }}>…</div></div>;
@@ -345,11 +354,47 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <B v="gh" onClick={() => setStep(0)} s={{ flex: 1 }}>{L.back}</B>
-            <B onClick={() => setStep(2)} s={{ flex: 1 }}>{L.next}</B>
+            <B onClick={() => setStep(teamSize === 3 ? 2 : 3)} s={{ flex: 1 }}>{L.next}</B>
           </div>
         </>}
 
-        {step === 2 && <>
+        {step === 2 && teamSize === 3 && <>
+          <p style={{ fontSize: 22, color: t.txt, textAlign: "center", margin: 0, fontFamily: F.serif }}>Picapica</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+            <span style={{ fontSize: 14, fontFamily: F.sans, color: t.txtM }}>De</span>
+            <input type="number" inputMode="numeric" value={picaRange[0]}
+              onChange={e => setPicaRange([parseInt(e.target.value) || 0, picaRange[1]])}
+              style={{ width: 56, background: "transparent", border: `1.5px solid ${t.brd}`, borderRadius: 6,
+                padding: "10px 8px", fontSize: 18, fontFamily: F.serif, color: t.txt, textAlign: "center", outline: "none" }} />
+            <span style={{ fontSize: 14, fontFamily: F.sans, color: t.txtM }}>a</span>
+            <input type="number" inputMode="numeric" value={picaRange[1]}
+              onChange={e => setPicaRange([picaRange[0], parseInt(e.target.value) || 0])}
+              style={{ width: 56, background: "transparent", border: `1.5px solid ${t.brd}`, borderRadius: 6,
+                padding: "10px 8px", fontSize: 18, fontFamily: F.serif, color: t.txt, textAlign: "center", outline: "none" }} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button onClick={() => setPicaMode("suma")} style={{
+              background: "transparent", border: `1.5px solid ${picaMode === "suma" ? t.pri : t.brd}`, borderRadius: 6,
+              padding: "14px 16px", textAlign: "left", cursor: "pointer", touchAction: "manipulation", transition: "all .15s",
+            }}>
+              <div style={{ fontSize: 15, fontFamily: F.sans, fontWeight: 500, color: picaMode === "suma" ? t.pri : t.txt }}>Suma todo</div>
+              <div style={{ fontSize: 12, fontFamily: F.sans, color: t.txtM, marginTop: 2 }}>Se anota cada duelo por separado</div>
+            </button>
+            <button onClick={() => setPicaMode("diff")} style={{
+              background: "transparent", border: `1.5px solid ${picaMode === "diff" ? t.pri : t.brd}`, borderRadius: 6,
+              padding: "14px 16px", textAlign: "left", cursor: "pointer", touchAction: "manipulation", transition: "all .15s",
+            }}>
+              <div style={{ fontSize: 15, fontFamily: F.sans, fontWeight: 500, color: picaMode === "diff" ? t.pri : t.txt }}>Diferencia</div>
+              <div style={{ fontSize: 12, fontFamily: F.sans, color: t.txtM, marginTop: 2 }}>Se anota la diferencia al final</div>
+            </button>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <B v="gh" onClick={() => setStep(1)} s={{ flex: 1 }}>{L.back}</B>
+            <B onClick={() => setStep(3)} s={{ flex: 1 }}>{L.next}</B>
+          </div>
+        </>}
+
+        {step === 3 && <>
           <p style={{ fontSize: 22, color: t.txt, textAlign: "center", margin: 0, fontFamily: F.serif }}>{L.names}</p>
 
           {teamSize === 1 ? (
@@ -404,7 +449,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
           <div style={{ position: "sticky", bottom: 10, marginTop: 8, background: `linear-gradient(180deg, transparent, ${t.bg} 28%)`, paddingTop: 12 }}>
             <div style={{ display: "flex", gap: 8 }}>
-              <B v="gh" onClick={() => setStep(1)} s={{ flex: 1 }}>{L.back}</B>
+              <B v="gh" onClick={() => setStep(teamSize === 3 ? 2 : 1)} s={{ flex: 1 }}>{L.back}</B>
               <B onClick={startGame} s={{ flex: 1 }}>{L.start}</B>
             </div>
           </div>
