@@ -628,13 +628,6 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
     setVals(buildVals());
   }, [teams, editIdx]);
 
-  // Auto-focus first input on mount
-  useEffect(() => {
-    setTimeout(() => {
-      const first = formRef.current?.querySelector('input[type="number"]');
-      first?.focus();
-    }, 100);
-  }, []);
 
   const getHandObj = (v) => {
     if (v.mode === "neg") {
@@ -707,6 +700,7 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: t.txtM, marginBottom: 4, fontFamily: F.sans, letterSpacing: 1, textTransform: "uppercase" }}>Base</div>
                   <input type="number" inputMode="numeric" value={vals[i].base}
+                    autoFocus={i === 0}
                     onChange={e => upVal(i, "base", e.target.value)}
                     onKeyDown={handleKeyDown}
                     enterKeyHint="next"
@@ -738,6 +732,7 @@ function HandEntry({ teams, editIdx, cfg, onSave, onCancel, t, L }) {
               <div>
                 <div style={{ fontSize: 11, color: t.txtM, marginBottom: 4, fontFamily: F.sans, letterSpacing: 1, textTransform: "uppercase" }}>Puntos a restar</div>
                 <input type="number" inputMode="numeric" value={vals[i].neg}
+                  autoFocus={i === 0}
                   onChange={e => upVal(i, "neg", e.target.value)}
                   onKeyDown={handleKeyDown}
                   enterKeyHint={i === teams.length - 1 ? "done" : "next"}
