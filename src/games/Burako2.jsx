@@ -404,9 +404,9 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   margin: "0 auto 4px", fontSize: 11, fontWeight: 700, fontFamily: F.sans,
                 }}>{teamAvatar(tm.name)}</div>
-                <EN name={tm.name} onSave={n => ren(i, n)} sz={mode === "par" ? 13 : 15} />
+                <EN name={tm.name} onSave={n => ren(i, n)} sz={14} />
                 {hasBajada && (
-                  <div style={{ fontSize: 11, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
                     {L.dropWith}: {bajadaReq(total(tm))}
                   </div>
                 )}
