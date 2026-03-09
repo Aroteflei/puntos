@@ -406,8 +406,8 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                 }}>{teamAvatar(tm.name)}</div>
                 <EN name={tm.name} onSave={n => ren(i, n)} sz={14} fw={600} ff={F.sans} />
                 {hasBajada && (
-                  <div style={{ fontSize: 14, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
-                    {L.dropWith}: {bajadaReq(total(tm))}
+                  <div style={{ fontSize: 14, color: t.txtF, fontFamily: F.sans, fontWeight: 600, marginTop: 2 }}>
+                    {mode === "par" ? "Bajan con" : "Baja con"}: {bajadaReq(total(tm))}
                   </div>
                 )}
                 {/* Progress bar */}
