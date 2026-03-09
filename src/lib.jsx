@@ -228,15 +228,16 @@ export function B({ children, onClick, disabled, v = "pri", s, ...r }) {
     letterSpacing: .2, fontFamily: F.sans, cursor: disabled ? "default" : "pointer", transition: "opacity .15s", opacity: disabled ? .35 : 1, touchAction: "manipulation", ...vars[v], ...s }} {...r}>{children}</button>;
 }
 
-export function EN({ name, onSave, sz = 18, fw }) {
+export function EN({ name, onSave, sz = 18, fw, ff }) {
   const { t } = useApp(); const [ed, setEd] = useState(false); const [val, setVal] = useState(name);
+  const font = ff || F.serif;
   useEffect(() => setVal(name), [name]);
   if (ed) return <input autoFocus value={val} onChange={e => setVal(e.target.value)} onBlur={() => { onSave(val); setEd(false) }}
     onKeyDown={e => { if (e.key === "Enter") { onSave(val); setEd(false) } }}
-    style={{ background: "transparent", border: "none", borderBottom: `1.5px solid ${t.pri}`, color: t.txt, fontSize: sz, fontWeight: fw || 400, fontFamily: F.serif,
+    style={{ background: "transparent", border: "none", borderBottom: `1.5px solid ${t.pri}`, color: t.txt, fontSize: sz, fontWeight: fw || 400, fontFamily: font,
       borderRadius: 0, padding: "2px 0", outline: "none", width: "100%" }} />;
   return <span onClick={() => setEd(true)} style={{ fontSize: sz, fontWeight: fw || 400, color: t.txt, cursor: "pointer",
-    fontFamily: F.serif, textDecoration: "underline dashed", textDecorationColor: t.brd, textUnderlineOffset: 3 }}>{name}</span>;
+    fontFamily: font, textDecoration: "underline dashed", textDecorationColor: t.brd, textUnderlineOffset: 3 }}>{name}</span>;
 }
 
 export const IcoBtn = ({ onClick, children, t }) => <button onClick={onClick} style={{ background: "transparent", border: `1px solid ${t.brd}`, color: t.txt,
