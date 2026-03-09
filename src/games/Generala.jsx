@@ -155,6 +155,7 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
           { label: "Compartir", action: doShare },
           ...(hist.length > 0 ? [{ label: L.hist, action: () => { setModal(null); setShowH(true); } }] : []),
           { label: L.nuevaPartida, action: () => setModal("new") },
+          { label: "Reiniciar", action: () => setModal("reset") },
         ].map((item, i) => (
           <button key={i} onClick={item.action} style={{
             display: "block", width: "100%", textAlign: "left", padding: "12px 14px",
@@ -170,7 +171,6 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
       <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "new" ? L.savesHist : L.losesAll}</p>
       <div style={{ display: "flex", gap: 10 }}><B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
         {modal === "new" ? <B onClick={nuevaPartida} s={{ flex: 1 }}>{L.nuevaPartida}</B> : <B v="err" onClick={resetZ} s={{ flex: 1 }}>{L.reset}</B>}</div>
-      {modal === "new" && <B v="err" onClick={() => setModal("reset")} s={{ marginTop: 8, width: "100%", fontSize: 12 }}>{L.resetNoSave}</B>}
     </div></Modal>}
 
     {/* Score entry modal */}
