@@ -337,7 +337,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
           {teamSize === 1 ? (
             Array.from({ length: rawCount }).map((_, i) => (
-              <input key={i} autoFocus={i === 0} ref={el => { nameRefs.current[i] = el; }}
+              <input key={i} autoFocus={i === 0} autoCapitalize="words" ref={el => { nameRefs.current[i] = el; }}
                 value={rawNames[i] ?? ""}
                 onChange={e => {
                   const nextRawNames = [...rawNames];
@@ -350,7 +350,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
                 placeholder={`Jugador ${i + 1}`}
                 style={{
                   width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${t.brd}`, color: t.txt,
-                  padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0,
+                  padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0, textTransform: "capitalize",
                 }} />
             ))
           ) : (
@@ -363,7 +363,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
                   {Array.from({ length: teamSize }).map((_, offset) => {
                     const idx = teamIdx * teamSize + offset;
                     return (
-                      <input key={idx} autoFocus={idx === 0} ref={el => { nameRefs.current[idx] = el; }}
+                      <input key={idx} autoFocus={idx === 0} autoCapitalize="words" ref={el => { nameRefs.current[idx] = el; }}
                         value={rawNames[idx] ?? ""}
                         onChange={e => {
                           const nextRawNames = [...rawNames];
@@ -376,7 +376,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
                         placeholder={`Jugador ${idx + 1}`}
                         style={{
                           width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${t.brd}`, color: t.txt,
-                          padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0,
+                          padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0, textTransform: "capitalize",
                         }} />
                     );
                   })}

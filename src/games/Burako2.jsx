@@ -319,7 +319,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                     const idx = pair * 2 + j;
                     return (
                       <input key={idx} ref={el => { nameRefs.current[idx] = el }}
-                        autoFocus={idx === 0}
+                        autoFocus={idx === 0} autoCapitalize="words"
                         value={names[idx]} onChange={e => { const u = [...names]; u[idx] = e.target.value; setNames(u); }}
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveNext(idx); } }}
                         onFocus={e => e.target.select()}
@@ -327,7 +327,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                         placeholder={`Jugador ${idx + 1}`}
                         style={{
                           flex: 1, background: "transparent", border: "none", borderBottom: `1px solid ${t.brd}`, color: t.txt,
-                          padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0,
+                          padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0, textTransform: "capitalize",
                         }} />
                     );
                   })}
@@ -337,14 +337,14 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
           </>
         ) : (
           names.slice(0, nameCount).map((n, i) => (
-            <input key={i} autoFocus={i === 0} ref={el => { nameRefs.current[i] = el }}
+            <input key={i} autoFocus={i === 0} autoCapitalize="words" ref={el => { nameRefs.current[i] = el }}
               value={n} onChange={e => { const u = [...names]; u[i] = e.target.value; setNames(u); }}
               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveNext(i); } }}
               onFocus={e => e.target.select()} enterKeyHint={i === nameCount - 1 ? "done" : "next"}
               placeholder={`Jugador ${i + 1}`}
               style={{
                 background: "transparent", border: "none", borderBottom: `1px solid ${t.brd}`, color: t.txt,
-                padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", width: "100%", borderRadius: 0,
+                padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", width: "100%", borderRadius: 0, textTransform: "capitalize",
               }} />
           ))
         )}

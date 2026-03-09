@@ -123,12 +123,12 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
               color: pCount === n ? t.pri : t.txt, cursor: "pointer", touchAction: "manipulation", transition: "all .15s" }}>{n}</button>)}</div>
         <B onClick={() => setSStep(1)} s={{ width: "100%" }}>{L.next}</B></>}
       {sStep === 1 && <><p style={{ fontSize: 22, color: t.txt, textAlign: "center", margin: 0, fontFamily: F.serif }}>{L.names}</p>
-        {pNames.map((n, i) => <input key={i} autoFocus={i === 0} ref={el => { playerNameRefs.current[i] = el }} value={n}
+        {pNames.map((n, i) => <input key={i} autoFocus={i === 0} autoCapitalize="words" ref={el => { playerNameRefs.current[i] = el }} value={n}
           onChange={e => { const u = [...pNames]; u[i] = e.target.value; setPNames(u) }}
           onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); moveToNextGeneralaName(i) } }} onFocus={e => e.target.select()} enterKeyHint={i === pNames.length - 1 ? "done" : "next"}
           placeholder={`Jugador ${i + 1}`}
           style={{ width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${t.brd}`, color: t.txt,
-            padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0 }} />)}
+            padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0, textTransform: "capitalize" }} />)}
         <div style={{ position: "sticky", bottom: 10, marginTop: 8, background: `linear-gradient(180deg, transparent, ${t.bg} 28%)`, paddingTop: 12 }}>
           <div style={{ display: "flex", gap: 8 }}><B v="gh" onClick={() => setSStep(0)} s={{ flex: 1 }}>{L.back}</B>
             <B onClick={startGame} s={{ flex: 1 }}>{L.start}</B></div>
