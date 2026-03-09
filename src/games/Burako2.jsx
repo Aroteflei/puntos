@@ -404,9 +404,9 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   margin: "0 auto 4px", fontSize: 11, fontWeight: 700, fontFamily: F.sans,
                 }}>{teamAvatar(tm.name)}</div>
-                <EN name={tm.name} onSave={n => ren(i, n)} sz={14} fw={600} ff={F.sans} />
+                <EN name={tm.name} onSave={n => ren(i, n)} sz={14} fw={500} ff={F.sans} />
                 {hasBajada && (
-                  <div style={{ fontSize: 14, color: t.txtF, fontFamily: F.sans, fontWeight: 600, marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
                     {mode === "par" ? "Bajan con" : "Baja con"}: {bajadaReq(total(tm))}
                   </div>
                 )}
@@ -505,7 +505,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                   border: isLeader ? `1.5px solid ${t.pri}` : `1px solid ${t.brd}`,
                   borderRadius: ti === teams.length - 1 ? "0 0 6px 0" : 0,
                 }}>
-                  <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: t.pri }}>{total(tm)}</span>
+                  <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 500, color: t.pri }}>{total(tm)}</span>
                 </div>
               );
             })}
