@@ -404,9 +404,9 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   margin: "0 auto 4px", fontSize: 11, fontWeight: 700, fontFamily: F.sans,
                 }}>{teamAvatar(tm.name)}</div>
-                <EN name={tm.name} onSave={n => ren(i, n)} sz={mode === "par" ? 11 : 13} />
+                <EN name={tm.name} onSave={n => ren(i, n)} sz={mode === "par" ? 13 : 15} />
                 {hasBajada && (
-                  <div style={{ fontSize: 9, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
                     {L.dropWith}: {bajadaReq(total(tm))}
                   </div>
                 )}
@@ -448,6 +448,8 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
               {/* Team cells */}
               {teams.map((tm, ti) => {
                 const h = tm.hands[hi];
+                const isLast = hi === maxHands - 1;
+                const cumul = tm.hands.slice(0, hi + 1).reduce((s, x) => s + handVal(x), 0);
                 return (
                   <div key={ti} onClick={() => !adding && startEdit(hi)} style={{
                     textAlign: "center", cursor: "pointer",
@@ -462,15 +464,20 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                       <span style={{ color: t.txtF, fontSize: 13, opacity: 0.4 }}>·</span>
                     ) : h.base !== undefined ? (
                       <>
-                        <div style={{ fontSize: 12, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.base}</div>
-                        <div style={{ fontSize: 12, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.pts}</div>
-                        <div style={{ height: 1, background: t.txt, opacity: .15, width: "50%", margin: "2px 0" }} />
-                        <span style={{ fontFamily: F.serif, fontSize: 17, fontWeight: 400, color: t.ok }}>{handVal(h)}</span>
+                        <div style={{ fontSize: 14, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.base}</div>
+                        <div style={{ fontSize: 14, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.pts}</div>
+                        {!isLast && <>
+                          <div style={{ height: 1, background: t.txt, opacity: .15, width: "50%", margin: "2px 0" }} />
+                          <span style={{ fontFamily: F.serif, fontSize: 15, fontWeight: 400, color: t.ok }}>{cumul}</span>
+                        </>}
                       </>
                     ) : (
-                      <span style={{ fontFamily: F.serif, fontSize: 17, fontWeight: 400, color: handVal(h) >= 0 ? t.ok : t.err }}>
-                        {handVal(h)}
-                      </span>
+                      <>
+                        <span style={{ fontFamily: F.serif, fontSize: 17, fontWeight: 400, color: handVal(h) >= 0 ? t.ok : t.err }}>
+                          {handVal(h)}
+                        </span>
+                        {!isLast && <span style={{ fontFamily: F.serif, fontSize: 13, fontWeight: 400, color: t.txtM, marginTop: 2 }}>{cumul}</span>}
+                      </>
                     )}
                   </div>
                 );
