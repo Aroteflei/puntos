@@ -99,7 +99,7 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
       {/* Tallies — scrollable, tap to add +1 */}
       {!picaPhase && (
         <div style={{
-          flex: "1 1 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
+          flex: "0 1 auto", display: "flex", flexDirection: "column", alignItems: "center",
           padding: "6px 10px 4px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 60,
           borderTop: `1px solid ${t.brd}`,
         }}>
@@ -121,16 +121,16 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
         </div>
       )}
 
-      {/* Score number — at bottom in normal, centered in picapica */}
+      {/* Score number — right after tallies in normal, centered in picapica */}
       <div style={{ textAlign: "center", padding: picaPhase ? "12px 0" : "4px 0 2px", flex: picaPhase ? 1 : undefined, display: "flex", alignItems: "center", justifyContent: "center", borderTop: `1px solid ${t.brd}` }}>
-        <div style={{ fontFamily: F.serif, fontSize: ph ? 34 : 40, color: t.pri, lineHeight: 1, letterSpacing: -1 }}>
+        <div style={{ fontFamily: F.serif, fontSize: ph ? 40 : 52, color: t.pri, lineHeight: 1, letterSpacing: -1 }}>
           {player.p}
         </div>
       </div>
 
-      {/* Buttons */}
+      {/* Buttons — pushed to bottom */}
       {!picaPhase && !winner && (
-        <div style={{ display: "flex", gap: 5, padding: "8px 8px 14px", borderTop: `1px solid ${t.brd}` }}>
+        <div style={{ display: "flex", gap: 5, padding: "8px 8px 14px", borderTop: `1px solid ${t.brd}`, marginTop: "auto" }}>
           <button onClick={() => player.p > 0 && onAdd(idx, -1)} disabled={atTarget || player.p <= 0} style={{
             background: "transparent", color: (player.p <= 0) ? t.txtF : t.err,
             border: `1px solid ${(player.p <= 0) ? t.brd : t.err}`,
