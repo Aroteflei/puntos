@@ -391,14 +391,16 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
         {!winner && <button onClick={() => setModal("menu")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Menu</button>}
       </div>
 
-      {showH && hist.length > 0 && <div style={{ margin: "8px 12px", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, padding: 10 }}>
-        <p style={{ fontSize: 14, color: t.pri, margin: "0 0 6px", fontFamily: F.serif }}>{L.hist}</p>
-        {hist.map((h, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: `1px solid ${t.brd}`, fontSize: 12, fontFamily: F.sans }}>
-          <div style={{ flex: 1 }}>{h.players.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.t}</b></span>)}</div>
-          <span style={{ fontSize: 10, color: t.txtF }}>{h.date}</span>
-          <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 20, padding: "4px 8px", touchAction: "manipulation" }}>×</button>
-        </div>)}
-      </div>}
+      {showH && hist.length > 0 && <Modal onClose={() => setShowH(false)}>
+        <div style={{ background: t.card, borderRadius: 12, padding: 16, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 340, width: "100%", maxHeight: "70vh", overflow: "auto" }}>
+          <p style={{ fontSize: 16, color: t.pri, margin: "0 0 10px", fontFamily: F.serif }}>{L.hist}</p>
+          {hist.map((h, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", borderBottom: `1px solid ${t.brd}`, fontSize: 13, fontFamily: F.sans }}>
+            <div style={{ flex: 1 }}>{h.players.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.t}</b></span>)}</div>
+            <span style={{ fontSize: 10, color: t.txtF, whiteSpace: "nowrap" }}>{h.date}</span>
+            <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 20, padding: "4px 8px", touchAction: "manipulation" }}>×</button>
+          </div>)}
+        </div>
+      </Modal>}
 
       {/* Winner banner */}
       {winner && (

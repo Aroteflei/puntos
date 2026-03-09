@@ -182,12 +182,16 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
         <B v="gh" onClick={() => setSheet(null)} s={{ width: "100%", marginTop: 10 }}>{L.cancel}</B>
       </div></Modal>}
 
-    {showH && hist.length > 0 && <div style={{ margin: "8px 12px", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, padding: 10 }}>
-      <p style={{ fontSize: 14, color: t.pri, margin: "0 0 6px", fontFamily: F.serif }}>{L.hist}</p>
-      {hist.map((h, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: `1px solid ${t.brd}`, fontSize: 12, fontFamily: F.sans }}>
-        <div style={{ flex: 1 }}>{h.players.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.t}</b></span>)}</div>
-        {h.date && <span style={{ fontSize: 10, color: t.txtF }}>{h.date}</span>}
-        <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 20, padding: "4px 8px", touchAction: "manipulation" }}>×</button></div>)}</div>}
+    {showH && hist.length > 0 && <Modal onClose={() => setShowH(false)}>
+      <div style={{ background: t.card, borderRadius: 12, padding: 16, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 340, width: "100%", maxHeight: "70vh", overflow: "auto" }}>
+        <p style={{ fontSize: 16, color: t.pri, margin: "0 0 10px", fontFamily: F.serif }}>{L.hist}</p>
+        {hist.map((h, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", borderBottom: `1px solid ${t.brd}`, fontSize: 13, fontFamily: F.sans }}>
+          <div style={{ flex: 1 }}>{h.players.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.t}</b></span>)}</div>
+          {h.date && <span style={{ fontSize: 10, color: t.txtF, whiteSpace: "nowrap" }}>{h.date}</span>}
+          <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 20, padding: "4px 8px", touchAction: "manipulation" }}>×</button>
+        </div>)}
+      </div>
+    </Modal>}
 
     {/* Winner banner — singular "gana" */}
     {allDone && <div style={{ textAlign: "center", padding: 14, background: t.pri, color: "#fff", animation: "scaleIn .3s ease" }}>
