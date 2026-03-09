@@ -146,6 +146,7 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
         {turnsLeft > 0 ? `${turnsLeft} ${L.turnsLeft}` : L.done}
       </span>
       <div style={{ flex: 1 }} />
+      {hist.length > 0 && <button onClick={() => setShowH(!showH)} style={{ background: "none", border: `1px solid ${showH ? t.pri : t.brd}`, borderRadius: 6, color: showH ? t.pri : t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>{L.hist}</button>}
       {!allDone && <>
         <button onClick={doShare} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Compartir</button>
         <button onClick={() => setModal("new")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Nueva</button>
@@ -185,7 +186,8 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
       <p style={{ fontSize: 14, color: t.pri, margin: "0 0 6px", fontFamily: F.serif }}>{L.hist}</p>
       {hist.map((h, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: `1px solid ${t.brd}`, fontSize: 12, fontFamily: F.sans }}>
         <div style={{ flex: 1 }}>{h.players.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.t}</b></span>)}</div>
-        <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 14, padding: 2 }}>×</button></div>)}</div>}
+        {h.date && <span style={{ fontSize: 10, color: t.txtF }}>{h.date}</span>}
+        <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 20, padding: "4px 8px", touchAction: "manipulation" }}>×</button></div>)}</div>}
 
     {/* Winner banner — singular "gana" */}
     {allDone && <div style={{ textAlign: "center", padding: 14, background: t.pri, color: "#fff", animation: "scaleIn .3s ease" }}>

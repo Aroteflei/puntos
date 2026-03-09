@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useApp, ST, clone, vibWin, bajadaReq, F, B, EN, Modal, UndoBar } from '../lib.jsx';
+import { useApp, ST, clone, vibWin, bajadaReq, fmtDate, F, B, EN, Modal, UndoBar } from '../lib.jsx';
 
 const DEF_CFG = { tgt: 3000, pura: 200, canasta: 100, cierre: 100, muerto: 100 };
 
@@ -23,11 +23,14 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   const [adding, setAdding] = useState(false);
   const [editIdx, setEditIdx] = useState(null);
   const [redoHand, setRedoHand] = useState(null);
+  const [hist, setHist] = useState([]);
+  const [showH, setShowH] = useState(false);
   const nameRefs = useRef([]);
   const ledgerRef = useRef(null);
 
   // ── Persistence ──
   useEffect(() => {
+    ST.load("burako2-hist").then(d => { if (Array.isArray(d)) setHist(d) });
     ST.load("burako2-game").then(d => {
       if (d?.teams?.length) {
         setTeams(d.teams);
@@ -114,11 +117,25 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     }});
   };
 
-  const nuevaPartida = () => {
+  const nuevaPartida = async () => {
+    // Save to history if game had hands
+    if (teams.some(tm => tm.hands.length > 0)) {
+      const entry = { players: teams.map(tm => ({ name: tm.name, t: total(tm) })), date: fmtDate() };
+      const nextHist = [entry, ...hist];
+      setHist(nextHist);
+      await ST.save("burako2-hist", nextHist);
+    }
     const r = teams.map(tm => ({ ...tm, hands: [] }));
     setTeams(r); setModal(null);
     setToast({ text: L.nuevaPartida });
     ST.save("burako2-game", { teams: r, cfg, mode });
+  };
+
+  const delH = async (i) => {
+    const next = hist.filter((_, j) => j !== i);
+    setHist(next);
+    if (next.length) await ST.save("burako2-hist", next);
+    else await ST.del("burako2-hist");
   };
 
   const resetZ = async () => {
@@ -370,8 +387,18 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
           {maxHands > 0 ? `${maxHands} ${maxHands === 1 ? "mano" : "manos"} · ` : ""}A {cfg.tgt} pts
         </span>
         <div style={{ flex: 1 }} />
+        {hist.length > 0 && <button onClick={() => setShowH(!showH)} style={{ background: "none", border: `1px solid ${showH ? t.pri : t.brd}`, borderRadius: 6, color: showH ? t.pri : t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>{L.hist}</button>}
         {!winner && <button onClick={() => setModal("menu")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Menu</button>}
       </div>
+
+      {showH && hist.length > 0 && <div style={{ margin: "8px 12px", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, padding: 10 }}>
+        <p style={{ fontSize: 14, color: t.pri, margin: "0 0 6px", fontFamily: F.serif }}>{L.hist}</p>
+        {hist.map((h, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: `1px solid ${t.brd}`, fontSize: 12, fontFamily: F.sans }}>
+          <div style={{ flex: 1 }}>{h.players.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.t}</b></span>)}</div>
+          <span style={{ fontSize: 10, color: t.txtF }}>{h.date}</span>
+          <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 20, padding: "4px 8px", touchAction: "manipulation" }}>×</button>
+        </div>)}
+      </div>}
 
       {/* Winner banner */}
       {winner && (

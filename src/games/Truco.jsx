@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useApp, ST, clone, shareResult, vib, vibWin, F, B, EN, Modal, UndoBar } from '../lib.jsx';
+import { useApp, ST, clone, shareResult, vib, vibWin, fmtDate, F, B, EN, Modal, UndoBar } from '../lib.jsx';
 
 function TrucoTally({ count, color, divAt, buenasColor }) {
   const SZ = 48, PD = 4, GAP = 5;
@@ -153,6 +153,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const lastStateRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [picapicaStep, setPicapicaStep] = useState(0);
+  const [hist, setHist] = useState([]);
+  const [showH, setShowH] = useState(false);
   const nameRefs = useRef([]);
   const ph = typeof window !== "undefined" && window.innerWidth <= 480;
 
@@ -172,6 +174,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
       }
       setLoading(false);
     });
+    ST.load("truco-hist").then(d => { if (Array.isArray(d)) setHist(d) });
   }, []);
 
   useEffect(() => {
@@ -263,7 +266,14 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
   const winner = sc.find(s => s.p >= target);
 
-  const nuevaPartida = () => {
+  const nuevaPartida = async () => {
+    // Save to history if game had points
+    if (sc.some(s => s.p > 0)) {
+      const entry = { players: sc.map(s => ({ name: s.name, t: s.p })), date: fmtDate() };
+      const nextHist = [entry, ...hist];
+      setHist(nextHist);
+      await ST.save("truco-hist", nextHist);
+    }
     const nextSc = sc.map(s => ({ ...s, p: 0 }));
     setSc(nextSc);
     setPicapicaStep(0);
@@ -271,6 +281,13 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     lastStateRef.current = null;
     setToast({ text: L.nuevaPartida });
     persist({ sc: nextSc, picapicaStep: 0 });
+  };
+
+  const delH = async (i) => {
+    const next = hist.filter((_, j) => j !== i);
+    setHist(next);
+    if (next.length) await ST.save("truco-hist", next);
+    else await ST.del("truco-hist");
   };
 
   const doShare = () => shareResult(`Truco - ${target} pts`, sc.map((s) => `${s.name}: ${s.p}`));
@@ -404,11 +421,21 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         }}>←</button>
         <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>A {target}</span>
         <div style={{ flex: 1 }} />
+        {hist.length > 0 && <button onClick={() => setShowH(!showH)} style={{ background: "none", border: `1px solid ${showH ? t.pri : t.brd}`, borderRadius: 6, color: showH ? t.pri : t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>{L.hist}</button>}
         {!winner && <>
           <button onClick={doShare} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Compartir</button>
           <button onClick={() => setModal("new")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Nueva</button>
         </>}
       </div>
+
+      {showH && hist.length > 0 && <div style={{ margin: "8px 12px", background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, padding: 10 }}>
+        <p style={{ fontSize: 14, color: t.pri, margin: "0 0 6px", fontFamily: F.serif }}>{L.hist}</p>
+        {hist.map((h, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: `1px solid ${t.brd}`, fontSize: 12, fontFamily: F.sans }}>
+          <div style={{ flex: 1 }}>{h.players.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.t}</b></span>)}</div>
+          <span style={{ fontSize: 10, color: t.txtF }}>{h.date}</span>
+          <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 20, padding: "4px 8px", touchAction: "manipulation" }}>×</button>
+        </div>)}
+      </div>}
 
       {modal && <Modal onClose={() => setModal(null)}>
         <div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
