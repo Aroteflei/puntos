@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useApp, ST, clone, vibWin, bajadaReq, fmtDate, F, B, EN, Modal, UndoBar } from '../lib.jsx';
+import { useApp, ST, clone, vibWin, bajadaReq, fmtDate, F, B, EN, Modal, UndoBar, HomeIcon } from '../lib.jsx';
 
 const DEF_CFG = { tgt: 3000, pura: 200, canasta: 100, cierre: 100, muerto: 100 };
 
@@ -117,14 +117,30 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     }});
   };
 
-  const nuevaPartida = async () => {
-    // Save to history if game had hands
+  const saveToHistory = async () => {
     if (teams.some(tm => tm.hands.length > 0)) {
       const entry = { players: teams.map(tm => ({ name: tm.name, t: total(tm) })), date: fmtDate() };
       const nextHist = [entry, ...hist];
       setHist(nextHist);
       await ST.save("burako2-hist", nextHist);
     }
+  };
+
+  const revancha = async () => {
+    await saveToHistory();
+    const r = teams.map(tm => ({ ...tm, hands: [] }));
+    setTeams(r); setModal(null);
+    setToast({ text: L.revancha });
+    ST.save("burako2-game", { teams: r, cfg, mode });
+  };
+
+  const nuevaPartidaSetup = async () => {
+    await saveToHistory();
+    resetZ();
+  };
+
+  const nuevaPartida = async () => {
+    await saveToHistory();
     const r = teams.map(tm => ({ ...tm, hands: [] }));
     setTeams(r); setModal(null);
     setToast({ text: L.nuevaPartida });
@@ -165,17 +181,25 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     const ctx = canvas.getContext('2d');
     ctx.scale(DPR, DPR);
 
-    // Background
-    ctx.fillStyle = '#FFFFFF';
+    // Gradient background
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    bgGrad.addColorStop(0, '#F8F9FA');
+    bgGrad.addColorStop(1, '#EEEDEB');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#F6F6F4';
-    ctx.fillRect(0, 0, W, 62);
+
+    // Top accent bar
+    const barGrad = ctx.createLinearGradient(0, 0, W, 0);
+    barGrad.addColorStop(0, '#1A5C52');
+    barGrad.addColorStop(1, '#3D8B7A');
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(0, 0, W, 6);
 
     // Title
     ctx.textAlign = 'center';
     ctx.fillStyle = '#1A5C52';
-    ctx.font = '28px Georgia, serif';
-    ctx.fillText('BURAKO', W / 2, 34);
+    ctx.font = '32px Georgia, serif';
+    ctx.fillText('BURAKO', W / 2, 38);
 
     // Date
     const now = new Date();
@@ -183,7 +207,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     const ts = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
     ctx.fillStyle = '#7A7A78';
     ctx.font = '11px system-ui, sans-serif';
-    ctx.fillText(`${ds} · ${ts}`, W / 2, 52);
+    ctx.fillText(`${ds} · ${ts}`, W / 2, 56);
 
     const Y0 = TITLE_H;
 
@@ -271,11 +295,13 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
       ctx.fillText(String(total(tm)), cx, tY + 48);
     });
 
-    // Footer
-    ctx.fillStyle = '#B5B5B2';
-    ctx.font = '10px system-ui, sans-serif';
+    // Footer watermark
+    ctx.fillStyle = '#1A5C52';
+    ctx.globalAlpha = 0.25;
+    ctx.font = '600 10px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Puntos App · hoja lista para compartir', W / 2, H - 14);
+    ctx.fillText('PUNTOS APP', W / 2, H - 14);
+    ctx.globalAlpha = 1;
 
     canvas.toBlob(async (blob) => {
       const file = new File([blob], `burako-${ds.replace(/\//g, '-')}.png`, { type: 'image/png' });
@@ -301,9 +327,9 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   if (setup) return (
     <div style={{ minHeight: "100dvh", background: t.bg, display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 24px" }}>
       <button onClick={goBack} style={{
-        background: "none", border: "none", color: t.txtM, fontSize: 15, fontFamily: F.sans, fontWeight: 500,
-        cursor: "pointer", padding: "8px 12px", touchAction: "manipulation", alignSelf: "flex-start", marginBottom: 16,
-      }}>←</button>
+        background: "none", border: "none", cursor: "pointer", padding: "8px 12px", touchAction: "manipulation",
+        alignSelf: "flex-start", marginBottom: 16, display: "flex", alignItems: "center",
+      }}><HomeIcon color={t.txtM} /></button>
       <div style={{ maxWidth: 360, width: "100%", display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 28, fontFamily: F.serif, color: t.txt, marginBottom: 4 }}>Burako</div>
@@ -382,12 +408,13 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
 
       {/* Top bar with game info */}
       <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
-        <button onClick={goBack} style={{ background: "none", border: "none", color: t.txtM, fontSize: 15, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation" }}>←</button>
-        <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
-          {maxHands > 0 ? `${maxHands} ${maxHands === 1 ? "mano" : "manos"} · ` : ""}A {cfg.tgt} pts
-        </span>
-        <div style={{ flex: 1 }} />
-        {!winner && <button onClick={() => setModal("menu")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Menu</button>}
+        <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px", touchAction: "manipulation", display: "flex", alignItems: "center" }}><HomeIcon color={t.txtM} /></button>
+        <div style={{ flex: 1, textAlign: "center" }}>
+          <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
+            {maxHands > 0 ? `${maxHands} ${maxHands === 1 ? "mano" : "manos"} · ` : ""}A {cfg.tgt} pts
+          </span>
+        </div>
+        {!winner && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, color: t.txt, fontSize: 13, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "6px 14px", touchAction: "manipulation" }}>Menu</button>}
       </div>
 
       {showH && hist.length > 0 && <Modal onClose={() => setShowH(false)}>
@@ -403,12 +430,24 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
 
       {/* Winner banner */}
       {winner && (
-        <div style={{ textAlign: "center", padding: 14, background: t.pri, color: "#fff", flexShrink: 0, animation: "scaleIn .3s ease" }}>
-          <div style={{ fontSize: 18, fontFamily: F.serif }}>¡{winner.name} {mode === "par" ? L.winPl : L.winSg}!</div>
-          <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 8, flexWrap: "wrap" }}>
-            <button onClick={doShare} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>Compartir</button>
-            <button onClick={nuevaPartida} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.nuevaPartida}</button>
+        <div style={{ textAlign: "center", padding: 16, background: t.pri, color: "#fff", flexShrink: 0, animation: "scaleIn .3s ease" }}>
+          <div style={{ fontSize: 20, fontFamily: F.serif, fontWeight: 400 }}>¡{winner.name} {mode === "par" ? L.winPl : L.winSg}!</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10 }}>
+            <button onClick={revancha} style={{
+              background: "rgba(255,255,255,.15)", border: "1px solid rgba(255,255,255,.3)",
+              borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: F.sans, fontWeight: 600,
+              padding: "10px 20px", cursor: "pointer", flex: 1, maxWidth: 160, touchAction: "manipulation",
+            }}>{L.revancha}</button>
+            <button onClick={nuevaPartidaSetup} style={{
+              background: "transparent", border: "1px solid rgba(255,255,255,.3)",
+              borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: F.sans, fontWeight: 500,
+              padding: "10px 20px", cursor: "pointer", flex: 1, maxWidth: 160, touchAction: "manipulation",
+            }}>{L.nuevaPartidaSetup}</button>
           </div>
+          <button onClick={doShare} style={{
+            background: "none", border: "none", color: "rgba(255,255,255,.6)",
+            fontSize: 12, fontFamily: F.sans, cursor: "pointer", marginTop: 8, padding: "4px 8px", touchAction: "manipulation",
+          }}>{L.share}</button>
         </div>
       )}
 
@@ -424,6 +463,8 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                 padding: "10px 4px 8px", textAlign: "center",
                 background: t.card, borderRadius: "6px 6px 0 0",
                 border: `1px solid ${t.brd}`, borderBottom: "none",
+                display: "flex", flexDirection: "column", alignItems: "center",
+                minHeight: hasBajada ? 110 : undefined,
               }}>
                 <div style={{
                   width: 32, height: 32, borderRadius: "50%",
@@ -432,8 +473,9 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                   margin: "0 auto 4px", fontSize: 11, fontWeight: 700, fontFamily: F.sans,
                 }}>{teamAvatar(tm.name)}</div>
                 <EN name={tm.name} onSave={n => ren(i, n)} sz={20} fw={500} ff={F.sans} />
+                <div style={{ flex: 1 }} />
                 {hasBajada && (
-                  <div style={{ fontSize: 13, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
                     {mode === "par" ? "Bajan con" : "Baja con"}: {bajadaReq(total(tm))}
                   </div>
                 )}
@@ -587,10 +629,6 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
           <div style={{ fontSize: 18, fontFamily: F.serif, marginBottom: 14, color: t.pri }}>Configuración</div>
           {[
             { label: "Objetivo", key: "tgt", step: 500, min: 500 },
-            { label: "Pura", key: "pura", step: 10, min: 0 },
-            { label: "Canasta", key: "canasta", step: 10, min: 0 },
-            { label: "Cierre", key: "cierre", step: 10, min: 0 },
-            { label: "Muerto", key: "muerto", step: 10, min: 0 },
           ].map(f => (
             <div key={f.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${t.brd}` }}>
               <span style={{ fontSize: 13, color: t.txt, fontFamily: F.sans, fontWeight: 500 }}>{f.label}</span>

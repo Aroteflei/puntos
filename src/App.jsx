@@ -115,15 +115,18 @@ function Home({ t, dk, tog, L, pickGame, contGame, clearCurrent, lockedGame, unl
             style={{ padding: "20px 0", borderBottom: i < gamesToShow.length - 1 ? `1px solid ${t.brd}` : "none",
               display: "flex", alignItems: "center", cursor: "pointer", animation: `fadeUp .4s ease ${(i + 2) * .06}s both` }}>
             <span style={{ flex: 1, fontFamily: F.serif, fontSize: 22, color: t.txt }}>{g.name}</span>
-            <span style={{ color: t.txtF, fontSize: 14, fontFamily: F.sans }}>→</span>
+            <span style={{ color: t.txtM, fontSize: 16, fontFamily: F.sans, fontWeight: 500 }}>→</span>
           </div>
         ))}
       </div>
 
       {/* Cambiar juego — only visible when locked to a game */}
       {lockedGame && (
-        <button onClick={unlockGames} style={{ background: "none", border: "none", color: t.txtF, cursor: "pointer",
-          fontSize: 12, fontFamily: F.sans, marginTop: 32, padding: "4px 8px", animation: "fadeUp .4s ease .3s both" }}>
+        <button onClick={unlockGames} style={{
+          background: t.bgS, border: `1.5px solid ${t.brd}`, color: t.txt, cursor: "pointer",
+          fontSize: 14, fontFamily: F.sans, fontWeight: 500, marginTop: 32, padding: "12px 24px",
+          borderRadius: 8, animation: "fadeUp .4s ease .3s both", touchAction: "manipulation",
+        }}>
           Cambiar juego
         </button>
       )}

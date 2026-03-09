@@ -27,6 +27,9 @@ export const strings = {
     turnWarningTitle: "Atención", turnWarning: "Le toca a {expected}. ¿Seguir?",
     rematch: "Revancha", continueLast: "Continuar última partida", openNow: "Abrir ahora", handNum: "Mano", redo: "Rehacer",
     whoClosed: "¿Quién cerró?", confirm: "Confirmar", yes: "Sí", no: "No", handSummary: "Resumen de la mano",
+    revancha: "Revancha", nuevaPartidaSetup: "Nueva partida",
+    picapicaStart: "Empieza picapica", picapicaEnd: "Termina picapica", duelo: "Duelo",
+    sigDuelo: "Siguiente duelo →", manoRedonda: "Mano redonda",
   },
   en: {
     chooseGame: "Choose your game", close: "Close",
@@ -49,6 +52,9 @@ export const strings = {
     turnWarningTitle: "Heads up", turnWarning: "{expected}'s turn. Continue?",
     rematch: "Rematch", continueLast: "Continue last game", openNow: "Open now", handNum: "Hand", redo: "Redo",
     whoClosed: "Who closed?", confirm: "Confirm", yes: "Yes", no: "No", handSummary: "Hand summary",
+    revancha: "Rematch", nuevaPartidaSetup: "New game",
+    picapicaStart: "Pica pica starts", picapicaEnd: "Pica pica ends", duelo: "Duel",
+    sigDuelo: "Next duel →", manoRedonda: "Normal hand",
   }
 };
 
@@ -60,8 +66,8 @@ export const light = {
   sh:"none",shH:"0 8px 32px rgba(0,0,0,.08)",
 };
 export const dark = {
-  bg:"#111111",bgS:"#1A1A1A",card:"#1A1A1A",pri:"#5DC4AD",priL:"#7DD8C4",priD:"#3A9A85",
-  txt:"#E8E8E6",txtM:"#8A8A88",txtF:"#4A4A48",brd:"#2A2A28",
+  bg:"#1A1D21",bgS:"#22262B",card:"#22262B",pri:"#5DC4AD",priL:"#7DD8C4",priD:"#3A9A85",
+  txt:"#E8E8E6",txtM:"#9A9A98",txtF:"#666664",brd:"#3A3A38",
   err:"#E85C4A",errBg:"#2A1A18",ok:"#5CB87A",okBg:"#1A2A1E",
   sh:"none",shH:"0 8px 32px rgba(0,0,0,.3)",
 };
@@ -95,8 +101,17 @@ export const bajadaReq = (score) => score >= 2000 ? 120 : score >= 1000 ? 90 : 5
 export const clone = (v) => JSON.parse(JSON.stringify(v));
 export const fmtDate = () => { const d = new Date(); return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}` };
 
+// ─── HOME ICON SVG ─────────────────────────────
+export const HomeIcon = ({ color, size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5z" />
+    <polyline points="9 22 9 13 15 13 15 22" />
+  </svg>
+);
+
 // Share result - Instagram 4:5 card with multiple fallbacks
-export async function shareResult(title, lines) {
+export async function shareResult(title, lines, options = {}) {
+  const { accent = "#1A5C52", accentLight = "#3D8B7A" } = options;
   const text = title + "\n" + lines.join("\n");
 
   try {
@@ -105,33 +120,42 @@ export async function shareResult(title, lines) {
     c.width = W; c.height = H;
     const ctx = c.getContext("2d");
 
-    // Background
-    ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
+    // Gradient background
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    bgGrad.addColorStop(0, "#F8F9FA");
+    bgGrad.addColorStop(1, "#EEEDEB");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
 
-    // Top accent bar
-    ctx.fillStyle = "#1A5C52"; ctx.fillRect(0, 0, W, 6);
+    // Top accent gradient bar
+    const barGrad = ctx.createLinearGradient(0, 0, W, 0);
+    barGrad.addColorStop(0, accent);
+    barGrad.addColorStop(1, accentLight);
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(0, 0, W, 8);
 
     // "PUNTOS" logo
     ctx.textAlign = "center";
-    ctx.fillStyle = "#1A5C52";
-    ctx.font = "72px Georgia, serif";
-    ctx.fillText("PUNTOS", W / 2, 140);
+    ctx.fillStyle = accent;
+    ctx.font = "80px Georgia, serif";
+    ctx.fillText("PUNTOS", W / 2, 150);
 
-    // Subtitle
+    // Subtitle spaced
     ctx.fillStyle = "#B5B5B2";
-    ctx.font = "500 14px system-ui, sans-serif";
-    const sub = "MARCADOR";
-    const subSpaced = sub.split("").join("  ");
-    ctx.fillText(subSpaced, W / 2, 170);
+    ctx.font = "500 13px system-ui, sans-serif";
+    ctx.fillText("A  N  O  T  A  D  O  R", W / 2, 182);
 
     // Game title
     ctx.fillStyle = "#1A1A1A";
-    ctx.font = "42px Georgia, serif";
-    ctx.fillText(title, W / 2, 260);
+    ctx.font = "46px Georgia, serif";
+    ctx.fillText(title, W / 2, 280);
 
-    // Separator
-    ctx.strokeStyle = "#E8E8E6"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(W / 2 - 80, 290); ctx.lineTo(W / 2 + 80, 290); ctx.stroke();
+    // Decorative separator
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath(); ctx.moveTo(W / 2 - 60, 310); ctx.lineTo(W / 2 + 60, 310); ctx.stroke();
+    ctx.globalAlpha = 1;
 
     // Parse player:score pairs
     const parsed = lines.map(line => {
@@ -139,17 +163,21 @@ export async function shareResult(title, lines) {
       if (idx < 0) return { name: line, score: "" };
       return { name: line.substring(0, idx).trim(), score: line.substring(idx + 1).trim() };
     });
-
     const scores = parsed.map(p => parseInt(p.score) || 0);
     const maxSc = Math.max(...scores);
 
-    // Score card
-    const rowH = 88;
-    const cardW = 740;
-    const cardPad = 28;
+    // Score card with shadow
+    const rowH = 100;
+    const cardW = 760;
+    const cardPad = 32;
     const cardH = parsed.length * rowH + cardPad * 2;
     const cardX = (W - cardW) / 2;
-    const cardY = 340;
+    const cardY = 360;
+
+    // Card shadow
+    ctx.shadowColor = "rgba(0,0,0,.08)";
+    ctx.shadowBlur = 32;
+    ctx.shadowOffsetY = 8;
 
     // Card bg with rounded corners
     const rr = (x, y, w, h, r) => {
@@ -159,37 +187,37 @@ export async function shareResult(title, lines) {
       ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
       ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
     };
-    rr(cardX, cardY, cardW, cardH, 16);
-    ctx.fillStyle = "#FAFAF8"; ctx.fill();
+    rr(cardX, cardY, cardW, cardH, 20);
+    ctx.fillStyle = "#FFFFFF"; ctx.fill();
+    ctx.shadowColor = "transparent";
     ctx.strokeStyle = "#E8E8E6"; ctx.lineWidth = 1; ctx.stroke();
 
     parsed.forEach((p, i) => {
       const rY = cardY + cardPad + i * rowH;
       const isWin = scores[i] === maxSc && maxSc > 0;
 
-      // Row separator
       if (i > 0) {
-        ctx.strokeStyle = "#E8E8E6"; ctx.lineWidth = 0.5;
-        ctx.beginPath(); ctx.moveTo(cardX + 28, rY); ctx.lineTo(cardX + cardW - 28, rY); ctx.stroke();
+        ctx.strokeStyle = "#EEEDEB"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(cardX + 32, rY); ctx.lineTo(cardX + cardW - 32, rY); ctx.stroke();
       }
 
-      // Winner dot
+      // Winner accent dot
       if (isWin) {
-        ctx.fillStyle = "#1A5C52";
-        ctx.beginPath(); ctx.arc(cardX + 20, rY + rowH / 2, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = accent;
+        ctx.beginPath(); ctx.arc(cardX + 24, rY + rowH / 2, 6, 0, Math.PI * 2); ctx.fill();
       }
 
       // Name
-      ctx.fillStyle = isWin ? "#1A5C52" : "#1A1A1A";
-      ctx.font = `${isWin ? 600 : 400} 30px Georgia, serif`;
+      ctx.fillStyle = isWin ? accent : "#1A1A1A";
+      ctx.font = `${isWin ? 600 : 400} 34px Georgia, serif`;
       ctx.textAlign = "left";
-      ctx.fillText(p.name, cardX + 40, rY + rowH / 2 + 10, cardW - 200);
+      ctx.fillText(p.name, cardX + 48, rY + rowH / 2 + 12, cardW - 220);
 
       // Score
-      ctx.fillStyle = isWin ? "#1A5C52" : "#7A7A78";
-      ctx.font = `${isWin ? 700 : 400} 40px Georgia, serif`;
+      ctx.fillStyle = isWin ? accent : "#7A7A78";
+      ctx.font = `${isWin ? 700 : 400} 44px Georgia, serif`;
       ctx.textAlign = "right";
-      ctx.fillText(p.score, cardX + cardW - 36, rY + rowH / 2 + 14);
+      ctx.fillText(p.score, cardX + cardW - 40, rY + rowH / 2 + 16);
     });
 
     // Date/time
@@ -197,22 +225,24 @@ export async function shareResult(title, lines) {
     const ds = now.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const ts = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
     ctx.fillStyle = "#B5B5B2";
-    ctx.font = "500 20px system-ui, sans-serif";
+    ctx.font = "500 22px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(`${ds} · ${ts}`, W / 2, H - 80);
+    ctx.fillText(`${ds}  ·  ${ts}`, W / 2, H - 90);
 
-    // Watermark
-    ctx.fillStyle = "#E8E8E6";
-    ctx.font = "16px system-ui, sans-serif";
-    ctx.fillText("puntos app", W / 2, H - 44);
+    // Branding watermark
+    ctx.fillStyle = accent;
+    ctx.globalAlpha = 0.25;
+    ctx.font = "600 16px system-ui, sans-serif";
+    ctx.fillText("PUNTOS APP", W / 2, H - 50);
+    ctx.globalAlpha = 1;
 
     const blob = await new Promise(r => c.toBlob(r, "image/png"));
-    const file = new File([blob], "marcador.png", { type: "image/png" });
+    const file = new File([blob], "puntos.png", { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ title, files: [file] }); return; }
   } catch (e) { if (e?.name === "AbortError") return; }
 
   try { if (navigator.share) { await navigator.share({ title, text }); return; } } catch (e) { if (e?.name === "AbortError") return; }
-  try { await navigator.clipboard.writeText(text); alert("Copiado ✓"); return; } catch (e) {}
+  try { await navigator.clipboard.writeText(text); alert("Copiado"); return; } catch (e) {}
   prompt("Copiá el resultado:", text);
 }
 
@@ -246,8 +276,10 @@ export const IcoBtn = ({ onClick, children, t }) => <button onClick={onClick} st
 export function Hdr({ title, emoji, onBack, sub, icons }) {
   const { t } = useApp();
   return <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderBottom: `1px solid ${t.brd}` }}>
-    <button onClick={onBack} style={{ background: "none", border: "none", color: t.txtM, fontSize: 15, fontFamily: F.sans, fontWeight: 500,
-      cursor: "pointer", padding: "8px 12px", touchAction: "manipulation" }}>←</button>
+    <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer",
+      padding: "8px", touchAction: "manipulation", display: "flex", alignItems: "center" }}>
+      <HomeIcon color={t.txtM} />
+    </button>
     <div style={{ flex: 1, minWidth: 0 }}>
       <span style={{ fontFamily: F.serif, fontSize: 20, color: t.pri, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</span>
       {sub && <p style={{ margin: "2px 0 0", fontSize: 11, color: t.txtM, letterSpacing: .3 }}>{sub}</p>}
@@ -282,16 +314,16 @@ export function UndoBar({ toast, onUndo, onClose }) {
   useEffect(() => {
     if (!toast) { setFading(false); return; }
     setFading(false);
-    const fadeId = setTimeout(() => setFading(true), 4500);
-    const closeId = setTimeout(() => onClose?.(), 5000);
+    const fadeId = setTimeout(() => setFading(true), 7500);
+    const closeId = setTimeout(() => onClose?.(), 8500);
     return () => { clearTimeout(fadeId); clearTimeout(closeId); };
   }, [toast, onClose]);
   if (!toast) return null;
-  return <div style={{ position: "fixed", left: 12, right: 12, bottom: 24, zIndex: 120, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-    <div style={{ pointerEvents: "auto", maxWidth: 320, width: "auto", background: t.txt, boxShadow: t.shH, borderRadius: 8, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, animation: "fadeUp .2s ease", transition: "opacity .5s ease", opacity: fading ? 0 : 1 }}>
+  return <div style={{ position: "fixed", left: 12, right: 12, bottom: 32, zIndex: 120, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+    <div style={{ pointerEvents: "auto", maxWidth: 280, width: "auto", background: t.txt, boxShadow: "0 4px 16px rgba(0,0,0,.15)", borderRadius: 20, padding: "6px 14px", display: "flex", alignItems: "center", gap: 8, animation: "fadeUp .2s ease", transition: "opacity .8s ease", opacity: fading ? 0 : 1 }}>
       <div style={{ fontSize: 12, color: t.bg, whiteSpace: "nowrap", fontFamily: F.sans, fontWeight: 500 }}>{toast.text}</div>
-      {toast.redo && <button onClick={() => { toast.redo?.(); onClose?.(); }} style={{ background: "transparent", border: `1px solid rgba(255,255,255,.2)`, color: t.bg, borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: F.sans, whiteSpace: "nowrap" }}>{L.redo}</button>}
-      {toast.undo && <button onClick={() => { onUndo?.(); onClose?.(); }} style={{ background: "transparent", border: `1px solid rgba(255,255,255,.2)`, color: t.bg, borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: F.sans, whiteSpace: "nowrap" }}>{L.undo}</button>}
+      {toast.redo && <button onClick={() => { toast.redo?.(); onClose?.(); }} style={{ background: "transparent", border: `1px solid rgba(255,255,255,.2)`, color: t.bg, borderRadius: 12, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: F.sans, whiteSpace: "nowrap" }}>{L.redo}</button>}
+      {toast.undo && <button onClick={() => { onUndo?.(); onClose?.(); }} style={{ background: "transparent", border: `1px solid rgba(255,255,255,.2)`, color: t.bg, borderRadius: 12, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: F.sans, whiteSpace: "nowrap" }}>{L.undo}</button>}
     </div>
   </div>;
 }

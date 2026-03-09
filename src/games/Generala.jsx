@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useApp, ST, clone, fmtDate, shareResult, vib, F, B, EN, Hdr, IcoBtn, Modal, UndoBar } from '../lib.jsx';
+import { useApp, ST, clone, fmtDate, shareResult, vib, F, B, EN, Hdr, IcoBtn, Modal, UndoBar, HomeIcon } from '../lib.jsx';
 
 const GC = [
   { k: "uno", l: "Uno", n: 1, m: 5 }, { k: "dos", l: "Dos", n: 2, m: 10 }, { k: "tres", l: "Tres", n: 3, m: 15 },
@@ -42,11 +42,8 @@ function ComboBadge({ k, color, t }) {
   );
 }
 
-// ─── Avatar initial: show number for "Jugador N", first letter otherwise ───
-const avatarLabel = (name) => {
-  const m = name.match(/^Jugador\s+(\d+)$/i);
-  return m ? m[1] : name.charAt(0).toUpperCase();
-};
+// ─── Avatar: always show player number ───
+const isDefaultName = (name) => /^Jugador\s+\d+$/i.test(name);
 
 function Generala({ onBack, onContinueChange, onChangeGame }) {
   const { t, sounds, L } = useApp();
@@ -56,6 +53,8 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
   const [sheet, setSheet] = useState(null); const [modal, setModal] = useState(null);
   const [hist, setHist] = useState([]); const [showH, setShowH] = useState(false); const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [editingIdx, setEditingIdx] = useState(null);
+  const [editVal, setEditVal] = useState("");
   const playerNameRefs = useRef([]);
 
   const handleCount = (n) => { setPCount(n); setPNames(Array.from({ length: n }, (_, i) => pNames[i] || `Jugador ${i + 1}`)) };
@@ -96,10 +95,28 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
   };
   const turnsLeft = 11 - filledCount;
 
-  // Single "Nueva partida": saves to history + resets scores + keeps players
+  const saveToHistory = async () => {
+    if (ps.some(p => Object.values(p.scores).some(v => v !== null))) {
+      const nextHist = [{ players: ps.map(p => ({ name: p.name, t: tot(p) })), date: fmtDate() }, ...hist];
+      setHist(nextHist); await ST.save("generala-hist", nextHist);
+    }
+  };
+
+  const revancha = async () => {
+    await saveToHistory();
+    const next = ps.map(p => ({ name: p.name, scores: freshScores() }));
+    setPs(next); setModal(null);
+    setToast({ text: L.revancha, undo: null });
+    await ST.save("generala-game", { ps: next }); onContinueChange?.("generala");
+  };
+
+  const nuevaPartidaSetup = async () => {
+    await saveToHistory();
+    resetZ();
+  };
+
   const nuevaPartida = async () => {
-    const nextHist = [{ players: ps.map(p => ({ name: p.name, t: tot(p) })), date: fmtDate() }, ...hist];
-    setHist(nextHist); await ST.save("generala-hist", nextHist);
+    await saveToHistory();
     const next = ps.map(p => ({ name: p.name, scores: freshScores() }));
     setPs(next); setModal(null);
     setToast({ text: L.nuevaPartida, undo: null });
@@ -108,12 +125,22 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
 
   const resetZ = async () => { setStarted(false); setSStep(0); setModal(null); setPs([]); await ST.del("generala-game"); onContinueChange?.(null) };
   const delH = i => setHist(h => h.filter((_, j) => j !== i));
-  const doShare = () => shareResult("Generala", ps.map(p => `${p.name}: ${tot(p)}`));
+  const doShare = () => shareResult("Generala", ps.map(p => `${p.name}: ${tot(p)}`), { accent: "#C4783D", accentLight: "#D4945C" });
+
+  const startNameEdit = (i) => {
+    setEditingIdx(i);
+    setEditVal(ps[i]?.name || "");
+  };
+  const finishNameEdit = () => {
+    if (editingIdx !== null && editVal.trim()) ren(editingIdx, editVal.trim());
+    setEditingIdx(null);
+  };
   const goBack = () => { onContinueChange?.(started ? "generala" : null); if (onChangeGame) onChangeGame(); else onBack() };
   const maxTot = ps.length ? Math.max(...ps.map(p => tot(p))) : 0;
 
   if (loading) return <div style={{ background: t.bg, minHeight: "100vh" }}><Hdr title="Generala" onBack={goBack} /><div style={{ padding: 24, textAlign: "center", color: t.txtM }}>…</div></div>;
   if (!started) return <div style={{ background: t.bg, minHeight: "100vh" }}><Hdr title="Generala" onBack={goBack} />
+
     <div style={{ maxWidth: 360, margin: "0 auto", padding: "20px 24px 48px", display: "flex", flexDirection: "column", gap: 16 }}>
       {sStep === 0 && <><p style={{ fontSize: 22, color: t.txt, textAlign: "center", margin: 0, fontFamily: F.serif }}>{L.howManyPlayers}</p>
         <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
@@ -139,14 +166,15 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
   const gridCols = `${COL1}px repeat(${ps.length}, minmax(60px, 1fr))`;
 
   return <div style={{ minHeight: "100dvh", background: t.bg }}>
-    {/* Minimal header — hide buttons when game done */}
+    {/* Minimal header */}
     <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
-      <button onClick={goBack} style={{ background: "none", border: "none", color: t.txtM, fontSize: 15, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation" }}>←</button>
-      <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
-        {turnsLeft > 0 ? `${turnsLeft} ${L.turnsLeft}` : L.done}
-      </span>
-      <div style={{ flex: 1 }} />
-      {!allDone && <button onClick={() => setModal("menu")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Menu</button>}
+      <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px", touchAction: "manipulation", display: "flex", alignItems: "center" }}><HomeIcon color={t.txtM} /></button>
+      <div style={{ flex: 1, textAlign: "center" }}>
+        <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
+          {turnsLeft > 0 ? `${turnsLeft} ${L.turnsLeft}` : L.done}
+        </span>
+      </div>
+      {!allDone && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, color: t.txt, fontSize: 13, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "6px 14px", touchAction: "manipulation" }}>Menu</button>}
     </div>
 
     {modal === "menu" && <Modal onClose={() => setModal(null)}>
@@ -205,27 +233,53 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
       </div>
     </Modal>}
 
-    {/* Winner banner — singular "gana" */}
-    {allDone && <div style={{ textAlign: "center", padding: 14, background: t.pri, color: "#fff", animation: "scaleIn .3s ease" }}>
-      <div style={{ fontSize: 18, fontFamily: F.serif }}>¡{ps.reduce((b, p) => tot(p) > tot(b) ? p : b, ps[0]).name} {L.winSg}!</div>
-      <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 8, flexWrap: "wrap" }}>
-        <button onClick={doShare} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.share}</button>
-        <button onClick={nuevaPartida} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff", fontSize: 12, fontFamily: F.sans, padding: "6px 12px", cursor: "pointer" }}>{L.nuevaPartida}</button></div></div>}
+    {/* Winner banner */}
+    {allDone && <div style={{ textAlign: "center", padding: 16, background: t.pri, color: "#fff", animation: "scaleIn .3s ease" }}>
+      <div style={{ fontSize: 20, fontFamily: F.serif, fontWeight: 400 }}>¡{ps.reduce((b, p) => tot(p) > tot(b) ? p : b, ps[0]).name} {L.winSg}!</div>
+      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10 }}>
+        <button onClick={revancha} style={{
+          background: "rgba(255,255,255,.15)", border: "1px solid rgba(255,255,255,.3)",
+          borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: F.sans, fontWeight: 600,
+          padding: "10px 20px", cursor: "pointer", flex: 1, maxWidth: 160, touchAction: "manipulation",
+        }}>{L.revancha}</button>
+        <button onClick={nuevaPartidaSetup} style={{
+          background: "transparent", border: "1px solid rgba(255,255,255,.3)",
+          borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: F.sans, fontWeight: 500,
+          padding: "10px 20px", cursor: "pointer", flex: 1, maxWidth: 160, touchAction: "manipulation",
+        }}>{L.nuevaPartidaSetup}</button>
+      </div>
+      <button onClick={doShare} style={{
+        background: "none", border: "none", color: "rgba(255,255,255,.6)",
+        fontSize: 12, fontFamily: F.sans, cursor: "pointer", marginTop: 8, padding: "4px 8px", touchAction: "manipulation",
+      }}>{L.share}</button>
+    </div>}
 
     {/* ══════ SCORE GRID ══════ */}
     <div style={{ padding: "10px 8px 20px", overflowX: "auto" }}>
       <div style={{ minWidth: Math.max(300, COL1 + ps.length * 72) }}>
-        {/* Player header with initial avatars */}
+        {/* Player header with numbered avatars */}
         <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: 4, marginBottom: 4, position: "sticky", top: 0, zIndex: 2 }}>
           <div style={{ padding: 4 }} />
           {ps.map((p, i) => <div key={i} style={{ padding: "8px 4px 6px", textAlign: "center", background: t.card, borderRadius: "6px 6px 0 0", border: `1px solid ${t.brd}`, borderBottom: "none" }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: "50%",
-              background: t.bgS, border: `1px solid ${t.brd}`, color: t.pri,
+            <div onClick={() => startNameEdit(i)} style={{
+              width: 32, height: 32, borderRadius: "50%",
+              background: t.bgS, border: `1.5px solid ${t.brd}`, color: t.pri,
               display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 4px", fontSize: 12, fontWeight: 700, fontFamily: F.sans,
-            }}>{avatarLabel(p.name)}</div>
-            <EN name={p.name} onSave={n => ren(i, n)} sz={11} /></div>)}
+              margin: "0 auto 4px", fontSize: 13, fontWeight: 700, fontFamily: F.sans,
+              cursor: "pointer",
+            }}>{i + 1}</div>
+            {editingIdx === i ? (
+              <input autoFocus autoCapitalize="words" value={editVal}
+                onChange={e => setEditVal(e.target.value)}
+                onBlur={finishNameEdit}
+                onKeyDown={e => { if (e.key === "Enter") finishNameEdit() }}
+                style={{ background: "transparent", border: "none", borderBottom: `1.5px solid ${t.pri}`, color: t.txt,
+                  fontSize: 13, fontFamily: F.sans, fontWeight: 500, borderRadius: 0, padding: "2px 0", outline: "none",
+                  width: "100%", textAlign: "center", textTransform: "capitalize" }} />
+            ) : !isDefaultName(p.name) ? (
+              <EN name={p.name} onSave={n => ren(i, n)} sz={13} />
+            ) : null}
+          </div>)}
         </div>
 
         {/* Category rows */}
@@ -237,8 +291,8 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
               display: "flex", alignItems: "center", gap: 5 }}>
               {cat.n ? <DiceFace n={cat.n} size={22} color={t.pri} /> : <ComboBadge k={cat.k} color={t.pri} t={t} />}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, color: t.pri, fontFamily: F.sans, fontSize: 11, lineHeight: 1.2 }}>{cat.l}</div>
-                <div style={{ fontSize: 8, color: t.txtF, fontFamily: F.sans }}>{cat.n ? `${L.upTo} ${cat.m}` : gV(cat).join("/")}</div>
+                <div style={{ fontWeight: 600, color: t.pri, fontFamily: F.sans, fontSize: 13, lineHeight: 1.2 }}>{cat.l}</div>
+                <div style={{ fontSize: 10, color: t.txtF, fontFamily: F.sans }}>{cat.n ? `${L.upTo} ${cat.m}` : gV(cat).join("/")}</div>
               </div>
             </div>
             {/* Score cells — Doble Gen blocked if Generala not filled */}
@@ -257,8 +311,8 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
                   transition: "all .2s",
                   opacity: isDobleBlocked ? 0.25 : 1,
                 }}>
-                {val === "x" ? <span style={{ color: t.err, fontSize: 15, fontWeight: 700, fontFamily: F.sans }}>✗</span>
-                  : val !== null ? <span style={{ fontFamily: F.serif, fontSize: 17, fontWeight: 400, color: t.pri }}>{val}</span>
+                {val === "x" ? <span style={{ color: t.err, fontSize: 18, fontWeight: 700, fontFamily: F.sans }}>✗</span>
+                  : val !== null ? <span style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 400, color: t.pri }}>{val}</span>
                   : <span style={{ color: t.txtF, fontSize: 13, opacity: 0.4 }}>·</span>}
               </div> })}
             {same && <div style={{ position: "absolute", top: "50%", left: COL1 - 4, right: 2, height: 2, background: t.pri, opacity: .25, pointerEvents: "none" }} />}
@@ -275,7 +329,7 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
               background: t.bgS,
               border: isLeader ? `1.5px solid ${t.pri}` : `1px solid ${t.brd}`,
               borderRadius: pi === ps.length - 1 ? "0 0 6px 0" : 0 }}>
-              <span style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 400, color: t.pri }}>{tot(p)}</span>
+              <span style={{ fontFamily: F.serif, fontSize: 30, fontWeight: 400, color: t.pri }}>{tot(p)}</span>
             </div>
           })}
         </div>
