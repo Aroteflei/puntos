@@ -476,6 +476,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                         <div style={{ fontSize: 14, fontFamily: F.sans, fontWeight: 500, color: handVal(h) >= 0 ? t.txt : t.err, lineHeight: 1.4 }}>
                           {handVal(h)}
                         </div>
+                        <div style={{ fontSize: 14, lineHeight: 1.4, visibility: "hidden" }}>{'\u00A0'}</div>
                         {!isLast && <>
                           <div style={{ height: 1, background: t.txt, opacity: .15, width: "50%", margin: "2px 0" }} />
                           <span style={{ fontFamily: F.serif, fontSize: 15, fontWeight: 400, color: t.ok }}>{cumul}</span>
