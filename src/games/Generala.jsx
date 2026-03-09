@@ -146,14 +146,26 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
         {turnsLeft > 0 ? `${turnsLeft} ${L.turnsLeft}` : L.done}
       </span>
       <div style={{ flex: 1 }} />
-      {hist.length > 0 && <button onClick={() => setShowH(!showH)} style={{ background: "none", border: `1px solid ${showH ? t.pri : t.brd}`, borderRadius: 6, color: showH ? t.pri : t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>{L.hist}</button>}
-      {!allDone && <>
-        <button onClick={doShare} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Compartir</button>
-        <button onClick={() => setModal("new")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Nueva</button>
-      </>}
+      {!allDone && <button onClick={() => setModal("menu")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Menu</button>}
     </div>
 
-    {modal && <Modal onClose={() => setModal(null)}><div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
+    {modal === "menu" && <Modal onClose={() => setModal(null)}>
+      <div style={{ background: t.card, borderRadius: 8, padding: 4, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 240, width: "100%" }}>
+        {[
+          { label: "Compartir", action: doShare },
+          ...(hist.length > 0 ? [{ label: L.hist, action: () => { setModal(null); setShowH(true); } }] : []),
+          { label: L.nuevaPartida, action: () => setModal("new") },
+        ].map((item, i) => (
+          <button key={i} onClick={item.action} style={{
+            display: "block", width: "100%", textAlign: "left", padding: "12px 14px",
+            background: "none", border: "none", color: t.txt, fontSize: 14, fontWeight: 500,
+            cursor: "pointer", borderRadius: 4, fontFamily: F.sans, touchAction: "manipulation",
+          }}>{item.label}</button>
+        ))}
+      </div>
+    </Modal>}
+
+    {(modal === "new" || modal === "reset") && <Modal onClose={() => setModal(null)}><div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
       <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{modal === "new" ? L.newGame : L.resetQ}</p>
       <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "new" ? L.savesHist : L.losesAll}</p>
       <div style={{ display: "flex", gap: 10 }}><B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>

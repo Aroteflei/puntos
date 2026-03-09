@@ -387,7 +387,6 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
           {maxHands > 0 ? `${maxHands} ${maxHands === 1 ? "mano" : "manos"} · ` : ""}A {cfg.tgt} pts
         </span>
         <div style={{ flex: 1 }} />
-        {hist.length > 0 && <button onClick={() => setShowH(!showH)} style={{ background: "none", border: `1px solid ${showH ? t.pri : t.brd}`, borderRadius: 6, color: showH ? t.pri : t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>{L.hist}</button>}
         {!winner && <button onClick={() => setModal("menu")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Menu</button>}
       </div>
 
@@ -501,13 +500,17 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                       </>
                     ) : (
                       <>
-                        <div style={{ fontSize: 20, fontFamily: F.sans, fontWeight: 500, color: handVal(h) >= 0 ? t.txt : t.err, lineHeight: 1.4 }}>
-                          {handVal(h)}
+                        <div style={{ fontSize: 20, fontFamily: F.sans, fontWeight: 500, color: handVal(h) >= 0 ? t.txt : t.err, lineHeight: 1.4, position: "relative", display: "inline-block" }}>
+                          {handVal(h) < 0 && <span style={{ position: "absolute", right: "100%", marginRight: 1 }}>−</span>}
+                          {Math.abs(handVal(h))}
                         </div>
                         <div style={{ fontSize: 20, lineHeight: 1.4, visibility: "hidden" }}>{'\u00A0'}</div>
                         {!isLast && <>
                           <div style={{ height: 1, background: t.txt, opacity: .12, width: "40%", margin: "3px 0 1px" }} />
-                          <span style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 500, color: t.txtM }}>{cumul}</span>
+                          <span style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 500, color: t.txtM, position: "relative", display: "inline-block" }}>
+                            {cumul < 0 && <span style={{ position: "absolute", right: "100%", marginRight: 1 }}>−</span>}
+                            {Math.abs(cumul)}
+                          </span>
                         </>}
                       </>
                     )}
@@ -564,6 +567,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
         <div style={{ background: t.card, borderRadius: 8, padding: 4, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 240, width: "100%" }}>
           {[
             { label: "Compartir", action: doShare },
+            ...(hist.length > 0 ? [{ label: L.hist, action: () => { setModal(null); setShowH(true); } }] : []),
             { label: "Configuración", action: () => setModal("settings") },
             { label: L.nuevaPartida, action: () => setModal("new") },
             { label: "Reiniciar", action: () => setModal("reset") },

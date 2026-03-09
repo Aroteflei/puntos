@@ -243,11 +243,9 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
     let nextPicaStep = picapicaStep;
     if (teamSize === 3) {
-      const wasInPhase = maxScore(sc) >= picaRange[0] && maxScore(sc) < picaRange[1];
       const nowInPhase = maxScore(nextSc) >= picaRange[0] && maxScore(nextSc) < picaRange[1];
       if (!nowInPhase) nextPicaStep = 0;
-      else if (wasInPhase) nextPicaStep = picapicaStep + 1;
-      else nextPicaStep = 0;
+      // Don't auto-advance — user advances manually with Siguiente button
     }
 
     setSc(nextSc);
@@ -304,6 +302,13 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     setPicapicaStep(ls.picapicaStep);
     persist({ sc: ls.sc, picapicaStep: ls.picapicaStep });
     lastStateRef.current = null;
+  };
+
+  const advancePica = () => {
+    const next = picapicaStep + 1;
+    setPicapicaStep(next);
+    persist({ picapicaStep: next });
+    if (sounds) vib();
   };
 
   const picaActive = teamSize === 3 && started && sc.length > 0 && maxScore(sc) >= picaRange[0] && maxScore(sc) < picaRange[1];
@@ -466,11 +471,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         }}>←</button>
         <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>A {target}</span>
         <div style={{ flex: 1 }} />
-        {hist.length > 0 && <button onClick={() => setShowH(!showH)} style={{ background: "none", border: `1px solid ${showH ? t.pri : t.brd}`, borderRadius: 6, color: showH ? t.pri : t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>{L.hist}</button>}
-        {!winner && <>
-          <button onClick={doShare} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Compartir</button>
-          <button onClick={() => setModal("new")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Nueva</button>
-        </>}
+        {!winner && <button onClick={() => setModal("menu")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Menu</button>}
       </div>
 
       {winner && (
@@ -484,9 +485,16 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
       )}
 
       {picaActive && (
-        <div style={{ padding: "8px 16px", borderBottom: `1px solid ${t.pri}20`, flexShrink: 0 }}>
-          <div style={{ fontSize: 12, color: t.pri, fontWeight: 600, textAlign: "center", fontFamily: F.sans }}>{picaLabel}</div>
-          <div style={{ fontSize: 11, color: t.txtM, textAlign: "center", marginTop: 2, fontFamily: F.sans }}>{picaHint}</div>
+        <div style={{ padding: "6px 16px", borderBottom: `1px solid ${t.pri}20`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 12, color: t.pri, fontWeight: 600, fontFamily: F.sans }}>{picaLabel}</div>
+            <div style={{ fontSize: 11, color: t.txtM, marginTop: 1, fontFamily: F.sans }}>{picaHint}</div>
+          </div>
+          <button onClick={advancePica} style={{
+            background: t.pri, color: "#fff", border: "none", borderRadius: 6,
+            fontSize: 11, fontFamily: F.sans, fontWeight: 600, padding: "6px 12px",
+            cursor: "pointer", touchAction: "manipulation", whiteSpace: "nowrap",
+          }}>Siguiente →</button>
         </div>
       )}
 
@@ -513,7 +521,23 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
       </div>
     </Modal>}
 
-    {modal && <Modal onClose={() => setModal(null)}>
+    {modal === "menu" && <Modal onClose={() => setModal(null)}>
+      <div style={{ background: t.card, borderRadius: 8, padding: 4, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 240, width: "100%" }}>
+        {[
+          { label: "Compartir", action: doShare },
+          ...(hist.length > 0 ? [{ label: L.hist, action: () => { setModal(null); setShowH(true); } }] : []),
+          { label: L.nuevaPartida, action: () => setModal("new") },
+        ].map((item, i) => (
+          <button key={i} onClick={item.action} style={{
+            display: "block", width: "100%", textAlign: "left", padding: "12px 14px",
+            background: "none", border: "none", color: t.txt, fontSize: 14, fontWeight: 500,
+            cursor: "pointer", borderRadius: 4, fontFamily: F.sans, touchAction: "manipulation",
+          }}>{item.label}</button>
+        ))}
+      </div>
+    </Modal>}
+
+    {modal === "new" && <Modal onClose={() => setModal(null)}>
       <div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
         <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{L.nuevaPartida}?</p>
         <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>Se reinician los puntos a cero.</p>
