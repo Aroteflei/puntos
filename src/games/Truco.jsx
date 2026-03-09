@@ -413,7 +413,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     </div>
   );
 
-  return (
+  return (<>
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", background: t.bg, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", padding: ph ? "8px 10px" : "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
         <button onClick={goBack} style={{
@@ -427,28 +427,6 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
           <button onClick={() => setModal("new")} style={{ background: "none", border: `1px solid ${t.brd}`, borderRadius: 6, color: t.txtM, fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", touchAction: "manipulation" }}>Nueva</button>
         </>}
       </div>
-
-      {showH && hist.length > 0 && <Modal onClose={() => setShowH(false)}>
-        <div style={{ background: t.card, borderRadius: 12, padding: 16, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 340, width: "100%", maxHeight: "70vh", overflow: "auto" }}>
-          <p style={{ fontSize: 16, color: t.pri, margin: "0 0 10px", fontFamily: F.serif }}>{L.hist}</p>
-          {hist.map((h, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", borderBottom: `1px solid ${t.brd}`, fontSize: 13, fontFamily: F.sans }}>
-            <div style={{ flex: 1 }}>{h.players.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.t}</b></span>)}</div>
-            <span style={{ fontSize: 10, color: t.txtF, whiteSpace: "nowrap" }}>{h.date}</span>
-            <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 20, padding: "4px 8px", touchAction: "manipulation" }}>×</button>
-          </div>)}
-        </div>
-      </Modal>}
-
-      {modal && <Modal onClose={() => setModal(null)}>
-        <div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
-          <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{L.nuevaPartida}?</p>
-          <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>Se reinician los puntos a cero.</p>
-          <div style={{ display: "flex", gap: 10 }}>
-            <B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
-            <B onClick={nuevaPartida} s={{ flex: 1 }}>{L.nuevaPartida}</B>
-          </div>
-        </div>
-      </Modal>}
 
       {winner && (
         <div style={{ textAlign: "center", padding: ph ? 10 : 14, background: t.pri, color: "#fff", flexShrink: 0, animation: "scaleIn .3s ease" }}>
@@ -475,7 +453,32 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
       <UndoBar toast={toast} onUndo={handleUndo} onClose={() => { setToast(null); lastStateRef.current = null; }} />
     </div>
-  );
+
+    {showH && hist.length > 0 && <Modal onClose={() => setShowH(false)}>
+      <div style={{ background: t.card, borderRadius: 12, padding: 16, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 340, width: "100%", maxHeight: "70vh", overflow: "auto" }}>
+        <p style={{ fontSize: 16, color: t.pri, margin: "0 0 10px", fontFamily: F.serif }}>{L.hist}</p>
+        {hist.map((h, i) => {
+          if (!h || !Array.isArray(h.players)) return null;
+          return <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", borderBottom: `1px solid ${t.brd}`, fontSize: 13, fontFamily: F.sans }}>
+            <div style={{ flex: 1 }}>{h.players.map((s, j) => <span key={j} style={{ marginRight: 8 }}>{s.name}: <b>{s.t}</b></span>)}</div>
+            <span style={{ fontSize: 10, color: t.txtF, whiteSpace: "nowrap" }}>{h.date || ""}</span>
+            <button onClick={() => delH(i)} style={{ background: "none", border: "none", color: t.err, cursor: "pointer", fontSize: 20, padding: "4px 8px", touchAction: "manipulation" }}>×</button>
+          </div>;
+        })}
+      </div>
+    </Modal>}
+
+    {modal && <Modal onClose={() => setModal(null)}>
+      <div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
+        <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{L.nuevaPartida}?</p>
+        <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>Se reinician los puntos a cero.</p>
+        <div style={{ display: "flex", gap: 10 }}>
+          <B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
+          <B onClick={nuevaPartida} s={{ flex: 1 }}>{L.nuevaPartida}</B>
+        </div>
+      </div>
+    </Modal>}
+  </>);
 }
 
 export default Truco;

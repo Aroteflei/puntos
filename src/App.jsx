@@ -98,7 +98,7 @@ function Home({ t, dk, tog, L, pickGame, contGame, clearCurrent, lockedGame, unl
 
       {/* Title */}
       <h1 style={{ fontFamily: F.serif, fontSize: 48, fontWeight: 400, color: t.pri, margin: 0, letterSpacing: -.5, animation: "fadeUp .4s ease" }}>PUNTOS</h1>
-      <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 400, letterSpacing: 3, color: t.txtM, textTransform: "uppercase", marginTop: 4, animation: "fadeUp .4s ease .05s both" }}>marcador</span>
+      <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 400, letterSpacing: 3, color: t.txtM, textTransform: "uppercase", marginTop: 4, animation: "fadeUp .4s ease .05s both" }}>anotador</span>
 
       {/* Continue last game — only if it matches locked game (or no lock) */}
       {contGame && GAMES[contGame] && (!lockedGame || contGame === lockedGame) && (
