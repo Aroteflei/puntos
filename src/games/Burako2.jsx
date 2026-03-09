@@ -359,7 +359,6 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   // ══════════════════════════════════════════════════
   const COL1 = 44;
   const gridCols = `${COL1}px repeat(${teams.length}, 1fr)`;
-  const leadTotal = Math.max(...teams.map(tm => total(tm)), 0);
 
   return (
     <div style={{ minHeight: "100dvh", background: t.bg, display: "flex", flexDirection: "column" }}>
@@ -404,9 +403,9 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   margin: "0 auto 4px", fontSize: 11, fontWeight: 700, fontFamily: F.sans,
                 }}>{teamAvatar(tm.name)}</div>
-                <EN name={tm.name} onSave={n => ren(i, n)} sz={16} fw={500} ff={F.sans} />
+                <EN name={tm.name} onSave={n => ren(i, n)} sz={20} fw={500} ff={F.sans} />
                 {hasBajada && (
-                  <div style={{ fontSize: 16, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
+                  <div style={{ fontSize: 20, color: t.txtF, fontFamily: F.sans, fontWeight: 500, marginTop: 2 }}>
                     {mode === "par" ? "Bajan con" : "Baja con"}: {bajadaReq(total(tm))}
                   </div>
                 )}
@@ -464,22 +463,22 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                       <span style={{ color: t.txtF, fontSize: 13, opacity: 0.4 }}>·</span>
                     ) : h.base !== undefined ? (
                       <>
-                        <div style={{ fontSize: 16, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.base}</div>
-                        <div style={{ fontSize: 16, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.pts}</div>
+                        <div style={{ fontSize: 20, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.base}</div>
+                        <div style={{ fontSize: 20, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.pts}</div>
                         {!isLast && <>
                           <div style={{ height: 1, background: t.txt, opacity: .12, width: "40%", margin: "3px 0 1px" }} />
-                          <span style={{ fontFamily: F.sans, fontSize: 16, fontWeight: 500, color: t.txtM }}>{cumul}</span>
+                          <span style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 500, color: t.txtM }}>{cumul}</span>
                         </>}
                       </>
                     ) : (
                       <>
-                        <div style={{ fontSize: 16, fontFamily: F.sans, fontWeight: 500, color: handVal(h) >= 0 ? t.txt : t.err, lineHeight: 1.4 }}>
+                        <div style={{ fontSize: 20, fontFamily: F.sans, fontWeight: 500, color: handVal(h) >= 0 ? t.txt : t.err, lineHeight: 1.4 }}>
                           {handVal(h)}
                         </div>
-                        <div style={{ fontSize: 16, lineHeight: 1.4, visibility: "hidden" }}>{'\u00A0'}</div>
+                        <div style={{ fontSize: 20, lineHeight: 1.4, visibility: "hidden" }}>{'\u00A0'}</div>
                         {!isLast && <>
                           <div style={{ height: 1, background: t.txt, opacity: .12, width: "40%", margin: "3px 0 1px" }} />
-                          <span style={{ fontFamily: F.sans, fontSize: 16, fontWeight: 500, color: t.txtM }}>{cumul}</span>
+                          <span style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 500, color: t.txtM }}>{cumul}</span>
                         </>}
                       </>
                     )}
@@ -497,15 +496,14 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>TOTAL</div>
             {teams.map((tm, ti) => {
-              const isLeader = teams.length > 1 && total(tm) === leadTotal && leadTotal > 0;
               return (
                 <div key={ti} style={{
                   padding: "6px 4px", textAlign: "center",
                   background: t.bgS,
-                  border: isLeader ? `1.5px solid ${t.pri}` : `1px solid ${t.brd}`,
+                  border: `1px solid ${t.brd}`,
                   borderRadius: ti === teams.length - 1 ? "0 0 6px 0" : 0,
                 }}>
-                  <span style={{ fontFamily: F.sans, fontSize: 16, fontWeight: 500, color: t.pri }}>{total(tm)}</span>
+                  <span style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 500, color: t.pri }}>{total(tm)}</span>
                 </div>
               );
             })}
