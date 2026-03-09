@@ -468,7 +468,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                         <div style={{ fontSize: 14, fontFamily: F.sans, fontWeight: 500, color: t.txt, lineHeight: 1.4 }}>{h.pts}</div>
                         {!isLast && <>
                           <div style={{ height: 1, background: t.txt, opacity: .12, width: "40%", margin: "3px 0 1px" }} />
-                          <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 500, color: t.txtM }}>{cumul}</span>
+                          <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 500, color: t.txtM }}>{cumul}</span>
                         </>}
                       </>
                     ) : (
@@ -479,7 +479,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                         <div style={{ fontSize: 14, lineHeight: 1.4, visibility: "hidden" }}>{'\u00A0'}</div>
                         {!isLast && <>
                           <div style={{ height: 1, background: t.txt, opacity: .12, width: "40%", margin: "3px 0 1px" }} />
-                          <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 500, color: t.txtM }}>{cumul}</span>
+                          <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 500, color: t.txtM }}>{cumul}</span>
                         </>}
                       </>
                     )}
