@@ -357,7 +357,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   // ══════════════════════════════════════════════════
   // GAME — CARD GRID STYLE
   // ══════════════════════════════════════════════════
-  const COL1 = 36;
+  const COL1 = 44;
   const gridCols = `${COL1}px repeat(${teams.length}, 1fr)`;
   const leadTotal = Math.max(...teams.map(tm => total(tm)), 0);
 
@@ -492,7 +492,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
           {/* Total row */}
           <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: 4, marginTop: 6 }}>
             <div style={{
-              padding: "10px 6px", fontSize: 9, fontWeight: 600, color: "#fff", letterSpacing: 1.5,
+              padding: "10px 4px", fontSize: 8, fontWeight: 600, color: "#fff", letterSpacing: 1,
               fontFamily: F.sans, background: t.pri, borderRadius: "0 0 0 6px",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>TOTAL</div>
