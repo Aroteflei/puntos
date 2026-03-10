@@ -528,19 +528,35 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     return rawNames[rawIdx]?.trim() || `J${rawIdx + 1}`;
   };
 
+  const groupedDuels = () => {
+    const groups = [[], [], []];
+    picaAllDuels.forEach((d, i) => groups[i % 3].push(d));
+    return groups;
+  };
+
   const shareDuels = () => {
     const n0 = sc[0]?.name || "Eq 1";
     const n1 = sc[1]?.name || "Eq 2";
     const hasNames = teamSize === 3 && rawNames.some(n => n?.trim());
     const lines = [`${n0} vs ${n1}: `];
-    picaAllDuels.forEach((d, i) => {
-      let label = `D${i + 1}`;
-      if (hasNames) label += ` (${picaPlayerName(0, i)} v ${picaPlayerName(1, i)})`;
-      lines.push(`${label}: ${d.t0} - ${d.t1}`);
+    const groups = groupedDuels();
+    groups.forEach((duels, dIdx) => {
+      if (!duels.length) return;
+      let hdr = `D${dIdx + 1}`;
+      if (hasNames) hdr += ` (${picaPlayerName(0, dIdx)} v ${picaPlayerName(1, dIdx)})`;
+      lines.push(`${hdr}: `);
+      duels.forEach((d, c) => {
+        const diff = d.t0 - d.t1;
+        lines.push(`  PP${c + 1}: ${d.t0} - ${d.t1}${diff !== 0 ? ` (${diff > 0 ? "+" : ""}${diff})` : ""}`);
+      });
+      const s0 = duels.reduce((s, d) => s + d.t0, 0);
+      const s1 = duels.reduce((s, d) => s + d.t1, 0);
+      const dd = s0 - s1;
+      lines.push(`  Total: ${s0} - ${s1}${dd !== 0 ? ` (${dd > 0 ? "+" : ""}${dd})` : ""}`);
     });
     const totalT0 = picaAllDuels.reduce((s, d) => s + d.t0, 0);
     const totalT1 = picaAllDuels.reduce((s, d) => s + d.t1, 0);
-    lines.push(`Total: ${totalT0} - ${totalT1}`);
+    lines.push(`TOTAL: ${totalT0} - ${totalT1}`);
     shareResult("Pica Pica · Duelos", lines, { accent: "#1A5C52", accentLight: "#3D8B7A" });
   };
 
@@ -997,56 +1013,72 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         <p style={{ fontSize: 16, color: t.pri, margin: "0 0 4px", fontFamily: F.serif, textAlign: "center" }}>Pica Pica · Duelos</p>
         {/* Team header */}
         <div style={{ display: "flex", padding: "10px 0 8px", borderBottom: `2px solid ${t.pri}`, alignItems: "center" }}>
-          <span style={{ width: 32 }} />
+          <span style={{ width: 40 }} />
           <span style={{ flex: 1, fontSize: 13, fontWeight: 700, fontFamily: F.sans, color: t.pri, textAlign: "center" }}>{sc[0]?.name}</span>
           <span style={{ width: 20, textAlign: "center", fontSize: 11, color: t.txtF }}>-</span>
           <span style={{ flex: 1, fontSize: 13, fontWeight: 700, fontFamily: F.sans, color: t.pri, textAlign: "center" }}>{sc[1]?.name}</span>
+          <span style={{ width: 40, textAlign: "center", fontSize: 10, color: t.txtF, fontFamily: F.sans }}>Dif</span>
         </div>
-        {/* Duel rows */}
+        {/* Grouped by duel position: D1, D2, D3 */}
         {(() => {
+          const groups = groupedDuels();
           const hasNames = teamSize === 3 && rawNames.some(n => n?.trim());
-          return picaAllDuels.map((d, i) => {
-            const w0 = d.t0 > d.t1;
-            const w1 = d.t1 > d.t0;
-            const isCycleBoundary = i > 0 && i % 3 === 0;
-            return <React.Fragment key={i}>
-              {isCycleBoundary && <div style={{ height: 1, background: t.pri, margin: "4px 0", opacity: 0.2 }} />}
-              <div style={{ display: "flex", alignItems: "center", padding: "7px 0", borderBottom: `1px solid ${t.brd}` }}>
-                <span style={{ width: 32, fontSize: 11, color: t.txtF, fontFamily: F.sans }}>D{i + 1}</span>
-                <div style={{ flex: 1, textAlign: "center" }}>
-                  <div style={{ fontSize: 18, fontFamily: F.serif, fontWeight: w0 ? 700 : 400, color: w0 ? t.pri : t.txt }}>{d.t0}</div>
-                  {hasNames && <div style={{ fontSize: 9, color: t.txtF, fontFamily: F.sans }}>{picaPlayerName(0, i)}</div>}
-                </div>
-                <span style={{ width: 20, textAlign: "center", fontSize: 11, color: t.txtF }}>-</span>
-                <div style={{ flex: 1, textAlign: "center" }}>
-                  <div style={{ fontSize: 18, fontFamily: F.serif, fontWeight: w1 ? 700 : 400, color: w1 ? t.pri : t.txt }}>{d.t1}</div>
-                  {hasNames && <div style={{ fontSize: 9, color: t.txtF, fontFamily: F.sans }}>{picaPlayerName(1, i)}</div>}
-                </div>
+          return groups.map((duels, dIdx) => {
+            if (!duels.length) return null;
+            const sub0 = duels.reduce((s, d) => s + d.t0, 0);
+            const sub1 = duels.reduce((s, d) => s + d.t1, 0);
+            const subDiff = sub0 - sub1;
+            const sm0 = sub0 > sub1; const sm1 = sub1 > sub0;
+            return <div key={dIdx} style={{ marginTop: dIdx > 0 ? 6 : 0 }}>
+              {/* D header */}
+              <div style={{ display: "flex", alignItems: "center", padding: "6px 0 2px" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: t.pri, fontFamily: F.sans }}>D{dIdx + 1}</span>
+                {hasNames && <span style={{ fontSize: 10, color: t.txtM, fontFamily: F.sans, marginLeft: 6 }}>
+                  {picaPlayerName(0, dIdx)} vs {picaPlayerName(1, dIdx)}
+                </span>}
               </div>
-            </React.Fragment>;
+              {/* Cycle rows */}
+              {duels.map((d, c) => {
+                const w0 = d.t0 > d.t1; const w1 = d.t1 > d.t0;
+                const diff = d.t0 - d.t1;
+                return <div key={c} style={{ display: "flex", alignItems: "center", padding: "4px 0", borderBottom: `1px solid ${t.brd}` }}>
+                  <span style={{ width: 40, fontSize: 10, color: t.txtF, fontFamily: F.sans }}>PP{c + 1}</span>
+                  <span style={{ flex: 1, textAlign: "center", fontSize: 15, fontFamily: F.serif, fontWeight: w0 ? 700 : 400, color: w0 ? t.pri : t.txt }}>{d.t0}</span>
+                  <span style={{ width: 20, textAlign: "center", fontSize: 11, color: t.txtF }}>-</span>
+                  <span style={{ flex: 1, textAlign: "center", fontSize: 15, fontFamily: F.serif, fontWeight: w1 ? 700 : 400, color: w1 ? t.pri : t.txt }}>{d.t1}</span>
+                  <span style={{ width: 40, textAlign: "center", fontSize: 11, fontFamily: F.sans, fontWeight: 600, color: diff > 0 ? t.ok : diff < 0 ? t.err : t.txtF }}>
+                    {diff > 0 ? `+${diff}` : diff === 0 ? "=" : diff}
+                  </span>
+                </div>;
+              })}
+              {/* Subtotal per duel position */}
+              {duels.length > 1 && <div style={{ display: "flex", alignItems: "center", padding: "4px 0 6px" }}>
+                <span style={{ width: 40 }} />
+                <span style={{ flex: 1, textAlign: "center", fontSize: 13, fontFamily: F.sans, fontWeight: 600, color: sm0 ? t.pri : t.txt }}>{sub0}</span>
+                <span style={{ width: 20, textAlign: "center", fontSize: 11, color: t.txtF }}>-</span>
+                <span style={{ flex: 1, textAlign: "center", fontSize: 13, fontFamily: F.sans, fontWeight: 600, color: sm1 ? t.pri : t.txt }}>{sub1}</span>
+                <span style={{ width: 40, textAlign: "center", fontSize: 11, fontFamily: F.sans, fontWeight: 700, color: subDiff > 0 ? t.ok : subDiff < 0 ? t.err : t.txtF }}>
+                  {subDiff > 0 ? `+${subDiff}` : subDiff === 0 ? "=" : subDiff}
+                </span>
+              </div>}
+            </div>;
           });
         })()}
-        {/* Totals */}
+        {/* Grand total */}
         {(() => {
           const tot0 = picaAllDuels.reduce((s, d) => s + d.t0, 0);
           const tot1 = picaAllDuels.reduce((s, d) => s + d.t1, 0);
-          const wins0 = picaAllDuels.filter(d => d.t0 > d.t1).length;
-          const wins1 = picaAllDuels.filter(d => d.t1 > d.t0).length;
+          const totDiff = tot0 - tot1;
           const m0 = tot0 > tot1; const m1 = tot1 > tot0;
-          return <>
-            <div style={{ display: "flex", alignItems: "center", padding: "10px 0 2px", borderTop: `2px solid ${t.pri}`, marginTop: 2 }}>
-              <span style={{ width: 32, fontSize: 11, color: t.txtM, fontFamily: F.sans, fontWeight: 600 }}>Total</span>
-              <span style={{ flex: 1, textAlign: "center", fontSize: 22, fontFamily: F.serif, fontWeight: 700, color: m0 ? t.pri : t.txt }}>{tot0}</span>
-              <span style={{ width: 20, textAlign: "center", fontSize: 11, color: t.txtF }}>-</span>
-              <span style={{ flex: 1, textAlign: "center", fontSize: 22, fontFamily: F.serif, fontWeight: 700, color: m1 ? t.pri : t.txt }}>{tot1}</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", paddingBottom: 4 }}>
-              <span style={{ width: 32 }} />
-              <span style={{ flex: 1, textAlign: "center", fontSize: 11, color: t.txtM, fontFamily: F.sans }}>{wins0} ganado{wins0 !== 1 ? "s" : ""}</span>
-              <span style={{ width: 20 }} />
-              <span style={{ flex: 1, textAlign: "center", fontSize: 11, color: t.txtM, fontFamily: F.sans }}>{wins1} ganado{wins1 !== 1 ? "s" : ""}</span>
-            </div>
-          </>;
+          return <div style={{ display: "flex", alignItems: "center", padding: "10px 0 4px", borderTop: `2px solid ${t.pri}`, marginTop: 4 }}>
+            <span style={{ width: 40, fontSize: 11, color: t.txtM, fontFamily: F.sans, fontWeight: 700 }}>Total</span>
+            <span style={{ flex: 1, textAlign: "center", fontSize: 22, fontFamily: F.serif, fontWeight: 700, color: m0 ? t.pri : t.txt }}>{tot0}</span>
+            <span style={{ width: 20, textAlign: "center", fontSize: 11, color: t.txtF }}>-</span>
+            <span style={{ flex: 1, textAlign: "center", fontSize: 22, fontFamily: F.serif, fontWeight: 700, color: m1 ? t.pri : t.txt }}>{tot1}</span>
+            <span style={{ width: 40, textAlign: "center", fontSize: 12, fontFamily: F.sans, fontWeight: 700, color: totDiff > 0 ? t.ok : totDiff < 0 ? t.err : t.txtF }}>
+              {totDiff > 0 ? `+${totDiff}` : totDiff === 0 ? "=" : totDiff}
+            </span>
+          </div>;
         })()}
         {/* Buttons */}
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
