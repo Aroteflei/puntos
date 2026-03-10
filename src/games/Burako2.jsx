@@ -68,8 +68,14 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   const start = () => {
     let fresh;
     if (mode === "par") {
-      const n1 = (names[0].trim() || "Jugador 1") + " - " + (names[1].trim() || "Jugador 2");
-      const n2 = (names[2].trim() || "Jugador 3") + " - " + (names[3].trim() || "Jugador 4");
+      const pairName = (a, b, fallback) => {
+        const na = a.trim(), nb = b.trim();
+        if (!na && !nb) return fallback;
+        if (na && nb) return na + " - " + nb;
+        return na || nb;
+      };
+      const n1 = pairName(names[0], names[1], "Equipo 1");
+      const n2 = pairName(names[2], names[3], "Equipo 2");
       fresh = [{ name: n1, hands: [] }, { name: n2, hands: [] }];
     } else {
       fresh = names.slice(0, nameCount).map((n, i) => ({ name: n.trim() || `Jugador ${i + 1}`, hands: [] }));
