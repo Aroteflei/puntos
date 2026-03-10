@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useApp, ST, clone, fmtDate, shareResult, vib, F, B, EN, Hdr, IcoBtn, Modal, UndoBar, HomeIcon } from '../lib.jsx';
+import { useApp, ST, clone, fmtDate, shareResult, vibFor, F, B, EN, Hdr, Modal, UndoBar, HomeIcon } from '../lib.jsx';
 
 const GC = [
   { k: "uno", l: "Uno", n: 1, m: 5 }, { k: "dos", l: "Dos", n: 2, m: 10 }, { k: "tres", l: "Tres", n: 3, m: 15 },
@@ -45,6 +45,33 @@ function ComboBadge({ k, color, t }) {
 // ─── Avatar: always show player number ───
 const isDefaultName = (name) => /^Jugador\s+\d+$/i.test(name);
 
+function PopNum({ value, style, t }) {
+  const prevRef = useRef(value);
+  const [popKey, setPopKey] = useState(0);
+  const [floatDelta, setFloatDelta] = useState(null);
+  useEffect(() => {
+    if (value !== prevRef.current) {
+      const delta = value - prevRef.current;
+      prevRef.current = value;
+      setPopKey(k => k + 1);
+      setFloatDelta(delta);
+      const id = setTimeout(() => setFloatDelta(null), 600);
+      return () => clearTimeout(id);
+    }
+  }, [value]);
+  return (
+    <span style={{ position: "relative", display: "inline-block" }}>
+      <span key={popKey} style={{ ...style, animation: popKey ? "scorePop .3s ease-out" : undefined, display: "inline-block" }}>{value}</span>
+      {floatDelta !== null && <span key={`f${popKey}`} style={{
+        position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)",
+        fontFamily: F.sans, fontSize: 14, fontWeight: 700, pointerEvents: "none", whiteSpace: "nowrap",
+        color: floatDelta > 0 ? t.ok : t.err,
+        animation: "floatUp .6s ease-out forwards",
+      }}>{floatDelta > 0 ? `+${floatDelta}` : floatDelta}</span>}
+    </span>
+  );
+}
+
 function Generala({ onBack, onContinueChange, onChangeGame }) {
   const { t, dk, tog, sounds, L } = useApp();
   const [sStep, setSStep] = useState(0); const [pCount, setPCount] = useState(2);
@@ -71,7 +98,7 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
     if (next) { next.focus(); next.select?.(); }
     else startGame();
   };
-  const setSc = (pi, k, v) => { const prev = clone(ps); const u = clone(ps); u[pi].scores[k] = v; setPs(u); setSheet(null); setToast({ text: `${u[pi].name} · ${GC.find(c => c.k === k)?.l}`, undo: () => setPs(prev) }); if (sounds) vib() };
+  const setSc = (pi, k, v) => { const prev = clone(ps); const u = clone(ps); u[pi].scores[k] = v; setPs(u); setSheet(null); setToast({ text: `${u[pi].name} · ${GC.find(c => c.k === k)?.l}`, undo: () => setPs(prev) }); if (sounds) vibFor(1) };
   const tot = p => Object.values(p.scores).reduce((s, v) => s + (typeof v === "number" ? v : 0), 0);
   const ren = (i, n) => { const u = clone(ps); u[i].name = n; setPs(u) };
 
@@ -169,17 +196,22 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
 
   return <div style={{ minHeight: "100dvh", background: t.bg }}>
     {/* Minimal header */}
-    <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
-      <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px 12px", touchAction: "manipulation", display: "flex", alignItems: "center" }}><HomeIcon color={t.txtM} /></button>
-      <button onClick={tog} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", touchAction: "manipulation", fontSize: 16, lineHeight: 1 }}>
-        {dk ? "☀️" : "🌙"}
+    <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", gap: 10, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
+      <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, touchAction: "manipulation", display: "flex", alignItems: "center" }}>
+        <HomeIcon color={t.txtM} />
+      </button>
+      <button onClick={tog} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 10px", cursor: "pointer", touchAction: "manipulation", display: "flex", alignItems: "center" }}>
+        {dk
+          ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.64-7.36l-1.42 1.42M6.34 17.66l-1.42 1.42m0-12.72l1.42 1.42m11.32 11.32l1.42 1.42" /></svg>
+          : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+        }
       </button>
       <div style={{ flex: 1, textAlign: "center" }}>
-        <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
+        <span style={{ fontSize: 13, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
           {turnsLeft > 0 ? `${turnsLeft} ${L.turnsLeft}` : L.done}
         </span>
       </div>
-      {!allDone && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, color: t.txt, fontSize: 13, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "6px 14px", touchAction: "manipulation" }}>Menu</button>}
+      {!allDone && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, color: t.txt, fontSize: 14, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", padding: "8px 18px", touchAction: "manipulation" }}>Menu</button>}
     </div>
 
     {modal === "menu" && <Modal onClose={() => setModal(null)}>
@@ -334,7 +366,7 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
               background: t.bgS,
               border: isLeader ? `1.5px solid ${t.pri}` : `1px solid ${t.brd}`,
               borderRadius: pi === ps.length - 1 ? "0 0 6px 0" : 0 }}>
-              <span style={{ fontFamily: F.serif, fontSize: 30, fontWeight: 400, color: t.pri }}>{tot(p)}</span>
+              <PopNum value={tot(p)} style={{ fontFamily: F.serif, fontSize: 30, fontWeight: 400, color: t.pri }} t={t} />
             </div>
           })}
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useApp, ST, clone, vibWin, bajadaReq, fmtDate, F, B, EN, Modal, UndoBar, HomeIcon } from '../lib.jsx';
+import { useApp, ST, clone, vibWin, vibFor, bajadaReq, fmtDate, F, B, EN, Modal, UndoBar, HomeIcon } from '../lib.jsx';
 
 const DEF_CFG = { tgt: 3000, pura: 200, canasta: 100, cierre: 100, muerto: 100 };
 
@@ -9,6 +9,33 @@ const teamAvatar = (name) => {
   if (parts.length >= 2) return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
   return name.charAt(0).toUpperCase();
 };
+
+function PopNum({ value, style, t }) {
+  const prevRef = useRef(value);
+  const [popKey, setPopKey] = useState(0);
+  const [floatDelta, setFloatDelta] = useState(null);
+  useEffect(() => {
+    if (value !== prevRef.current) {
+      const delta = value - prevRef.current;
+      prevRef.current = value;
+      setPopKey(k => k + 1);
+      setFloatDelta(delta);
+      const id = setTimeout(() => setFloatDelta(null), 600);
+      return () => clearTimeout(id);
+    }
+  }, [value]);
+  return (
+    <span style={{ position: "relative", display: "inline-block" }}>
+      <span key={popKey} style={{ ...style, animation: popKey ? "scorePop .3s ease-out" : undefined, display: "inline-block" }}>{value}</span>
+      {floatDelta !== null && <span key={`f${popKey}`} style={{
+        position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)",
+        fontFamily: F.sans, fontSize: 14, fontWeight: 700, pointerEvents: "none", whiteSpace: "nowrap",
+        color: floatDelta > 0 ? t.ok : t.err,
+        animation: "floatUp .6s ease-out forwards",
+      }}>{floatDelta > 0 ? `+${floatDelta}` : floatDelta}</span>}
+    </span>
+  );
+}
 
 function Burako2({ onBack, onContinueChange, onChangeGame }) {
   const { t, dk, tog, sounds, L } = useApp();
@@ -106,6 +133,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     }
     setTeams(u); setAdding(false); setEditIdx(null); setRedoHand(null);
     setToast({ text: editIdx !== null ? L.editHand : L.newHand, undo: () => setTeams(prev) });
+    if (sounds) vibFor(1);
     if (sounds && u.some(tm => total(tm) >= cfg.tgt)) vibWin();
     setTimeout(() => {
       if (ledgerRef.current) ledgerRef.current.scrollTop = ledgerRef.current.scrollHeight;
@@ -418,13 +446,18 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     <div style={{ minHeight: "100dvh", background: t.bg, display: "flex", flexDirection: "column" }}>
 
       {/* Top bar with game info */}
-      <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
-        <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px 12px", touchAction: "manipulation", display: "flex", alignItems: "center" }}><HomeIcon color={t.txtM} /></button>
-        <button onClick={tog} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", touchAction: "manipulation", fontSize: 16, lineHeight: 1 }}>
-          {dk ? "☀️" : "🌙"}
+      <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", gap: 10, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
+        <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, touchAction: "manipulation", display: "flex", alignItems: "center" }}>
+          <HomeIcon color={t.txtM} />
+        </button>
+        <button onClick={tog} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 10px", cursor: "pointer", touchAction: "manipulation", display: "flex", alignItems: "center" }}>
+          {dk
+            ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.64-7.36l-1.42 1.42M6.34 17.66l-1.42 1.42m0-12.72l1.42 1.42m11.32 11.32l1.42 1.42" /></svg>
+            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+          }
         </button>
         <div style={{ flex: 1, textAlign: "center" }}>
-          <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
+          <span style={{ fontSize: 13, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
             {maxHands > 0 ? `${maxHands} ${maxHands === 1 ? "mano" : "manos"}` : ""}
           </span>
         </div>
@@ -436,12 +469,12 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
           if (next < maxScore) return;
           setCfg({ ...cfg, tgt: next });
         }} style={{
-          background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "2px 10px",
-          fontSize: 11, color: t.txtM, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", touchAction: "manipulation",
+          background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 14px",
+          fontSize: 13, color: t.txtM, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", touchAction: "manipulation",
         }}>
           A {cfg.tgt}
         </button>
-        {!winner && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, color: t.txt, fontSize: 13, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "6px 14px", touchAction: "manipulation" }}>Menu</button>}
+        {!winner && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, color: t.txt, fontSize: 14, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", padding: "8px 18px", touchAction: "manipulation" }}>Menu</button>}
       </div>
 
       {showH && hist.length > 0 && <Modal onClose={() => setShowH(false)}>
@@ -604,7 +637,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                   border: `1px solid ${t.brd}`,
                   borderRadius: ti === teams.length - 1 ? "0 0 6px 0" : 0,
                 }}>
-                  <span style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 500, color: t.pri }}>{total(tm)}</span>
+                  <PopNum value={total(tm)} style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 500, color: t.pri }} t={t} />
                 </div>
               );
             })}

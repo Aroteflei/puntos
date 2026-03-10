@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useApp, ST, clone, shareResult, vib, vibWin, fmtDate, F, B, EN, Modal, UndoBar, HomeIcon } from '../lib.jsx';
+import { useApp, ST, clone, shareResult, vib, vibWin, vibFor, vibUndo, fmtDate, F, B, EN, Modal, HomeIcon } from '../lib.jsx';
 
 function TrucoTally({ count, color, divAt, buenasColor, collapsed, onClick }) {
   const SZ = 64, PD = 5, GAP = 6;
@@ -82,6 +82,20 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
   const dim = winner && winner !== player;
   const atTarget = player.p >= target;
   const hasBuenas = target === 30;
+  const prevScoreRef = useRef(player.p);
+  const [popKey, setPopKey] = useState(0);
+  const [floatDelta, setFloatDelta] = useState(null);
+
+  useEffect(() => {
+    if (player.p !== prevScoreRef.current) {
+      const delta = player.p - prevScoreRef.current;
+      prevScoreRef.current = player.p;
+      setPopKey(k => k + 1);
+      setFloatDelta(delta);
+      const id = setTimeout(() => setFloatDelta(null), 600);
+      return () => clearTimeout(id);
+    }
+  }, [player.p]);
 
   const handleTallyTap = () => {
     if (!winner && !picaPhase && !atTarget) {
@@ -114,10 +128,20 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
       )}
 
       {/* Score number — right after tallies in normal, centered in picapica */}
-      <div style={{ textAlign: "center", padding: picaPhase ? "12px 0" : "4px 0 2px", flex: picaPhase ? 1 : undefined, display: "flex", alignItems: "center", justifyContent: "center", borderTop: `1px solid ${t.brd}` }}>
-        <div style={{ fontFamily: F.serif, fontSize: ph ? 40 : 52, color: t.pri, lineHeight: 1, letterSpacing: -1 }}>
+      <div style={{ textAlign: "center", padding: picaPhase ? "12px 0" : "4px 0 2px", flex: picaPhase ? 1 : undefined, display: "flex", alignItems: "center", justifyContent: "center", borderTop: `1px solid ${t.brd}`, position: "relative" }}>
+        <div key={popKey} style={{ fontFamily: F.serif, fontSize: ph ? 40 : 52, color: t.pri, lineHeight: 1, letterSpacing: -1, animation: popKey ? "scorePop .3s ease-out" : undefined }}>
           {player.p}
         </div>
+        {floatDelta !== null && (
+          <div key={`f${popKey}`} style={{
+            position: "absolute", top: -2, left: "50%", transform: "translateX(-50%)",
+            fontFamily: F.sans, fontSize: 18, fontWeight: 700, pointerEvents: "none",
+            color: floatDelta > 0 ? t.ok : t.err,
+            animation: "floatUp .6s ease-out forwards",
+          }}>
+            {floatDelta > 0 ? `+${floatDelta}` : floatDelta}
+          </div>
+        )}
       </div>
 
       {/* Buttons — pushed to bottom */}
@@ -192,7 +216,6 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const [rawNames, setRawNames] = useState(defaultRawNames(1));
   const [sc, setSc] = useState([]);
   const [modal, setModal] = useState(null);
-  const [toast, setToast] = useState(null);
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
   const [loading, setLoading] = useState(true);
@@ -327,7 +350,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
     setSc(nextSc);
     persist({ sc: nextSc });
-    if (sounds) vib();
+    if (sounds) vibFor(v);
     if (sounds && newP >= target) vibWin();
   };
 
@@ -337,7 +360,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     const next = { ...picaCurrent, [key]: Math.max(0, picaCurrent[key] + v) };
     setPicaCurrent(next);
     persist({ picaCurrent: next });
-    if (sounds) vib();
+    if (sounds) vibFor(v);
   };
 
   const setDueloScore = (teamIdx, val) => {
@@ -578,6 +601,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     undoStackRef.current = undoStackRef.current.slice(0, -1);
     redoStackRef.current = [...redoStackRef.current, currentSnapshot()];
     restoreState(prev);
+    if (sounds) vibUndo();
   };
 
   const handleRedo = () => {
@@ -586,6 +610,21 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     redoStackRef.current = redoStackRef.current.slice(0, -1);
     undoStackRef.current = [...undoStackRef.current, currentSnapshot()];
     restoreState(next);
+    if (sounds) vibUndo();
+  };
+
+  // Swipe gesture for undo/redo
+  const touchRef = useRef(null);
+  const onTouchStart = (e) => { touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() }; };
+  const onTouchEnd = (e) => {
+    if (!touchRef.current || winner) return;
+    const dx = e.changedTouches[0].clientX - touchRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchRef.current.y;
+    const dt = Date.now() - touchRef.current.t;
+    touchRef.current = null;
+    if (dt > 400 || Math.abs(dy) > 40 || Math.abs(dx) < 60) return;
+    if (dx < 0) handleUndo();
+    else handleRedo();
   };
 
   const resetAll = async () => {
@@ -751,32 +790,32 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   );
 
   return (<>
-    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", background: t.bg, overflow: "hidden" }}>
+    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ display: "flex", flexDirection: "column", height: "100dvh", background: t.bg, overflow: "hidden" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", padding: ph ? "6px 8px" : "8px 12px", gap: 6, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
-        <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 6, touchAction: "manipulation", display: "flex", alignItems: "center" }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5zM9 22V13h6v9" /></svg>
+      <div style={{ display: "flex", alignItems: "center", padding: ph ? "10px 12px" : "12px 16px", gap: 10, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
+        <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, touchAction: "manipulation", display: "flex", alignItems: "center" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5zM9 22V13h6v9" /></svg>
         </button>
-        <button onClick={tog} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "3px 8px", cursor: "pointer", touchAction: "manipulation", display: "flex", alignItems: "center" }}>
+        <button onClick={tog} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 10px", cursor: "pointer", touchAction: "manipulation", display: "flex", alignItems: "center" }}>
           {dk
-            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.64-7.36l-1.42 1.42M6.34 17.66l-1.42 1.42m0-12.72l1.42 1.42m11.32 11.32l1.42 1.42" /></svg>
-            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+            ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.64-7.36l-1.42 1.42M6.34 17.66l-1.42 1.42m0-12.72l1.42 1.42m11.32 11.32l1.42 1.42" /></svg>
+            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
           }
         </button>
         {!winner && (
           <div style={{ display: "inline-flex", borderRadius: 10, border: `1px solid ${t.brd}`, background: t.bgS, overflow: "hidden" }}>
             <button onClick={handleUndo} disabled={!undoStackRef.current.length} style={{
               background: "none", border: "none", borderRight: `1px solid ${t.brd}`,
-              padding: "3px 7px", cursor: undoStackRef.current.length ? "pointer" : "default",
+              padding: "6px 10px", cursor: undoStackRef.current.length ? "pointer" : "default",
               touchAction: "manipulation", display: "flex", alignItems: "center",
               opacity: undoStackRef.current.length ? 1 : 0.25, transition: "opacity .2s",
-            }}><svg width="14" height="14" viewBox="0 0 24 24" fill={t.txtM} stroke="none"><path d="M12.5 8C9.85 8 7.45 9 5.6 10.6L2 7v10h10l-3.62-3.62C9.88 12 11.15 11.5 12.5 11.5c3.25 0 6.02 2.1 6.97 5L22.3 15.6C20.97 11.46 17.09 8 12.5 8z" /></svg></button>
+            }}><svg width="18" height="18" viewBox="0 0 24 24" fill={t.txtM} stroke="none"><path d="M12.5 8C9.85 8 7.45 9 5.6 10.6L2 7v10h10l-3.62-3.62C9.88 12 11.15 11.5 12.5 11.5c3.25 0 6.02 2.1 6.97 5L22.3 15.6C20.97 11.46 17.09 8 12.5 8z" /></svg></button>
             <button onClick={handleRedo} disabled={!redoStackRef.current.length} style={{
               background: "none", border: "none",
-              padding: "3px 7px", cursor: redoStackRef.current.length ? "pointer" : "default",
+              padding: "6px 10px", cursor: redoStackRef.current.length ? "pointer" : "default",
               touchAction: "manipulation", display: "flex", alignItems: "center",
               opacity: redoStackRef.current.length ? 1 : 0.25, transition: "opacity .2s",
-            }}><svg width="14" height="14" viewBox="0 0 24 24" fill={t.txtM} stroke="none"><path d="M11.5 8c2.65 0 5.05 1 6.9 2.6L22 7v10H12l3.62-3.62C14.12 12 12.85 11.5 11.5 11.5c-3.25 0-6.02 2.1-6.97 5L1.7 15.6C3.03 11.46 6.91 8 11.5 8z" /></svg></button>
+            }}><svg width="18" height="18" viewBox="0 0 24 24" fill={t.txtM} stroke="none"><path d="M11.5 8c2.65 0 5.05 1 6.9 2.6L22 7v10H12l3.62-3.62C14.12 12 12.85 11.5 11.5 11.5c-3.25 0-6.02 2.1-6.97 5L1.7 15.6C3.03 11.46 6.91 8 11.5 8z" /></svg></button>
           </div>
         )}
         <div style={{ flex: 1 }} />
@@ -784,15 +823,15 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
           const canGoTo15 = !sc.some(s => s.p > 15);
           if (target === 30 && !canGoTo15) return;
           setTarget(target === 15 ? 30 : 15);
-        }} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "2px 10px", fontSize: 11, color: (target === 30 && sc.some(s => s.p > 15)) ? t.txtF : t.txtM, fontFamily: F.sans, fontWeight: 500, cursor: (target === 30 && sc.some(s => s.p > 15)) ? "default" : "pointer", touchAction: "manipulation", opacity: (target === 30 && sc.some(s => s.p > 15)) ? 0.4 : 1, transition: "opacity .2s" }}>
+        }} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 14px", fontSize: 13, color: (target === 30 && sc.some(s => s.p > 15)) ? t.txtF : t.txtM, fontFamily: F.sans, fontWeight: 600, cursor: (target === 30 && sc.some(s => s.p > 15)) ? "default" : "pointer", touchAction: "manipulation", opacity: (target === 30 && sc.some(s => s.p > 15)) ? 0.4 : 1, transition: "opacity .2s" }}>
           A {target}
         </button>
         {showCollapseToggle && (
-          <button onClick={() => setCollapsed(c => !c)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "2px 10px", fontSize: 11, color: t.txtM, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", touchAction: "manipulation" }}>
+          <button onClick={() => setCollapsed(c => !c)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 14px", fontSize: 13, color: t.txtM, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", touchAction: "manipulation" }}>
             {collapsed ? "Ver todo" : "Buenas"}
           </button>
         )}
-        {!winner && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, color: t.txt, fontSize: 13, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "6px 14px", touchAction: "manipulation" }}>Menu</button>}
+        {!winner && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, color: t.txt, fontSize: 14, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", padding: "8px 18px", touchAction: "manipulation" }}>Menu</button>}
       </div>
 
       {/* Winner banner */}
@@ -1132,7 +1171,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "new" ? "Se reinician los puntos a cero." : L.losesAll}</p>
         <div style={{ display: "flex", gap: 10 }}>
           <B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
-          {modal === "new" ? <B onClick={async () => { await saveToHistory(); const nextSc = sc.map(s => ({ ...s, p: 0 })); setSc(nextSc); setPicaPhase(false); setPicaDuels([]); setPicaCurrent({ t0: 0, t1: 0 }); setPicaRound(0); setCollapsed(false); prevBothBuenasRef.current = false; setModal(null); lastStateRef.current = null; setToast({ text: L.nuevaPartida }); persist({ sc: nextSc, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0 }); }} s={{ flex: 1 }}>{L.nuevaPartida}</B>
+          {modal === "new" ? <B onClick={async () => { await saveToHistory(); const nextSc = sc.map(s => ({ ...s, p: 0 })); setSc(nextSc); setPicaPhase(false); setPicaDuels([]); setPicaCurrent({ t0: 0, t1: 0 }); setPicaRound(0); setPicaAllDuels([]); setCollapsed(false); prevBothBuenasRef.current = false; setModal(null); undoStackRef.current = []; redoStackRef.current = []; persist({ sc: nextSc, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0, picaAllDuels: [] }); }} s={{ flex: 1 }}>{L.nuevaPartida}</B>
             : <B v="err" onClick={resetAll} s={{ flex: 1 }}>{L.reset}</B>}
         </div>
       </div>

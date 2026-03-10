@@ -79,6 +79,8 @@ export const useApp = () => useContext(Ctx);
 // ─── HELPERS ───────────────────────────────────
 export const vib = (ms = 15) => { try { navigator?.vibrate?.(ms) } catch (e) {} };
 export const vibWin = () => { try { navigator?.vibrate?.([50, 50, 50, 50, 100]) } catch (e) {} };
+export const vibFor = (v) => { try { const p = v === 1 ? 10 : v === 2 ? 20 : v >= 3 ? [15, 30, 15] : v < 0 ? [10, 40, 10] : 15; navigator?.vibrate?.(p); } catch (e) {} };
+export const vibUndo = () => { try { navigator?.vibrate?.([8, 30, 8]) } catch (e) {} };
 export async function initWakeLock() { try { if ("wakeLock" in navigator) return await navigator.wakeLock.request("screen"); } catch (e) {} return null; }
 
 export const ST = {

@@ -1,3 +1,14 @@
 * { margin: 0; padding: 0; }
 body { font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
 #root { min-height: 100vh; }
+
+@keyframes scorePop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0); }
+  70% { opacity: 1; transform: translateY(-32px); }
+  100% { opacity: 0; transform: translateY(-48px); }
+}
