@@ -800,20 +800,26 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, touchAction: "manipulation", display: "flex", alignItems: "center" }}>
           <HomeIcon color={t.txtM} />
         </button>
+        <button onClick={tog} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 10px", cursor: "pointer", touchAction: "manipulation", display: "flex", alignItems: "center" }}>
+          {dk
+            ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.64-7.36l-1.42 1.42M6.34 17.66l-1.42 1.42m0-12.72l1.42 1.42m11.32 11.32l1.42 1.42" /></svg>
+            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+          }
+        </button>
         {!winner && (
-          <div style={{ display: "inline-flex", borderRadius: 10, border: `1px solid ${t.brd}`, background: t.bgS, overflow: "hidden" }}>
+          <div style={{ display: "inline-flex", borderRadius: 10, border: `1px solid ${t.brd}`, background: t.bgS, overflow: "hidden", flexShrink: 0 }}>
             <button onClick={handleUndo} disabled={!undoStackRef.current.length} style={{
               background: "none", border: "none", borderRight: `1px solid ${t.brd}`,
-              padding: "6px 10px", cursor: undoStackRef.current.length ? "pointer" : "default",
+              padding: "6px 8px", cursor: undoStackRef.current.length ? "pointer" : "default",
               touchAction: "manipulation", display: "flex", alignItems: "center",
               opacity: undoStackRef.current.length ? 1 : 0.25, transition: "opacity .2s",
-            }}><svg width="18" height="18" viewBox="0 0 24 24" fill={t.txtM} stroke="none"><path d="M12.5 8C9.85 8 7.45 9 5.6 10.6L2 7v10h10l-3.62-3.62C9.88 12 11.15 11.5 12.5 11.5c3.25 0 6.02 2.1 6.97 5L22.3 15.6C20.97 11.46 17.09 8 12.5 8z" /></svg></button>
+            }}><svg width="16" height="16" viewBox="0 0 24 24" fill={t.txtM} stroke="none"><path d="M12.5 8C9.85 8 7.45 9 5.6 10.6L2 7v10h10l-3.62-3.62C9.88 12 11.15 11.5 12.5 11.5c3.25 0 6.02 2.1 6.97 5L22.3 15.6C20.97 11.46 17.09 8 12.5 8z" /></svg></button>
             <button onClick={handleRedo} disabled={!redoStackRef.current.length} style={{
               background: "none", border: "none",
-              padding: "6px 10px", cursor: redoStackRef.current.length ? "pointer" : "default",
+              padding: "6px 8px", cursor: redoStackRef.current.length ? "pointer" : "default",
               touchAction: "manipulation", display: "flex", alignItems: "center",
               opacity: redoStackRef.current.length ? 1 : 0.25, transition: "opacity .2s",
-            }}><svg width="18" height="18" viewBox="0 0 24 24" fill={t.txtM} stroke="none"><path d="M11.5 8c2.65 0 5.05 1 6.9 2.6L22 7v10H12l3.62-3.62C14.12 12 12.85 11.5 11.5 11.5c-3.25 0-6.02 2.1-6.97 5L1.7 15.6C3.03 11.46 6.91 8 11.5 8z" /></svg></button>
+            }}><svg width="16" height="16" viewBox="0 0 24 24" fill={t.txtM} stroke="none"><path d="M11.5 8c2.65 0 5.05 1 6.9 2.6L22 7v10H12l3.62-3.62C14.12 12 12.85 11.5 11.5 11.5c-3.25 0-6.02 2.1-6.97 5L1.7 15.6C3.03 11.46 6.91 8 11.5 8z" /></svg></button>
           </div>
         )}
         <div style={{ flex: 1 }} />
@@ -821,15 +827,15 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
           const canGoTo15 = !sc.some(s => s.p > 15);
           if (target === 30 && !canGoTo15) return;
           setTarget(target === 15 ? 30 : 15);
-        }} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 14px", fontSize: 13, color: (target === 30 && sc.some(s => s.p > 15)) ? t.txtF : t.txtM, fontFamily: F.sans, fontWeight: 600, cursor: (target === 30 && sc.some(s => s.p > 15)) ? "default" : "pointer", touchAction: "manipulation", opacity: (target === 30 && sc.some(s => s.p > 15)) ? 0.4 : 1, transition: "opacity .2s" }}>
+        }} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 12px", fontSize: 13, color: (target === 30 && sc.some(s => s.p > 15)) ? t.txtF : t.txtM, fontFamily: F.sans, fontWeight: 600, cursor: (target === 30 && sc.some(s => s.p > 15)) ? "default" : "pointer", touchAction: "manipulation", opacity: (target === 30 && sc.some(s => s.p > 15)) ? 0.4 : 1, transition: "opacity .2s", flexShrink: 0 }}>
           A {target}
         </button>
         {showCollapseToggle && (
-          <button onClick={() => setCollapsed(c => !c)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 14px", fontSize: 13, color: t.txtM, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", touchAction: "manipulation" }}>
+          <button onClick={() => setCollapsed(c => !c)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 12px", fontSize: 13, color: t.txtM, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", touchAction: "manipulation", flexShrink: 0 }}>
             {collapsed ? "Ver todo" : "Buenas"}
           </button>
         )}
-        {!winner && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, color: t.txt, fontSize: 14, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", padding: "8px 18px", touchAction: "manipulation" }}>Menu</button>}
+        {!winner && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, color: t.txt, fontSize: 14, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", padding: "8px 14px", touchAction: "manipulation", flexShrink: 0 }}>Menu</button>}
       </div>
 
       {/* Winner banner */}
