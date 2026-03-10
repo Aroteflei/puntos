@@ -194,6 +194,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState(null);
   const lastStateRef = useRef(null);
+  const redoStateRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [picaRange, setPicaRange] = useState([5, 25]);
   const [picaMode, setPicaMode] = useState("suma");
@@ -305,7 +306,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     if (v > 0 && sc[i].p >= target) return;
     if (v < 0 && sc[i].p <= 0) return;
     lastStateRef.current = { sc: clone(sc), picaPhase, picaDuels: clone(picaDuels), picaCurrent: clone(picaCurrent), picaRound, picaAllDuels: clone(picaAllDuels) };
-    setToast({ text: `${sc[i].name}: ${v > 0 ? "+" : ""}${v}`, undo: true });
+    redoStateRef.current = null;
     const newP = Math.min(target, Math.max(0, sc[i].p + v));
     const nextSc = sc.map((row, idx) => idx === i ? { ...row, p: newP } : row);
 
@@ -490,7 +491,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     prevBothBuenasRef.current = false;
     setModal(null);
     lastStateRef.current = null;
-    setToast({ text: L.revancha });
+    redoStateRef.current = null;
     persist({ sc: nextSc, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0, picaAllDuels: [] });
   };
 
@@ -546,6 +547,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const handleUndo = () => {
     const ls = lastStateRef.current;
     if (!ls) return;
+    // Save current state for redo
+    redoStateRef.current = { sc: clone(sc), picaPhase, picaDuels: clone(picaDuels), picaCurrent: clone(picaCurrent), picaRound, picaAllDuels: clone(picaAllDuels) };
     setSc(ls.sc);
     if (ls.picaPhase !== undefined) setPicaPhase(ls.picaPhase);
     if (ls.picaDuels) setPicaDuels(ls.picaDuels);
@@ -554,6 +557,21 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     if (ls.picaAllDuels) setPicaAllDuels(ls.picaAllDuels);
     persist({ sc: ls.sc, picaPhase: ls.picaPhase, picaDuels: ls.picaDuels, picaCurrent: ls.picaCurrent, picaRound: ls.picaRound, picaAllDuels: ls.picaAllDuels });
     lastStateRef.current = null;
+  };
+
+  const handleRedo = () => {
+    const rs = redoStateRef.current;
+    if (!rs) return;
+    // Save current state for undo again
+    lastStateRef.current = { sc: clone(sc), picaPhase, picaDuels: clone(picaDuels), picaCurrent: clone(picaCurrent), picaRound, picaAllDuels: clone(picaAllDuels) };
+    setSc(rs.sc);
+    if (rs.picaPhase !== undefined) setPicaPhase(rs.picaPhase);
+    if (rs.picaDuels) setPicaDuels(rs.picaDuels);
+    if (rs.picaCurrent) setPicaCurrent(rs.picaCurrent);
+    if (rs.picaRound !== undefined) setPicaRound(rs.picaRound);
+    if (rs.picaAllDuels) setPicaAllDuels(rs.picaAllDuels);
+    persist({ sc: rs.sc, picaPhase: rs.picaPhase, picaDuels: rs.picaDuels, picaCurrent: rs.picaCurrent, picaRound: rs.picaRound, picaAllDuels: rs.picaAllDuels });
+    redoStateRef.current = null;
   };
 
   const resetAll = async () => {
@@ -730,13 +748,19 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         <button onClick={tog} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", touchAction: "manipulation", fontSize: 16, lineHeight: 1 }}>
           {dk ? "☀️" : "🌙"}
         </button>
-        {lastStateRef.current && !winner && (
+        {!winner && (redoStateRef.current ? (
+          <button onClick={handleRedo} style={{
+            background: "none", border: "none", cursor: "pointer",
+            padding: "4px 8px", touchAction: "manipulation",
+            fontSize: 15, color: t.txtF, lineHeight: 1,
+          }}>↪</button>
+        ) : lastStateRef.current ? (
           <button onClick={handleUndo} style={{
             background: "none", border: "none", cursor: "pointer",
             padding: "4px 8px", touchAction: "manipulation",
             fontSize: 15, color: t.txtF, lineHeight: 1,
           }}>↩</button>
-        )}
+        ) : null)}
         <div style={{ flex: 1 }} />
         <button onClick={() => {
           const canGoTo15 = !sc.some(s => s.p > 15);
