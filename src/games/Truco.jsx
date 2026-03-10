@@ -193,8 +193,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const [sc, setSc] = useState([]);
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState(null);
-  const lastStateRef = useRef(null);
-  const redoStateRef = useRef(null);
+  const undoStackRef = useRef([]);
+  const redoStackRef = useRef([]);
   const [loading, setLoading] = useState(true);
   const [picaRange, setPicaRange] = useState([5, 25]);
   const [picaMode, setPicaMode] = useState("suma");
@@ -305,8 +305,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const add = (i, v) => {
     if (v > 0 && sc[i].p >= target) return;
     if (v < 0 && sc[i].p <= 0) return;
-    lastStateRef.current = { sc: clone(sc), picaPhase, picaDuels: clone(picaDuels), picaCurrent: clone(picaCurrent), picaRound, picaAllDuels: clone(picaAllDuels) };
-    redoStateRef.current = null;
+    undoStackRef.current = [...undoStackRef.current, { sc: clone(sc), picaPhase, picaDuels: clone(picaDuels), picaCurrent: clone(picaCurrent), picaRound, picaAllDuels: clone(picaAllDuels) }];
+    redoStackRef.current = [];
     const newP = Math.min(target, Math.max(0, sc[i].p + v));
     const nextSc = sc.map((row, idx) => idx === i ? { ...row, p: newP } : row);
 
@@ -490,8 +490,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     setCollapsed(false);
     prevBothBuenasRef.current = false;
     setModal(null);
-    lastStateRef.current = null;
-    redoStateRef.current = null;
+    undoStackRef.current = [];
+    redoStackRef.current = [];
     persist({ sc: nextSc, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0, picaAllDuels: [] });
   };
 
@@ -544,34 +544,32 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     shareResult("Pica Pica · Duelos", lines, { accent: "#1A5C52", accentLight: "#3D8B7A" });
   };
 
+  const restoreState = (s) => {
+    setSc(s.sc);
+    if (s.picaPhase !== undefined) setPicaPhase(s.picaPhase);
+    if (s.picaDuels) setPicaDuels(s.picaDuels);
+    if (s.picaCurrent) setPicaCurrent(s.picaCurrent);
+    if (s.picaRound !== undefined) setPicaRound(s.picaRound);
+    if (s.picaAllDuels) setPicaAllDuels(s.picaAllDuels);
+    persist({ sc: s.sc, picaPhase: s.picaPhase, picaDuels: s.picaDuels, picaCurrent: s.picaCurrent, picaRound: s.picaRound, picaAllDuels: s.picaAllDuels });
+  };
+
+  const currentSnapshot = () => ({ sc: clone(sc), picaPhase, picaDuels: clone(picaDuels), picaCurrent: clone(picaCurrent), picaRound, picaAllDuels: clone(picaAllDuels) });
+
   const handleUndo = () => {
-    const ls = lastStateRef.current;
-    if (!ls) return;
-    // Save current state for redo
-    redoStateRef.current = { sc: clone(sc), picaPhase, picaDuels: clone(picaDuels), picaCurrent: clone(picaCurrent), picaRound, picaAllDuels: clone(picaAllDuels) };
-    setSc(ls.sc);
-    if (ls.picaPhase !== undefined) setPicaPhase(ls.picaPhase);
-    if (ls.picaDuels) setPicaDuels(ls.picaDuels);
-    if (ls.picaCurrent) setPicaCurrent(ls.picaCurrent);
-    if (ls.picaRound !== undefined) setPicaRound(ls.picaRound);
-    if (ls.picaAllDuels) setPicaAllDuels(ls.picaAllDuels);
-    persist({ sc: ls.sc, picaPhase: ls.picaPhase, picaDuels: ls.picaDuels, picaCurrent: ls.picaCurrent, picaRound: ls.picaRound, picaAllDuels: ls.picaAllDuels });
-    lastStateRef.current = null;
+    if (!undoStackRef.current.length) return;
+    const prev = undoStackRef.current[undoStackRef.current.length - 1];
+    undoStackRef.current = undoStackRef.current.slice(0, -1);
+    redoStackRef.current = [...redoStackRef.current, currentSnapshot()];
+    restoreState(prev);
   };
 
   const handleRedo = () => {
-    const rs = redoStateRef.current;
-    if (!rs) return;
-    // Save current state for undo again
-    lastStateRef.current = { sc: clone(sc), picaPhase, picaDuels: clone(picaDuels), picaCurrent: clone(picaCurrent), picaRound, picaAllDuels: clone(picaAllDuels) };
-    setSc(rs.sc);
-    if (rs.picaPhase !== undefined) setPicaPhase(rs.picaPhase);
-    if (rs.picaDuels) setPicaDuels(rs.picaDuels);
-    if (rs.picaCurrent) setPicaCurrent(rs.picaCurrent);
-    if (rs.picaRound !== undefined) setPicaRound(rs.picaRound);
-    if (rs.picaAllDuels) setPicaAllDuels(rs.picaAllDuels);
-    persist({ sc: rs.sc, picaPhase: rs.picaPhase, picaDuels: rs.picaDuels, picaCurrent: rs.picaCurrent, picaRound: rs.picaRound, picaAllDuels: rs.picaAllDuels });
-    redoStateRef.current = null;
+    if (!redoStackRef.current.length) return;
+    const next = redoStackRef.current[redoStackRef.current.length - 1];
+    redoStackRef.current = redoStackRef.current.slice(0, -1);
+    undoStackRef.current = [...undoStackRef.current, currentSnapshot()];
+    restoreState(next);
   };
 
   const resetAll = async () => {
@@ -739,28 +737,28 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   return (<>
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", background: t.bg, overflow: "hidden" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", padding: ph ? "8px 10px" : "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
-        <button onClick={goBack} style={{
-          background: "none", border: "none", cursor: "pointer", padding: "8px 12px", touchAction: "manipulation", display: "flex", alignItems: "center",
-        }}>
-          <HomeIcon color={t.txtM} />
-        </button>
-        <button onClick={tog} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", touchAction: "manipulation", fontSize: 16, lineHeight: 1 }}>
-          {dk ? "☀️" : "🌙"}
-        </button>
-        {!winner && (redoStateRef.current ? (
-          <button onClick={handleRedo} style={{
-            background: "none", border: "none", cursor: "pointer",
-            padding: "4px 8px", touchAction: "manipulation",
-            fontSize: 15, color: t.txtF, lineHeight: 1,
-          }}>↪</button>
-        ) : lastStateRef.current ? (
-          <button onClick={handleUndo} style={{
-            background: "none", border: "none", cursor: "pointer",
-            padding: "4px 8px", touchAction: "manipulation",
-            fontSize: 15, color: t.txtF, lineHeight: 1,
-          }}>↩</button>
-        ) : null)}
+      <div style={{ display: "flex", alignItems: "center", padding: ph ? "6px 8px" : "8px 12px", gap: 2, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
+        {(() => {
+          const iconBtn = (onClick, children, opts = {}) => (
+            <button onClick={onClick} disabled={opts.disabled} style={{
+              background: "none", border: "none", cursor: opts.disabled ? "default" : "pointer",
+              padding: 6, touchAction: "manipulation", display: "flex", alignItems: "center", justifyContent: "center",
+              opacity: opts.disabled ? 0.2 : (opts.dim ? 0.5 : 0.7), transition: "opacity .2s",
+            }}>{children}</button>
+          );
+          const I = (d, c) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c || t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
+          return <>
+            {iconBtn(goBack, I("M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5zM9 22V13h6v9"))}
+            {iconBtn(tog, dk
+              ? I("M12 3v1m0 16v1m-8-9H3m18 0h-1m-2.64-6.36l-.7.7M6.34 17.66l-.7.7m0-12.72l.7.7m11.32 11.32l.7.7M16 12a4 4 0 11-8 0 4 4 0 018 0z")
+              : I("M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z")
+            )}
+            {!winner && <>
+              {iconBtn(handleUndo, I("M4 7h11a4 4 0 010 8H9M7 4L4 7l3 3"), { disabled: !undoStackRef.current.length })}
+              {iconBtn(handleRedo, I("M20 7H9a4 4 0 000 8h6M17 4l3 3-3 3"), { disabled: !redoStackRef.current.length })}
+            </>}
+          </>;
+        })()}
         <div style={{ flex: 1 }} />
         <button onClick={() => {
           const canGoTo15 = !sc.some(s => s.p > 15);
@@ -804,7 +802,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
                 fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
               }}>Ver Duelos</button>
             )}
-            {lastStateRef.current && (
+            {undoStackRef.current.length > 0 && (
               <button onClick={handleUndo} style={{
                 background: "none", border: "none", color: "rgba(255,255,255,.6)",
                 fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
