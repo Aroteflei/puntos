@@ -308,7 +308,7 @@ export function Modal({ children, onClose }) {
     <div onClick={e => e.stopPropagation()} style={{ maxWidth: 340, width: "100%", animation: "scaleIn .2s ease" }}>{children}</div></div>;
 }
 
-export function UndoBar({ toast, onUndo, onClose }) {
+export function UndoBar({ toast, onUndo, onClose, bottom = 32 }) {
   const { t, L } = useApp();
   const [fading, setFading] = useState(false);
   useEffect(() => {
@@ -319,7 +319,7 @@ export function UndoBar({ toast, onUndo, onClose }) {
     return () => { clearTimeout(fadeId); clearTimeout(closeId); };
   }, [toast, onClose]);
   if (!toast) return null;
-  return <div style={{ position: "fixed", left: 12, right: 12, bottom: 32, zIndex: 120, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+  return <div style={{ position: "fixed", left: 12, right: 12, bottom, zIndex: 120, display: "flex", justifyContent: "center", pointerEvents: "none", transition: "bottom .2s ease" }}>
     <div style={{ pointerEvents: "auto", maxWidth: 280, width: "auto", background: t.txt, boxShadow: "0 4px 16px rgba(0,0,0,.15)", borderRadius: 20, padding: "6px 14px", display: "flex", alignItems: "center", gap: 8, animation: "fadeUp .2s ease", transition: "opacity .8s ease", opacity: fading ? 0 : 1 }}>
       <div style={{ fontSize: 12, color: t.bg, whiteSpace: "nowrap", fontFamily: F.sans, fontWeight: 500 }}>{toast.text}</div>
       {toast.redo && <button onClick={() => { toast.redo?.(); onClose?.(); }} style={{ background: "transparent", border: `1px solid rgba(255,255,255,.2)`, color: t.bg, borderRadius: 12, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: F.sans, whiteSpace: "nowrap" }}>{L.redo}</button>}

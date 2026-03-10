@@ -99,7 +99,7 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
       {/* Tallies — scrollable, tap to add +1 */}
       {!picaPhase && (
         <div style={{
-          flex: "1 1 0", display: "flex", flexDirection: "column", alignItems: "center",
+          flex: "2 1 0", display: "flex", flexDirection: "column", alignItems: "center",
           padding: "6px 10px 4px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 60,
           borderTop: `1px solid ${t.brd}`,
         }}>
@@ -148,6 +148,9 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
           ))}
         </div>
       )}
+
+      {/* Bottom spacer — pushes score & buttons up */}
+      {!picaPhase && <div style={{ flex: "1 1 0", minHeight: 0 }} />}
     </div>
   );
 }
@@ -765,7 +768,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         </div>
       )}
 
-      <UndoBar toast={toast} onUndo={handleUndo} onClose={() => { setToast(null); lastStateRef.current = null; }} />
+      <UndoBar toast={toast} onUndo={handleUndo} onClose={() => { setToast(null); lastStateRef.current = null; }}
+        bottom={picaPhase && !winner ? (isManoRedonda ? 130 : 240) : 32} />
     </div>
 
     {showH && hist.length > 0 && <Modal onClose={() => setShowH(false)}>
