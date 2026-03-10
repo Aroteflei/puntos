@@ -771,7 +771,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
       )}
 
       {/* Main columns */}
-      <div style={{ flex: (picaPhase && !isManoRedonda) ? undefined : 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+      <div style={{ flex: picaPhase ? undefined : 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
         <Col player={sc[0]} idx={0} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} picaPhase={picaPhase && !isManoRedonda} collapsed={bothInBuenas && collapsed} onToggleCollapse={() => setCollapsed(c => !c)} showCollapseToggle={showCollapseToggle} />
         <div style={{ width: 1, background: t.brd, flexShrink: 0 }} />
         <Col player={sc[1]} idx={1} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} picaPhase={picaPhase && !isManoRedonda} collapsed={bothInBuenas && collapsed} onToggleCollapse={() => setCollapsed(c => !c)} showCollapseToggle={showCollapseToggle} />
@@ -896,23 +896,18 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
       {/* Mano redonda indicator */}
       {picaPhase && !winner && isManoRedonda && (
-        <div style={{ padding: "12px 16px", borderTop: `2px solid ${t.ok}`, background: `${t.ok}10`, textAlign: "center", flexShrink: 0 }}>
-          <div style={{ marginBottom: 8 }}>
-            <span style={{ fontSize: 13, color: t.ok, fontWeight: 700, fontFamily: F.sans, letterSpacing: 1 }}>MANO REDONDA</span>
-          </div>
-          <div style={{ fontSize: 11, color: t.txtM, fontFamily: F.sans, marginBottom: 10 }}>
-            Usá los botones de arriba para anotar
-          </div>
+        <div style={{ padding: "10px 16px", borderTop: `2px solid ${t.ok}`, background: `${t.ok}10`, textAlign: "center", flexShrink: 0, display: "flex", alignItems: "center", gap: 12, justifyContent: "center" }}>
+          <span style={{ fontSize: 12, color: t.ok, fontWeight: 700, fontFamily: F.sans, letterSpacing: 1 }}>MANO REDONDA</span>
           <button onClick={advanceFromManoRedonda} style={{
             background: t.pri, color: "#fff", border: "none", borderRadius: 8,
-            fontSize: 13, fontFamily: F.sans, fontWeight: 600, padding: "10px 24px",
+            fontSize: 12, fontFamily: F.sans, fontWeight: 600, padding: "8px 16px",
             cursor: "pointer", touchAction: "manipulation",
-          }}>Siguiente picapica →</button>
+          }}>Siguiente →</button>
         </div>
       )}
 
       <UndoBar toast={toast} onUndo={handleUndo} onClose={() => { setToast(null); lastStateRef.current = null; }}
-        bottom={picaPhase && !winner ? (isManoRedonda ? 130 : 240) : 32} />
+        bottom={picaPhase && !winner ? (isManoRedonda ? 60 : 240) : 32} />
     </div>
 
     {/* Pica pica duel history modal */}
