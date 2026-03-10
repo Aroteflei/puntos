@@ -648,12 +648,16 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
   if (!started) return (
     <div style={{ minHeight: "100vh", background: t.bg }}>
-      <div style={{ padding: "12px 16px 0" }}>
-        <button onClick={goBack} style={{
-          background: "none", border: "none", cursor: "pointer",
-          padding: "8px", touchAction: "manipulation", display: "flex", alignItems: "center",
-        }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", gap: 10, borderBottom: `1px solid ${t.brd}` }}>
+        <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, touchAction: "manipulation", display: "flex", alignItems: "center" }}>
           <HomeIcon color={t.txtM} />
+        </button>
+        <div style={{ flex: 1 }} />
+        <button onClick={tog} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 10px", cursor: "pointer", touchAction: "manipulation", display: "flex", alignItems: "center" }}>
+          {dk
+            ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.64-7.36l-1.42 1.42M6.34 17.66l-1.42 1.42m0-12.72l1.42 1.42m11.32 11.32l1.42 1.42" /></svg>
+            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+          }
         </button>
       </div>
 
@@ -792,15 +796,9 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   return (<>
     <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ display: "flex", flexDirection: "column", height: "100dvh", background: t.bg, overflow: "hidden" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", padding: ph ? "10px 12px" : "12px 16px", gap: 10, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", gap: 10, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
         <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, touchAction: "manipulation", display: "flex", alignItems: "center" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5zM9 22V13h6v9" /></svg>
-        </button>
-        <button onClick={tog} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "6px 10px", cursor: "pointer", touchAction: "manipulation", display: "flex", alignItems: "center" }}>
-          {dk
-            ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.64-7.36l-1.42 1.42M6.34 17.66l-1.42 1.42m0-12.72l1.42 1.42m11.32 11.32l1.42 1.42" /></svg>
-            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
-          }
+          <HomeIcon color={t.txtM} />
         </button>
         {!winner && (
           <div style={{ display: "inline-flex", borderRadius: 10, border: `1px solid ${t.brd}`, background: t.bgS, overflow: "hidden" }}>
@@ -1149,6 +1147,18 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
     {modal === "menu" && <Modal onClose={() => setModal(null)}>
       <div style={{ background: t.card, borderRadius: 8, padding: 4, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 240, width: "100%" }}>
+        <button onClick={() => { tog(); setModal(null); }} style={{
+          display: "flex", width: "100%", alignItems: "center", gap: 8, padding: "12px 14px",
+          background: "none", border: "none", color: t.txt, fontSize: 14, fontWeight: 500,
+          cursor: "pointer", borderRadius: 4, fontFamily: F.sans, touchAction: "manipulation",
+        }}>
+          {dk
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.64-7.36l-1.42 1.42M6.34 17.66l-1.42 1.42m0-12.72l1.42 1.42m11.32 11.32l1.42 1.42" /></svg>
+            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={t.txtM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+          }
+          {dk ? "Modo claro" : "Modo oscuro"}
+        </button>
+        <div style={{ height: 1, background: t.brd, margin: "0 10px" }} />
         {[
           { label: L.share, action: () => { setModal(null); doShare(); } },
           ...(hist.length > 0 ? [{ label: L.hist, action: () => { setModal(null); setShowH(true); } }] : []),
