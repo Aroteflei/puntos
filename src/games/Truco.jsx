@@ -730,6 +730,13 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         <button onClick={tog} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", touchAction: "manipulation", fontSize: 16, lineHeight: 1 }}>
           {dk ? "☀️" : "🌙"}
         </button>
+        {lastStateRef.current && !winner && (
+          <button onClick={handleUndo} style={{
+            background: "none", border: "none", cursor: "pointer",
+            padding: "4px 8px", touchAction: "manipulation",
+            fontSize: 15, color: t.txtF, lineHeight: 1,
+          }}>↩</button>
+        )}
         <div style={{ flex: 1 }} />
         <button onClick={() => {
           const canGoTo15 = !sc.some(s => s.p > 15);
@@ -924,8 +931,6 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         </div>
       )}
 
-      <UndoBar toast={toast} onUndo={handleUndo} onClose={() => { setToast(null); lastStateRef.current = null; }}
-        bottom={picaPhase && !winner ? (isManoRedonda ? 60 : 240) : 32} />
     </div>
 
     {/* Matchup picker modal */}
