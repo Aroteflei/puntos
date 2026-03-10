@@ -758,18 +758,6 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         </div>
       )}
 
-      {/* Pica pica notification */}
-      {picaNotif && (
-        <div style={{
-          padding: "10px 16px", background: `${t.pri}15`, borderBottom: `1px solid ${t.pri}30`,
-          textAlign: "center", animation: "fadeUp .2s ease", flexShrink: 0,
-        }}>
-          <span style={{ fontSize: 13, color: t.pri, fontWeight: 600, fontFamily: F.sans }}>
-            {picaNotif === "start" ? `${L.picapicaStart} · De ${picaRange[0]} a ${picaRange[1]}` : L.picapicaEnd}
-          </span>
-        </div>
-      )}
-
       {/* Main columns */}
       <div style={{ flex: picaPhase ? undefined : 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
         <Col player={sc[0]} idx={0} target={target} winner={winner} ph={ph} onAdd={add} onRen={ren} t={t} picaPhase={picaPhase && !isManoRedonda} collapsed={bothInBuenas && collapsed} onToggleCollapse={() => setCollapsed(c => !c)} showCollapseToggle={showCollapseToggle} />
