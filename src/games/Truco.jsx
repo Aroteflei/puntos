@@ -199,15 +199,16 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const [picaMode, setPicaMode] = useState("suma");
   // Pica pica state
   const [picaPhase, setPicaPhase] = useState(false);
-  const [picaNotif, setPicaNotif] = useState(null);
   const [picaDuels, setPicaDuels] = useState([]);
   const [picaCurrent, setPicaCurrent] = useState({ t0: 0, t1: 0 });
   const [picaRound, setPicaRound] = useState(0);
-  const [picaEditIdx, setPicaEditIdx] = useState(null); // null | 0 | 1 (current duel inline edit)
+  const [picaEditIdx, setPicaEditIdx] = useState(null);
   const [picaEditVal, setPicaEditVal] = useState("");
-  const [editingDuel, setEditingDuel] = useState(null); // null | { idx, t0, t1 } (past duel edit)
-  const [picaAllDuels, setPicaAllDuels] = useState([]); // ALL duels across all cycles (never cleared until new game)
+  const [editingDuel, setEditingDuel] = useState(null);
+  const [picaAllDuels, setPicaAllDuels] = useState([]);
   const [showDuels, setShowDuels] = useState(false);
+  const [picaStartPlayer, setPicaStartPlayer] = useState(0);
+  const [showMatchupPicker, setShowMatchupPicker] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [hist, setHist] = useState([]);
   const [showH, setShowH] = useState(false);
@@ -232,6 +233,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         if (d.picaCurrent) setPicaCurrent(d.picaCurrent);
         if (typeof d.picaRound === "number") setPicaRound(d.picaRound);
         if (Array.isArray(d.picaAllDuels)) setPicaAllDuels(d.picaAllDuels);
+        if (typeof d.picaStartPlayer === "number") setPicaStartPlayer(d.picaStartPlayer);
         setStarted(true);
         onContinueChange?.("truco");
       }
@@ -242,9 +244,9 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
   useEffect(() => {
     if (!started) return;
-    ST.save("truco-game", { started: true, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound, picaAllDuels });
+    ST.save("truco-game", { started: true, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound, picaAllDuels, picaStartPlayer });
     onContinueChange?.("truco");
-  }, [started, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound, picaAllDuels]);
+  }, [started, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound, picaAllDuels, picaStartPlayer]);
 
   // Auto-collapse both when both pass buenas (15+ in a game to 30)
   const bothInBuenas = target === 30 && sc.length === 2 && sc[0]?.p >= 15 && sc[1]?.p >= 15;
@@ -259,7 +261,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const persist = (next = {}) => {
     if (!started) return;
     ST.save("truco-game", {
-      started: true, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound, picaAllDuels,
+      started: true, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound, picaAllDuels, picaStartPlayer,
       ...next,
     });
   };
@@ -287,7 +289,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     setPicaRound(0);
     setPicaAllDuels([]);
     setStarted(true);
-    await ST.save("truco-game", { started: true, target, teamSize, rawNames: safeRawNames, sc: fresh, picaRange, picaMode, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0, picaAllDuels: [] });
+    await ST.save("truco-game", { started: true, target, teamSize, rawNames: safeRawNames, sc: fresh, picaRange, picaMode, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0, picaAllDuels: [], picaStartPlayer: 0 });
     onContinueChange?.("truco");
   };
 
@@ -317,8 +319,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         setPicaDuels([]);
         setPicaCurrent({ t0: 0, t1: 0 });
         setPicaRound(0);
-        setPicaNotif("start");
-        setTimeout(() => setPicaNotif(null), 3500);
+        const hasNames = rawNames.some(n => n?.trim());
+        if (teamSize === 3 && hasNames) setShowMatchupPicker(true);
       }
     }
 
@@ -436,8 +438,6 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
       setPicaDuels([]);
       setPicaCurrent({ t0: 0, t1: 0 });
       setPicaRound(0);
-      setPicaNotif("end");
-      setTimeout(() => setPicaNotif(null), 3500);
       persist({ picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0 });
     } else {
       // Reset duels for next cycle, advance round
@@ -516,6 +516,31 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
       });
     }
     shareResult(`Truco · A ${target}`, lines, { accent: "#1A5C52", accentLight: "#3D8B7A" });
+  };
+
+  const picaPlayerName = (teamIdx, globalDuelIdx) => {
+    if (teamSize !== 3) return null;
+    const cycle = Math.floor(globalDuelIdx / 3);
+    const duelInCycle = globalDuelIdx % 3;
+    const playerOffset = (picaStartPlayer + cycle + duelInCycle) % teamSize;
+    const rawIdx = teamIdx * teamSize + playerOffset;
+    return rawNames[rawIdx]?.trim() || `J${rawIdx + 1}`;
+  };
+
+  const shareDuels = () => {
+    const n0 = sc[0]?.name || "Eq 1";
+    const n1 = sc[1]?.name || "Eq 2";
+    const hasNames = teamSize === 3 && rawNames.some(n => n?.trim());
+    const lines = [`${n0} vs ${n1}: `];
+    picaAllDuels.forEach((d, i) => {
+      let label = `D${i + 1}`;
+      if (hasNames) label += ` (${picaPlayerName(0, i)} v ${picaPlayerName(1, i)})`;
+      lines.push(`${label}: ${d.t0} - ${d.t1}`);
+    });
+    const totalT0 = picaAllDuels.reduce((s, d) => s + d.t0, 0);
+    const totalT1 = picaAllDuels.reduce((s, d) => s + d.t1, 0);
+    lines.push(`Total: ${totalT0} - ${totalT1}`);
+    shareResult("Pica Pica · Duelos", lines, { accent: "#1A5C52", accentLight: "#3D8B7A" });
   };
 
   const handleUndo = () => {
@@ -773,6 +798,11 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
             <span style={{ fontSize: 12, fontWeight: 700, color: t.pri, fontFamily: F.sans, letterSpacing: 1 }}>
               PICAPICA · {L.duelo} {picaDueloNum} de 3
             </span>
+            {teamSize === 3 && rawNames.some(n => n?.trim()) && (
+              <div style={{ fontSize: 11, color: t.txtM, fontFamily: F.sans, marginTop: 2 }}>
+                {picaPlayerName(0, picaAllDuels.length)} vs {picaPlayerName(1, picaAllDuels.length)}
+              </div>
+            )}
           </div>
 
           {/* Completed duelos summary — tappable to edit */}
@@ -898,37 +928,106 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         bottom={picaPhase && !winner ? (isManoRedonda ? 60 : 240) : 32} />
     </div>
 
+    {/* Matchup picker modal */}
+    {showMatchupPicker && (
+      <Modal onClose={() => setShowMatchupPicker(false)}>
+        <div style={{ background: t.card, borderRadius: 12, padding: 20, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 320, width: "100%" }}>
+          <p style={{ fontSize: 16, color: t.pri, margin: "0 0 12px", fontFamily: F.serif, textAlign: "center" }}>¿Quién empieza?</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[0, 1, 2].map(offset => {
+              const p0 = rawNames[offset]?.trim() || `J${offset + 1}`;
+              const p1 = rawNames[teamSize + offset]?.trim() || `J${teamSize + offset + 1}`;
+              const sel = picaStartPlayer === offset;
+              return (
+                <button key={offset} onClick={() => { setPicaStartPlayer(offset); persist({ picaStartPlayer: offset }); }} style={{
+                  background: sel ? `${t.pri}15` : "transparent",
+                  border: `1.5px solid ${sel ? t.pri : t.brd}`, borderRadius: 8,
+                  padding: "12px 16px", cursor: "pointer", touchAction: "manipulation",
+                  fontFamily: F.sans, fontSize: 14, color: sel ? t.pri : t.txt, fontWeight: sel ? 600 : 400,
+                  textAlign: "center", transition: "all .15s",
+                }}>
+                  {p0} <span style={{ color: t.txtF, fontSize: 12 }}>vs</span> {p1}
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={() => setShowMatchupPicker(false)} style={{
+            width: "100%", marginTop: 14, background: t.pri, color: "#fff", border: "none", borderRadius: 8,
+            fontSize: 14, fontFamily: F.sans, fontWeight: 600, padding: "12px 0",
+            cursor: "pointer", touchAction: "manipulation",
+          }}>Empezar</button>
+        </div>
+      </Modal>
+    )}
+
     {/* Pica pica duel history modal */}
     {showDuels && picaAllDuels.length > 0 && <Modal onClose={() => setShowDuels(false)}>
-      <div style={{ background: t.card, borderRadius: 12, padding: 16, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 340, width: "100%" }}>
-        <p style={{ fontSize: 16, color: t.pri, margin: "0 0 10px", fontFamily: F.serif }}>Pica Pica · Duelos</p>
-        <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto 1fr", gap: "6px 8px", alignItems: "center" }}>
-          {picaAllDuels.map((d, i) => {
-            const t0Wins = d.t0 > d.t1;
-            const t1Wins = d.t1 > d.t0;
+      <div style={{ background: t.card, borderRadius: 12, padding: 20, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 340, width: "100%", maxHeight: "70vh", overflow: "auto" }}>
+        <p style={{ fontSize: 16, color: t.pri, margin: "0 0 4px", fontFamily: F.serif, textAlign: "center" }}>Pica Pica · Duelos</p>
+        {/* Team header */}
+        <div style={{ display: "flex", padding: "10px 0 8px", borderBottom: `2px solid ${t.pri}`, alignItems: "center" }}>
+          <span style={{ width: 32 }} />
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, fontFamily: F.sans, color: t.pri, textAlign: "center" }}>{sc[0]?.name}</span>
+          <span style={{ width: 20, textAlign: "center", fontSize: 11, color: t.txtF }}>-</span>
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, fontFamily: F.sans, color: t.pri, textAlign: "center" }}>{sc[1]?.name}</span>
+        </div>
+        {/* Duel rows */}
+        {(() => {
+          const hasNames = teamSize === 3 && rawNames.some(n => n?.trim());
+          return picaAllDuels.map((d, i) => {
+            const w0 = d.t0 > d.t1;
+            const w1 = d.t1 > d.t0;
             const isCycleBoundary = i > 0 && i % 3 === 0;
             return <React.Fragment key={i}>
-              {isCycleBoundary && <div style={{ gridColumn: "1 / -1", height: 1, background: t.brd, margin: "2px 0" }} />}
-              <span style={{ fontSize: 11, color: t.txtF, fontFamily: F.sans, fontWeight: 500 }}>D{i + 1}</span>
-              <span style={{ fontSize: 14, fontFamily: F.sans, fontWeight: t0Wins ? 700 : 400, color: t0Wins ? t.pri : t.txt, textAlign: "right" }}>
-                {sc[0]?.name}: {d.t0}
-              </span>
-              <span style={{ fontSize: 11, color: t.txtF, textAlign: "center" }}>vs</span>
-              <span style={{ fontSize: 14, fontFamily: F.sans, fontWeight: t1Wins ? 700 : 400, color: t1Wins ? t.pri : t.txt }}>
-                {d.t1} :{sc[1]?.name}
-              </span>
+              {isCycleBoundary && <div style={{ height: 1, background: t.pri, margin: "4px 0", opacity: 0.2 }} />}
+              <div style={{ display: "flex", alignItems: "center", padding: "7px 0", borderBottom: `1px solid ${t.brd}` }}>
+                <span style={{ width: 32, fontSize: 11, color: t.txtF, fontFamily: F.sans }}>D{i + 1}</span>
+                <div style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ fontSize: 18, fontFamily: F.serif, fontWeight: w0 ? 700 : 400, color: w0 ? t.pri : t.txt }}>{d.t0}</div>
+                  {hasNames && <div style={{ fontSize: 9, color: t.txtF, fontFamily: F.sans }}>{picaPlayerName(0, i)}</div>}
+                </div>
+                <span style={{ width: 20, textAlign: "center", fontSize: 11, color: t.txtF }}>-</span>
+                <div style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ fontSize: 18, fontFamily: F.serif, fontWeight: w1 ? 700 : 400, color: w1 ? t.pri : t.txt }}>{d.t1}</div>
+                  {hasNames && <div style={{ fontSize: 9, color: t.txtF, fontFamily: F.sans }}>{picaPlayerName(1, i)}</div>}
+                </div>
+              </div>
             </React.Fragment>;
-          })}
-        </div>
+          });
+        })()}
         {/* Totals */}
-        <div style={{ marginTop: 10, padding: "8px 0", borderTop: `1.5px solid ${t.pri}`, display: "flex", justifyContent: "space-between", fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: t.pri }}>
-          <span>{sc[0]?.name}: {picaAllDuels.reduce((s, d) => s + d.t0, 0)}</span>
-          <span>{picaAllDuels.reduce((s, d) => s + d.t1, 0)} :{sc[1]?.name}</span>
+        {(() => {
+          const tot0 = picaAllDuels.reduce((s, d) => s + d.t0, 0);
+          const tot1 = picaAllDuels.reduce((s, d) => s + d.t1, 0);
+          const wins0 = picaAllDuels.filter(d => d.t0 > d.t1).length;
+          const wins1 = picaAllDuels.filter(d => d.t1 > d.t0).length;
+          const m0 = tot0 > tot1; const m1 = tot1 > tot0;
+          return <>
+            <div style={{ display: "flex", alignItems: "center", padding: "10px 0 2px", borderTop: `2px solid ${t.pri}`, marginTop: 2 }}>
+              <span style={{ width: 32, fontSize: 11, color: t.txtM, fontFamily: F.sans, fontWeight: 600 }}>Total</span>
+              <span style={{ flex: 1, textAlign: "center", fontSize: 22, fontFamily: F.serif, fontWeight: 700, color: m0 ? t.pri : t.txt }}>{tot0}</span>
+              <span style={{ width: 20, textAlign: "center", fontSize: 11, color: t.txtF }}>-</span>
+              <span style={{ flex: 1, textAlign: "center", fontSize: 22, fontFamily: F.serif, fontWeight: 700, color: m1 ? t.pri : t.txt }}>{tot1}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", paddingBottom: 4 }}>
+              <span style={{ width: 32 }} />
+              <span style={{ flex: 1, textAlign: "center", fontSize: 11, color: t.txtM, fontFamily: F.sans }}>{wins0} ganado{wins0 !== 1 ? "s" : ""}</span>
+              <span style={{ width: 20 }} />
+              <span style={{ flex: 1, textAlign: "center", fontSize: 11, color: t.txtM, fontFamily: F.sans }}>{wins1} ganado{wins1 !== 1 ? "s" : ""}</span>
+            </div>
+          </>;
+        })()}
+        {/* Buttons */}
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <button onClick={() => setShowDuels(false)} style={{
+            flex: 1, background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8,
+            padding: "10px 0", fontSize: 13, fontFamily: F.sans, fontWeight: 500, color: t.txt, cursor: "pointer", touchAction: "manipulation",
+          }}>Cerrar</button>
+          <button onClick={shareDuels} style={{
+            flex: 1, background: t.pri, border: "none", borderRadius: 8,
+            padding: "10px 0", fontSize: 13, fontFamily: F.sans, fontWeight: 600, color: "#fff", cursor: "pointer", touchAction: "manipulation",
+          }}>{L.share}</button>
         </div>
-        <button onClick={() => setShowDuels(false)} style={{
-          width: "100%", marginTop: 10, background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8,
-          padding: "10px 0", fontSize: 13, fontFamily: F.sans, fontWeight: 500, color: t.txt, cursor: "pointer", touchAction: "manipulation",
-        }}>Cerrar</button>
       </div>
     </Modal>}
 
