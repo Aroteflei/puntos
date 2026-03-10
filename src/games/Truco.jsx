@@ -99,7 +99,7 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
       {/* Tallies — fixed height for target, score stays in place */}
       {!picaPhase && (
         <div style={{
-          height: target === 30 ? 500 : 220, flexShrink: 1, display: "flex", flexDirection: "column", alignItems: "center",
+          height: (target === 30 && !collapsed) ? 500 : 220, flexShrink: 1, display: "flex", flexDirection: "column", alignItems: "center",
           padding: "6px 10px 4px", overflowY: "auto", WebkitOverflowScrolling: "touch",
           borderTop: `1px solid ${t.brd}`,
         }}>
@@ -110,14 +110,6 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
             <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: 2, color: t.err, marginBottom: 4, fontFamily: F.sans }}>MALAS</div>
           )}
           <TrucoTally count={player.p} color={t.txt} divAt={hasBuenas ? 15 : null} buenasColor={t.ok} collapsed={collapsed} onClick={handleTallyTap} />
-          {showCollapseToggle && (
-            <button onClick={(e) => { e.stopPropagation(); onToggleCollapse?.(); }} style={{
-              background: "none", border: `1px solid ${t.brd}`, borderRadius: 10, fontSize: 10, color: t.txtM,
-              fontFamily: F.sans, cursor: "pointer", padding: "2px 8px", marginTop: 6, touchAction: "manipulation",
-            }}>
-              {collapsed ? "Ver todo" : "Solo buenas"}
-            </button>
-          )}
         </div>
       )}
 
@@ -169,14 +161,14 @@ function buildTeamName(rawNames, teamSize, teamIdx) {
 
   if (teamSize === 1) {
     const name = members[0]?.trim();
-    if (!name) return teamIdx === 0 ? "Nosotros" : "Ellos";
+    if (!name) return teamIdx === 0 ? "Yo" : "Vos";
     return name;
   }
 
   const filled = members.map((n, i) => ({ name: n?.trim(), idx: start + i }))
     .filter(m => m.name && m.name.length > 0);
 
-  if (filled.length === 0) return `Jugadores ${start + 1}-${start + teamSize}`;
+  if (filled.length === 0) return teamIdx === 0 ? "Nosotros" : "Ellos";
   if (filled.length === 1) return filled[0].name;
   return filled.map(m => m.name).join(" - ");
 }
@@ -192,7 +184,7 @@ function toRawNames(names, teamSize) {
 }
 
 function Truco({ onBack, onContinueChange, onChangeGame }) {
-  const { t, sounds, L } = useApp();
+  const { t, dk, tog, sounds, L } = useApp();
   const [target, setTarget] = useState(15);
   const [step, setStep] = useState(0);
   const [teamSize, setTeamSize] = useState(1);
@@ -587,7 +579,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); nextName(i); } }}
                 onFocus={e => e.target.select()}
                 enterKeyHint={i === rawCount - 1 ? "done" : "next"}
-                placeholder={i === 0 ? "Nosotros" : "Ellos"}
+                placeholder={i === 0 ? "Yo" : "Vos"}
                 style={{
                   width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${t.brd}`, color: t.txt,
                   padding: "14px 0", fontSize: 16, fontFamily: F.sans, outline: "none", borderRadius: 0, textTransform: "capitalize",
@@ -641,14 +633,22 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", padding: ph ? "8px 10px" : "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
         <button onClick={goBack} style={{
-          background: "none", border: "none", cursor: "pointer", padding: "4px", touchAction: "manipulation", display: "flex", alignItems: "center",
+          background: "none", border: "none", cursor: "pointer", padding: "8px 12px", touchAction: "manipulation", display: "flex", alignItems: "center",
         }}>
           <HomeIcon color={t.txtM} />
         </button>
+        <button onClick={tog} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", touchAction: "manipulation", fontSize: 16, lineHeight: 1 }}>
+          {dk ? "☀️" : "🌙"}
+        </button>
         <div style={{ flex: 1 }} />
-        <div style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "2px 10px", fontSize: 11, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
+        <button onClick={() => setTarget(target === 15 ? 30 : 15)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "2px 10px", fontSize: 11, color: t.txtM, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", touchAction: "manipulation" }}>
           A {target}
-        </div>
+        </button>
+        {showCollapseToggle && (
+          <button onClick={() => setCollapsed(c => !c)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "2px 10px", fontSize: 11, color: t.txtM, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", touchAction: "manipulation" }}>
+            {collapsed ? "Ver todo" : "Buenas"}
+          </button>
+        )}
         {!winner && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, color: t.txt, fontSize: 13, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "6px 14px", touchAction: "manipulation" }}>Menu</button>}
       </div>
 
