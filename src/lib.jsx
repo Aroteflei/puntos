@@ -277,7 +277,7 @@ export function Hdr({ title, emoji, onBack, sub, icons }) {
   const { t } = useApp();
   return <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderBottom: `1px solid ${t.brd}` }}>
     <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer",
-      padding: "8px", touchAction: "manipulation", display: "flex", alignItems: "center" }}>
+      padding: "8px 12px", touchAction: "manipulation", display: "flex", alignItems: "center" }}>
       <HomeIcon color={t.txtM} />
     </button>
     <div style={{ flex: 1, minWidth: 0 }}>

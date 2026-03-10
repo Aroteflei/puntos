@@ -11,7 +11,7 @@ const teamAvatar = (name) => {
 };
 
 function Burako2({ onBack, onContinueChange, onChangeGame }) {
-  const { t, sounds, L } = useApp();
+  const { t, dk, tog, sounds, L } = useApp();
   const [setup, setSetup] = useState(true);
   const [mode, setMode] = useState("par"); // "2j"|"3j"|"par"
   const [names, setNames] = useState(["", "", "", ""]);
@@ -326,10 +326,15 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   // ══════════════════════════════════════════════════
   if (setup) return (
     <div style={{ minHeight: "100dvh", background: t.bg, display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 24px" }}>
-      <button onClick={goBack} style={{
-        background: "none", border: "none", cursor: "pointer", padding: "8px 12px", touchAction: "manipulation",
-        alignSelf: "flex-start", marginBottom: 16, display: "flex", alignItems: "center",
-      }}><HomeIcon color={t.txtM} /></button>
+      <div style={{ display: "flex", alignItems: "center", alignSelf: "flex-start", marginBottom: 16, gap: 4 }}>
+        <button onClick={goBack} style={{
+          background: "none", border: "none", cursor: "pointer", padding: "8px 12px", touchAction: "manipulation",
+          display: "flex", alignItems: "center",
+        }}><HomeIcon color={t.txtM} /></button>
+        <button onClick={tog} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", touchAction: "manipulation", fontSize: 16, lineHeight: 1 }}>
+          {dk ? "☀️" : "🌙"}
+        </button>
+      </div>
       <div style={{ maxWidth: 360, width: "100%", display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 28, fontFamily: F.serif, color: t.txt, marginBottom: 4 }}>Burako</div>
@@ -408,12 +413,28 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
 
       {/* Top bar with game info */}
       <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
-        <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px", touchAction: "manipulation", display: "flex", alignItems: "center" }}><HomeIcon color={t.txtM} /></button>
+        <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px 12px", touchAction: "manipulation", display: "flex", alignItems: "center" }}><HomeIcon color={t.txtM} /></button>
+        <button onClick={tog} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", touchAction: "manipulation", fontSize: 16, lineHeight: 1 }}>
+          {dk ? "☀️" : "🌙"}
+        </button>
         <div style={{ flex: 1, textAlign: "center" }}>
           <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
-            {maxHands > 0 ? `${maxHands} ${maxHands === 1 ? "mano" : "manos"} · ` : ""}A {cfg.tgt} pts
+            {maxHands > 0 ? `${maxHands} ${maxHands === 1 ? "mano" : "manos"}` : ""}
           </span>
         </div>
+        <button onClick={() => {
+          const maxScore = Math.max(...teams.map(tm => total(tm)), 0);
+          const steps = [1500, 2000, 2500, 3000, 3500, 4000, 5000];
+          const cur = cfg.tgt;
+          const next = steps.find(s => s > cur) || steps[0];
+          if (next < maxScore) return;
+          setCfg({ ...cfg, tgt: next });
+        }} style={{
+          background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "2px 10px",
+          fontSize: 11, color: t.txtM, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", touchAction: "manipulation",
+        }}>
+          A {cfg.tgt}
+        </button>
         {!winner && <button onClick={() => setModal("menu")} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8, color: t.txt, fontSize: 13, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", padding: "6px 14px", touchAction: "manipulation" }}>Menu</button>}
       </div>
 

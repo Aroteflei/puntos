@@ -99,7 +99,7 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
       {/* Tallies — fixed height for target, score stays in place */}
       {!picaPhase && (
         <div style={{
-          height: (target === 30 && !collapsed) ? 500 : 220, flexShrink: 1, display: "flex", flexDirection: "column", alignItems: "center",
+          height: (target === 30 && !collapsed) ? 500 : 280, flexShrink: 1, display: "flex", flexDirection: "column", alignItems: "center",
           padding: "6px 10px 4px", overflowY: "auto", WebkitOverflowScrolling: "touch",
           borderTop: `1px solid ${t.brd}`,
         }}>
@@ -203,6 +203,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const [picaDuels, setPicaDuels] = useState([]);
   const [picaCurrent, setPicaCurrent] = useState({ t0: 0, t1: 0 });
   const [picaRound, setPicaRound] = useState(0);
+  const [picaEditIdx, setPicaEditIdx] = useState(null); // null | 0 | 1
+  const [picaEditVal, setPicaEditVal] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const [hist, setHist] = useState([]);
   const [showH, setShowH] = useState(false);
@@ -328,6 +330,13 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     setPicaCurrent(next);
     persist({ picaCurrent: next });
     if (sounds) vib();
+  };
+
+  const setDueloScore = (teamIdx, val) => {
+    const key = teamIdx === 0 ? "t0" : "t1";
+    const next = { ...picaCurrent, [key]: Math.max(0, val) };
+    setPicaCurrent(next);
+    persist({ picaCurrent: next });
   };
 
   const nextDuelo = () => {
@@ -641,7 +650,11 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
           {dk ? "☀️" : "🌙"}
         </button>
         <div style={{ flex: 1 }} />
-        <button onClick={() => setTarget(target === 15 ? 30 : 15)} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "2px 10px", fontSize: 11, color: t.txtM, fontFamily: F.sans, fontWeight: 500, cursor: "pointer", touchAction: "manipulation" }}>
+        <button onClick={() => {
+          const canGoTo15 = !sc.some(s => s.p > 15);
+          if (target === 30 && !canGoTo15) return;
+          setTarget(target === 15 ? 30 : 15);
+        }} style={{ background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 10, padding: "2px 10px", fontSize: 11, color: (target === 30 && sc.some(s => s.p > 15)) ? t.txtF : t.txtM, fontFamily: F.sans, fontWeight: 500, cursor: (target === 30 && sc.some(s => s.p > 15)) ? "default" : "pointer", touchAction: "manipulation", opacity: (target === 30 && sc.some(s => s.p > 15)) ? 0.4 : 1, transition: "opacity .2s" }}>
           A {target}
         </button>
         {showCollapseToggle && (
@@ -730,7 +743,33 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
               return (
                 <div key={ti} style={{ flex: 1, textAlign: "center" }}>
                   <div style={{ fontSize: 11, color: t.txtM, fontFamily: F.sans, marginBottom: 4 }}>{sc[ti]?.name}</div>
-                  <div style={{ fontSize: 28, fontFamily: F.serif, color: t.pri, marginBottom: 6 }}>{val}</div>
+                  {picaEditIdx === ti ? (
+                    <input
+                      type="number" inputMode="numeric" autoFocus
+                      value={picaEditVal}
+                      onChange={e => setPicaEditVal(e.target.value)}
+                      onBlur={() => {
+                        const n = parseInt(picaEditVal);
+                        if (!isNaN(n)) setDueloScore(ti, n);
+                        setPicaEditIdx(null);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          const n = parseInt(picaEditVal);
+                          if (!isNaN(n)) setDueloScore(ti, n);
+                          setPicaEditIdx(null);
+                        }
+                      }}
+                      style={{
+                        width: "100%", background: "transparent", border: "none", borderBottom: `2px solid ${t.pri}`,
+                        fontSize: 28, fontFamily: F.serif, color: t.pri, textAlign: "center",
+                        outline: "none", borderRadius: 0, marginBottom: 6, padding: 0,
+                      }}
+                    />
+                  ) : (
+                    <div onClick={() => { setPicaEditIdx(ti); setPicaEditVal(String(val)); }}
+                      style={{ fontSize: 28, fontFamily: F.serif, color: t.pri, marginBottom: 6, cursor: "pointer" }}>{val}</div>
+                  )}
                   <div style={{ display: "flex", gap: 4 }}>
                     <button onClick={() => val > 0 && addDuelo(ti, -1)} disabled={val <= 0} style={{
                       background: "transparent", color: val <= 0 ? t.txtF : t.err, border: `1px solid ${val <= 0 ? t.brd : t.err}`,

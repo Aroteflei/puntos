@@ -46,7 +46,7 @@ function ComboBadge({ k, color, t }) {
 const isDefaultName = (name) => /^Jugador\s+\d+$/i.test(name);
 
 function Generala({ onBack, onContinueChange, onChangeGame }) {
-  const { t, sounds, L } = useApp();
+  const { t, dk, tog, sounds, L } = useApp();
   const [sStep, setSStep] = useState(0); const [pCount, setPCount] = useState(2);
   const [pNames, setPNames] = useState(["Jugador 1", "Jugador 2"]);
   const [ps, setPs] = useState([]); const [started, setStarted] = useState(false);
@@ -138,8 +138,10 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
   const goBack = () => { onContinueChange?.(started ? "generala" : null); if (onChangeGame) onChangeGame(); else onBack() };
   const maxTot = ps.length ? Math.max(...ps.map(p => tot(p))) : 0;
 
-  if (loading) return <div style={{ background: t.bg, minHeight: "100vh" }}><Hdr title="Generala" onBack={goBack} /><div style={{ padding: 24, textAlign: "center", color: t.txtM }}>…</div></div>;
-  if (!started) return <div style={{ background: t.bg, minHeight: "100vh" }}><Hdr title="Generala" onBack={goBack} />
+  const darkToggle = <button onClick={tog} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", touchAction: "manipulation", fontSize: 16, lineHeight: 1 }}>{dk ? "☀️" : "🌙"}</button>;
+
+  if (loading) return <div style={{ background: t.bg, minHeight: "100vh" }}><Hdr title="Generala" onBack={goBack} icons={darkToggle} /><div style={{ padding: 24, textAlign: "center", color: t.txtM }}>…</div></div>;
+  if (!started) return <div style={{ background: t.bg, minHeight: "100vh" }}><Hdr title="Generala" onBack={goBack} icons={darkToggle} />
 
     <div style={{ maxWidth: 360, margin: "0 auto", padding: "20px 24px 48px", display: "flex", flexDirection: "column", gap: 16 }}>
       {sStep === 0 && <><p style={{ fontSize: 22, color: t.txt, textAlign: "center", margin: 0, fontFamily: F.serif }}>{L.howManyPlayers}</p>
@@ -168,7 +170,10 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
   return <div style={{ minHeight: "100dvh", background: t.bg }}>
     {/* Minimal header */}
     <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8, flexShrink: 0, borderBottom: `1px solid ${t.brd}` }}>
-      <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px", touchAction: "manipulation", display: "flex", alignItems: "center" }}><HomeIcon color={t.txtM} /></button>
+      <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px 12px", touchAction: "manipulation", display: "flex", alignItems: "center" }}><HomeIcon color={t.txtM} /></button>
+      <button onClick={tog} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", touchAction: "manipulation", fontSize: 16, lineHeight: 1 }}>
+        {dk ? "☀️" : "🌙"}
+      </button>
       <div style={{ flex: 1, textAlign: "center" }}>
         <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans, fontWeight: 500 }}>
           {turnsLeft > 0 ? `${turnsLeft} ${L.turnsLeft}` : L.done}
