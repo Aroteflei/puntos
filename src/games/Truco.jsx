@@ -96,11 +96,11 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
         <EN name={player.name} onSave={n => onRen(idx, n)} sz={18} fw={700} />
       </div>
 
-      {/* Tallies — scrollable, tap to add +1 */}
+      {/* Tallies — fixed height for target, score stays in place */}
       {!picaPhase && (
         <div style={{
-          flex: "2 1 0", display: "flex", flexDirection: "column", alignItems: "center",
-          padding: "6px 10px 4px", overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 60,
+          height: target === 30 ? 500 : 220, flexShrink: 1, display: "flex", flexDirection: "column", alignItems: "center",
+          padding: "6px 10px 4px", overflowY: "auto", WebkitOverflowScrolling: "touch",
           borderTop: `1px solid ${t.brd}`,
         }}>
           {hasBuenas && collapsed && (
@@ -149,8 +149,7 @@ function Col({ player, idx, target, winner, ph, onAdd, onRen, t, picaPhase, coll
         </div>
       )}
 
-      {/* Bottom spacer — pushes score & buttons up */}
-      {!picaPhase && <div style={{ flex: "1 1 0", minHeight: 0 }} />}
+      <div style={{ flex: "1 1 0", minHeight: 0 }} />
     </div>
   );
 }
@@ -669,10 +668,18 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
               padding: "10px 20px", cursor: "pointer", flex: 1, touchAction: "manipulation",
             }}>{L.nuevaPartidaSetup}</button>
           </div>
-          <button onClick={doShare} style={{
-            background: "none", border: "none", color: "rgba(255,255,255,.6)",
-            fontSize: 12, fontFamily: F.sans, cursor: "pointer", marginTop: 8, padding: "4px 8px", touchAction: "manipulation",
-          }}>{L.share}</button>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 8 }}>
+            <button onClick={doShare} style={{
+              background: "none", border: "none", color: "rgba(255,255,255,.6)",
+              fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
+            }}>{L.share}</button>
+            {lastStateRef.current && (
+              <button onClick={handleUndo} style={{
+                background: "none", border: "none", color: "rgba(255,255,255,.6)",
+                fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
+              }}>{L.undo}</button>
+            )}
+          </div>
         </div>
       )}
 
