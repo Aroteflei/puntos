@@ -203,8 +203,11 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const [picaDuels, setPicaDuels] = useState([]);
   const [picaCurrent, setPicaCurrent] = useState({ t0: 0, t1: 0 });
   const [picaRound, setPicaRound] = useState(0);
-  const [picaEditIdx, setPicaEditIdx] = useState(null); // null | 0 | 1
+  const [picaEditIdx, setPicaEditIdx] = useState(null); // null | 0 | 1 (current duel inline edit)
   const [picaEditVal, setPicaEditVal] = useState("");
+  const [editingDuel, setEditingDuel] = useState(null); // null | { idx, t0, t1 } (past duel edit)
+  const [picaAllDuels, setPicaAllDuels] = useState([]); // ALL duels across all cycles (never cleared until new game)
+  const [showDuels, setShowDuels] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [hist, setHist] = useState([]);
   const [showH, setShowH] = useState(false);
@@ -228,6 +231,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         if (Array.isArray(d.picaDuels)) setPicaDuels(d.picaDuels);
         if (d.picaCurrent) setPicaCurrent(d.picaCurrent);
         if (typeof d.picaRound === "number") setPicaRound(d.picaRound);
+        if (Array.isArray(d.picaAllDuels)) setPicaAllDuels(d.picaAllDuels);
         setStarted(true);
         onContinueChange?.("truco");
       }
@@ -238,9 +242,9 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
   useEffect(() => {
     if (!started) return;
-    ST.save("truco-game", { started: true, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound });
+    ST.save("truco-game", { started: true, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound, picaAllDuels });
     onContinueChange?.("truco");
-  }, [started, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound]);
+  }, [started, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound, picaAllDuels]);
 
   // Auto-collapse both when both pass buenas (15+ in a game to 30)
   const bothInBuenas = target === 30 && sc.length === 2 && sc[0]?.p >= 15 && sc[1]?.p >= 15;
@@ -255,7 +259,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const persist = (next = {}) => {
     if (!started) return;
     ST.save("truco-game", {
-      started: true, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound,
+      started: true, target, teamSize, rawNames, sc, picaRange, picaMode, picaPhase, picaDuels, picaCurrent, picaRound, picaAllDuels,
       ...next,
     });
   };
@@ -281,8 +285,9 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     setPicaDuels([]);
     setPicaCurrent({ t0: 0, t1: 0 });
     setPicaRound(0);
+    setPicaAllDuels([]);
     setStarted(true);
-    await ST.save("truco-game", { started: true, target, teamSize, rawNames: safeRawNames, sc: fresh, picaRange, picaMode, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0 });
+    await ST.save("truco-game", { started: true, target, teamSize, rawNames: safeRawNames, sc: fresh, picaRange, picaMode, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0, picaAllDuels: [] });
     onContinueChange?.("truco");
   };
 
@@ -297,7 +302,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   const add = (i, v) => {
     if (v > 0 && sc[i].p >= target) return;
     if (v < 0 && sc[i].p <= 0) return;
-    lastStateRef.current = { sc: clone(sc), picaPhase, picaDuels: clone(picaDuels), picaCurrent: clone(picaCurrent), picaRound };
+    lastStateRef.current = { sc: clone(sc), picaPhase, picaDuels: clone(picaDuels), picaCurrent: clone(picaCurrent), picaRound, picaAllDuels: clone(picaAllDuels) };
     setToast({ text: `${sc[i].name}: ${v > 0 ? "+" : ""}${v}`, undo: true });
     const newP = Math.min(target, Math.max(0, sc[i].p + v));
     const nextSc = sc.map((row, idx) => idx === i ? { ...row, p: newP } : row);
@@ -339,6 +344,40 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     persist({ picaCurrent: next });
   };
 
+  const savePastDuel = (duelIdx, newT0, newT1) => {
+    const old = picaDuels[duelIdx];
+    if (!old) return;
+    const updated = [...picaDuels];
+    updated[duelIdx] = { t0: Math.max(0, newT0), t1: Math.max(0, newT1) };
+    setPicaDuels(updated);
+
+    // Also update the allDuels history
+    const allOffset = picaAllDuels.length - picaDuels.length;
+    const nextAllDuels = [...picaAllDuels];
+    if (allOffset + duelIdx >= 0 && allOffset + duelIdx < nextAllDuels.length) {
+      nextAllDuels[allOffset + duelIdx] = { t0: Math.max(0, newT0), t1: Math.max(0, newT1) };
+    }
+    setPicaAllDuels(nextAllDuels);
+
+    // In suma mode, past duels already affected main scores — adjust the diff
+    if (picaMode === "suma") {
+      const diffT0 = newT0 - old.t0;
+      const diffT1 = newT1 - old.t1;
+      if (diffT0 !== 0 || diffT1 !== 0) {
+        const nextSc = sc.map((row, idx) => ({
+          ...row, p: Math.max(0, Math.min(target, row.p + (idx === 0 ? diffT0 : diffT1)))
+        }));
+        setSc(nextSc);
+        persist({ sc: nextSc, picaDuels: updated, picaAllDuels: nextAllDuels });
+      } else {
+        persist({ picaDuels: updated, picaAllDuels: nextAllDuels });
+      }
+    } else {
+      persist({ picaDuels: updated, picaAllDuels: nextAllDuels });
+    }
+    setEditingDuel(null);
+  };
+
   const nextDuelo = () => {
     const completed = [...picaDuels, picaCurrent];
     const nextRound = picaRound + 1;
@@ -372,12 +411,17 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     setPicaCurrent({ t0: 0, t1: 0 });
     setPicaRound(nextRound);
 
+    // Append completed duel to full history
+    const nextAllDuels = [...picaAllDuels, picaCurrent];
+    setPicaAllDuels(nextAllDuels);
+
     // Single persist call with all updates
     persist({
       sc: nextSc,
       picaDuels: completed,
       picaCurrent: { t0: 0, t1: 0 },
       picaRound: nextRound,
+      picaAllDuels: nextAllDuels,
     });
     if (sounds) vib();
   };
@@ -441,12 +485,13 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     setPicaDuels([]);
     setPicaCurrent({ t0: 0, t1: 0 });
     setPicaRound(0);
+    setPicaAllDuels([]);
     setCollapsed(false);
     prevBothBuenasRef.current = false;
     setModal(null);
     lastStateRef.current = null;
     setToast({ text: L.revancha });
-    persist({ sc: nextSc, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0 });
+    persist({ sc: nextSc, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0, picaAllDuels: [] });
   };
 
   const nuevaPartida = async () => {
@@ -461,7 +506,17 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     else await ST.del("truco-hist");
   };
 
-  const doShare = () => shareResult(`Truco · A ${target}`, sc.map((s) => `${s.name}: ${s.p}`), { accent: "#1A5C52", accentLight: "#3D8B7A" });
+  const doShare = () => {
+    const lines = sc.map((s) => `${s.name}: ${s.p}`);
+    if (picaAllDuels.length > 0) {
+      lines.push("");
+      lines.push(`Pica Pica (${picaAllDuels.length} duelos):`);
+      picaAllDuels.forEach((d, i) => {
+        lines.push(`  D${i + 1}: ${sc[0]?.name} ${d.t0} - ${d.t1} ${sc[1]?.name}`);
+      });
+    }
+    shareResult(`Truco · A ${target}`, lines, { accent: "#1A5C52", accentLight: "#3D8B7A" });
+  };
 
   const handleUndo = () => {
     const ls = lastStateRef.current;
@@ -471,7 +526,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     if (ls.picaDuels) setPicaDuels(ls.picaDuels);
     if (ls.picaCurrent) setPicaCurrent(ls.picaCurrent);
     if (ls.picaRound !== undefined) setPicaRound(ls.picaRound);
-    persist({ sc: ls.sc, picaPhase: ls.picaPhase, picaDuels: ls.picaDuels, picaCurrent: ls.picaCurrent, picaRound: ls.picaRound });
+    if (ls.picaAllDuels) setPicaAllDuels(ls.picaAllDuels);
+    persist({ sc: ls.sc, picaPhase: ls.picaPhase, picaDuels: ls.picaDuels, picaCurrent: ls.picaCurrent, picaRound: ls.picaRound, picaAllDuels: ls.picaAllDuels });
     lastStateRef.current = null;
   };
 
@@ -686,6 +742,12 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
               background: "none", border: "none", color: "rgba(255,255,255,.6)",
               fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
             }}>{L.share}</button>
+            {picaAllDuels.length > 0 && (
+              <button onClick={() => setShowDuels(true)} style={{
+                background: "none", border: "none", color: "rgba(255,255,255,.6)",
+                fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
+              }}>Ver Duelos</button>
+            )}
             {lastStateRef.current && (
               <button onClick={handleUndo} style={{
                 background: "none", border: "none", color: "rgba(255,255,255,.6)",
@@ -725,14 +787,49 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
             </span>
           </div>
 
-          {/* Completed duelos summary */}
+          {/* Completed duelos summary — tappable to edit */}
           {picaDuels.length > 0 && (
             <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 8, flexWrap: "wrap" }}>
-              {picaDuels.slice(-3).map((d, i) => (
-                <span key={i} style={{ fontSize: 11, color: t.txtM, fontFamily: F.sans, background: t.card, border: `1px solid ${t.brd}`, borderRadius: 6, padding: "2px 8px" }}>
-                  D{picaDuels.length - 2 + i}: {d.t0}-{d.t1}
+              {picaDuels.map((d, i) => (
+                <span key={i} onClick={() => setEditingDuel({ idx: i, t0: String(d.t0), t1: String(d.t1) })}
+                  style={{ fontSize: 11, color: t.txtM, fontFamily: F.sans, background: t.card, border: `1px solid ${t.brd}`, borderRadius: 6, padding: "2px 8px", cursor: "pointer" }}>
+                  D{i + 1}: {d.t0}-{d.t1}
                 </span>
               ))}
+            </div>
+          )}
+
+          {/* Edit past duel modal */}
+          {editingDuel && (
+            <div style={{ background: t.card, border: `1px solid ${t.brd}`, borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: t.pri, fontFamily: F.sans, marginBottom: 6, textAlign: "center" }}>
+                Editar Duelo {editingDuel.idx + 1}
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: t.txtM, fontFamily: F.sans, marginBottom: 2 }}>{sc[0]?.name}</div>
+                  <input type="number" inputMode="numeric" autoFocus
+                    value={editingDuel.t0}
+                    onChange={e => setEditingDuel({ ...editingDuel, t0: e.target.value })}
+                    onKeyDown={e => { if (e.key === "Enter") savePastDuel(editingDuel.idx, parseInt(editingDuel.t0) || 0, parseInt(editingDuel.t1) || 0); }}
+                    style={{ width: "100%", background: "transparent", border: "none", borderBottom: `2px solid ${t.pri}`, fontSize: 22, fontFamily: F.serif, color: t.pri, textAlign: "center", outline: "none", borderRadius: 0, padding: 0 }}
+                  />
+                </div>
+                <span style={{ fontSize: 16, color: t.txtM }}>vs</span>
+                <div style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: t.txtM, fontFamily: F.sans, marginBottom: 2 }}>{sc[1]?.name}</div>
+                  <input type="number" inputMode="numeric"
+                    value={editingDuel.t1}
+                    onChange={e => setEditingDuel({ ...editingDuel, t1: e.target.value })}
+                    onKeyDown={e => { if (e.key === "Enter") savePastDuel(editingDuel.idx, parseInt(editingDuel.t0) || 0, parseInt(editingDuel.t1) || 0); }}
+                    style={{ width: "100%", background: "transparent", border: "none", borderBottom: `2px solid ${t.pri}`, fontSize: 22, fontFamily: F.serif, color: t.pri, textAlign: "center", outline: "none", borderRadius: 0, padding: 0 }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                <button onClick={() => setEditingDuel(null)} style={{ flex: 1, background: "transparent", border: `1px solid ${t.brd}`, borderRadius: 6, padding: "6px 0", fontSize: 12, fontFamily: F.sans, color: t.txtM, cursor: "pointer", touchAction: "manipulation" }}>Cancelar</button>
+                <button onClick={() => savePastDuel(editingDuel.idx, parseInt(editingDuel.t0) || 0, parseInt(editingDuel.t1) || 0)} style={{ flex: 1, background: t.pri, border: "none", borderRadius: 6, padding: "6px 0", fontSize: 12, fontFamily: F.sans, fontWeight: 600, color: "#fff", cursor: "pointer", touchAction: "manipulation" }}>Guardar</button>
+              </div>
             </div>
           )}
 
@@ -818,6 +915,40 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         bottom={picaPhase && !winner ? (isManoRedonda ? 130 : 240) : 32} />
     </div>
 
+    {/* Pica pica duel history modal */}
+    {showDuels && picaAllDuels.length > 0 && <Modal onClose={() => setShowDuels(false)}>
+      <div style={{ background: t.card, borderRadius: 12, padding: 16, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 340, width: "100%" }}>
+        <p style={{ fontSize: 16, color: t.pri, margin: "0 0 10px", fontFamily: F.serif }}>Pica Pica · Duelos</p>
+        <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto 1fr", gap: "6px 8px", alignItems: "center" }}>
+          {picaAllDuels.map((d, i) => {
+            const t0Wins = d.t0 > d.t1;
+            const t1Wins = d.t1 > d.t0;
+            const isCycleBoundary = i > 0 && i % 3 === 0;
+            return <React.Fragment key={i}>
+              {isCycleBoundary && <div style={{ gridColumn: "1 / -1", height: 1, background: t.brd, margin: "2px 0" }} />}
+              <span style={{ fontSize: 11, color: t.txtF, fontFamily: F.sans, fontWeight: 500 }}>D{i + 1}</span>
+              <span style={{ fontSize: 14, fontFamily: F.sans, fontWeight: t0Wins ? 700 : 400, color: t0Wins ? t.pri : t.txt, textAlign: "right" }}>
+                {sc[0]?.name}: {d.t0}
+              </span>
+              <span style={{ fontSize: 11, color: t.txtF, textAlign: "center" }}>vs</span>
+              <span style={{ fontSize: 14, fontFamily: F.sans, fontWeight: t1Wins ? 700 : 400, color: t1Wins ? t.pri : t.txt }}>
+                {d.t1} :{sc[1]?.name}
+              </span>
+            </React.Fragment>;
+          })}
+        </div>
+        {/* Totals */}
+        <div style={{ marginTop: 10, padding: "8px 0", borderTop: `1.5px solid ${t.pri}`, display: "flex", justifyContent: "space-between", fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: t.pri }}>
+          <span>{sc[0]?.name}: {picaAllDuels.reduce((s, d) => s + d.t0, 0)}</span>
+          <span>{picaAllDuels.reduce((s, d) => s + d.t1, 0)} :{sc[1]?.name}</span>
+        </div>
+        <button onClick={() => setShowDuels(false)} style={{
+          width: "100%", marginTop: 10, background: t.bgS, border: `1px solid ${t.brd}`, borderRadius: 8,
+          padding: "10px 0", fontSize: 13, fontFamily: F.sans, fontWeight: 500, color: t.txt, cursor: "pointer", touchAction: "manipulation",
+        }}>Cerrar</button>
+      </div>
+    </Modal>}
+
     {showH && hist.length > 0 && <Modal onClose={() => setShowH(false)}>
       <div style={{ background: t.card, borderRadius: 12, padding: 16, border: `1px solid ${t.brd}`, boxShadow: t.shH, maxWidth: 340, width: "100%", maxHeight: "70vh", overflow: "auto" }}>
         <p style={{ fontSize: 16, color: t.pri, margin: "0 0 10px", fontFamily: F.serif }}>{L.hist}</p>
@@ -837,6 +968,7 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
         {[
           { label: L.share, action: () => { setModal(null); doShare(); } },
           ...(hist.length > 0 ? [{ label: L.hist, action: () => { setModal(null); setShowH(true); } }] : []),
+          ...(picaAllDuels.length > 0 ? [{ label: "Ver Duelos", action: () => { setModal(null); setShowDuels(true); } }] : []),
           { label: L.nuevaPartida, action: () => setModal("new") },
           { label: L.reset, action: () => setModal("reset") },
         ].map((item, i) => (
