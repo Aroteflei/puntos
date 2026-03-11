@@ -55,6 +55,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   const editRef = useRef(null);
   const saveCellRef = useRef(null);
   const clearCellRef = useRef(null);
+  const editingCellRef = useRef(null);
 
   // ── Persistence ──
   useEffect(() => {
@@ -180,17 +181,17 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     setEditCell({ ti, hi });
   };
 
-  // Close inline edit when clicking outside the grid
+  // Close inline edit when tapping outside the editing cell
   useEffect(() => {
     if (!editCell) return;
     const handler = (e) => {
-      if (ledgerRef.current && !ledgerRef.current.contains(e.target)) {
+      if (editingCellRef.current && !editingCellRef.current.contains(e.target)) {
         commitEdit();
         setEditCell(null);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
   }, [editCell, commitEdit]);
 
   const saveToHistory = async () => {
@@ -618,13 +619,13 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                   const isEditing = editCell?.ti === ti && editCell?.hi === hi;
                   const cumul = tm.hands.slice(0, hi + 1).reduce((s, x) => s + handVal(x), 0);
                   return (
-                    <div key={ti} onClick={() => !winner && handleCellClick(ti, hi)} style={{
+                    <div key={ti} ref={isEditing ? editingCellRef : undefined} onClick={() => !winner && handleCellClick(ti, hi)} style={{
                       textAlign: "center", cursor: winner ? "default" : "pointer",
                       background: isEditing ? t.card : (h ? t.bgS : t.card),
                       border: isEditing ? `2px solid ${t.pri}` : (h ? `1px solid ${t.brd}` : `1px dashed ${t.brd}`),
                       borderRadius: 4,
                       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                      minHeight: isEditing ? 90 : 64, padding: isEditing ? "6px 2px" : "8px 4px",
+                      minHeight: isEditing ? 140 : 64, padding: isEditing ? "10px 4px" : "8px 4px",
                       transition: "all .15s",
                     }}>
                       {isEditing ? (
@@ -823,17 +824,17 @@ function InlineCellEdit({ ti, hi, existing, editRef, onDone, onClose, onClear, t
   };
 
   return (
-    <div onClick={e => e.stopPropagation()} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+    <div onClick={e => e.stopPropagation()} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
       {/* +/− toggle */}
-      <div style={{ display: "flex", borderRadius: 3, overflow: "hidden", border: `1px solid ${t.brd}`, marginBottom: 2 }}>
+      <div style={{ display: "flex", borderRadius: 4, overflow: "hidden", border: `1px solid ${t.brd}`, marginBottom: 4 }}>
         <button onClick={() => setMode("pos")} style={{
-          padding: "1px 10px", fontSize: 13, fontWeight: 700, border: "none",
+          padding: "5px 16px", fontSize: 16, fontWeight: 700, border: "none",
           background: mode === "pos" ? t.pri : "transparent",
           color: mode === "pos" ? "#fff" : t.txtM,
           cursor: "pointer", fontFamily: F.sans, touchAction: "manipulation", lineHeight: 1.4,
         }}>+</button>
         <button onClick={() => setMode("neg")} style={{
-          padding: "1px 10px", fontSize: 13, fontWeight: 700, border: "none",
+          padding: "5px 16px", fontSize: 16, fontWeight: 700, border: "none",
           borderLeft: `1px solid ${t.brd}`,
           background: mode === "neg" ? t.err : "transparent",
           color: mode === "neg" ? "#fff" : t.txtM,
@@ -848,7 +849,7 @@ function InlineCellEdit({ ti, hi, existing, editRef, onDone, onClose, onClear, t
             style={{
               width: "85%", background: "transparent", border: "none",
               borderBottom: `1px solid ${t.brd}`,
-              padding: "2px 0", fontSize: 18, fontFamily: F.sans, fontWeight: 500,
+              padding: "5px 0", fontSize: 22, fontFamily: F.sans, fontWeight: 500,
               color: t.txt, textAlign: "center", outline: "none", borderRadius: 0,
             }} />
           <input ref={ptsInputRef} type="number" inputMode="numeric" value={pts}
@@ -857,10 +858,10 @@ function InlineCellEdit({ ti, hi, existing, editRef, onDone, onClose, onClear, t
             style={{
               width: "85%", background: "transparent", border: "none",
               borderBottom: `1px solid ${t.brd}`,
-              padding: "2px 0", fontSize: 18, fontFamily: F.sans, fontWeight: 500,
+              padding: "5px 0", fontSize: 22, fontFamily: F.sans, fontWeight: 500,
               color: t.txt, textAlign: "center", outline: "none", borderRadius: 0,
             }} />
-          {totalVal !== 0 && <span style={{ fontSize: 11, color: t.ok, fontFamily: F.sans, fontWeight: 600 }}>= {totalVal}</span>}
+          {totalVal !== 0 && <span style={{ fontSize: 15, color: t.ok, fontFamily: F.sans, fontWeight: 600, marginTop: 2 }}>= {totalVal}</span>}
         </>
       ) : (
         <input ref={negInputRef} type="number" inputMode="numeric" value={neg}
@@ -869,14 +870,14 @@ function InlineCellEdit({ ti, hi, existing, editRef, onDone, onClose, onClear, t
           style={{
             width: "85%", background: "transparent", border: "none",
             borderBottom: `1px solid ${t.err}`,
-            padding: "2px 0", fontSize: 18, fontFamily: F.sans, fontWeight: 500,
+            padding: "5px 0", fontSize: 22, fontFamily: F.sans, fontWeight: 500,
             color: t.err, textAlign: "center", outline: "none", borderRadius: 0,
           }} />
       )}
       {isEdit && <button onClick={onClear} style={{
-        background: "none", border: "none", color: t.err, fontSize: 10,
-        fontFamily: F.sans, cursor: "pointer", padding: "1px 6px",
-        opacity: 0.7, touchAction: "manipulation", textDecoration: "underline",
+        background: "none", border: "none", color: t.err, fontSize: 13,
+        fontFamily: F.sans, cursor: "pointer", padding: "4px 10px", marginTop: 2,
+        opacity: 0.8, touchAction: "manipulation", textDecoration: "underline",
       }}>borrar</button>}
     </div>
   );
