@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp, ST, clone, vibWin, vibFor, bajadaReq, fmtDate, F, B, EN, Modal, UndoBar, HomeIcon } from '../lib.jsx';
 
 const DEF_CFG = { tgt: 3000, pura: 200, canasta: 100, cierre: 100, muerto: 100 };
@@ -47,11 +47,14 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   const [modal, setModal] = useState(null); // "menu"|"settings"|"new"|"reset"
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [cellPopup, setCellPopup] = useState(null); // { ti, hi } or null
+  const [editCell, setEditCell] = useState(null); // { ti, hi } or null
   const [hist, setHist] = useState([]);
   const [showH, setShowH] = useState(false);
   const nameRefs = useRef([]);
   const ledgerRef = useRef(null);
+  const editRef = useRef(null);
+  const saveCellRef = useRef(null);
+  const clearCellRef = useRef(null);
 
   // ── Persistence ──
   useEffect(() => {
@@ -149,6 +152,46 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     setTeams(u);
     setToast({ text: "Borrado", undo: () => setTeams(prev) });
   };
+
+  // Keep refs current for commitEdit (avoids stale closures)
+  saveCellRef.current = saveCell;
+  clearCellRef.current = clearCell;
+
+  const commitEdit = useCallback(() => {
+    const e = editRef.current;
+    if (!e) return;
+    editRef.current = null;
+    const { ti, hi, mode, base, pts, neg, wasEdit } = e;
+    if (mode === "neg") {
+      const n = parseInt(neg) || 0;
+      if (n > 0) saveCellRef.current(ti, hi, { v: -n });
+      else if (wasEdit) clearCellRef.current(ti, hi);
+    } else {
+      const b = parseInt(base) || 0;
+      const p = parseInt(pts) || 0;
+      if (b || p) saveCellRef.current(ti, hi, { base: b, pts: p, v: b + p });
+      else if (wasEdit) clearCellRef.current(ti, hi);
+    }
+  }, []);
+
+  const handleCellClick = (ti, hi) => {
+    if (editCell?.ti === ti && editCell?.hi === hi) return;
+    commitEdit();
+    setEditCell({ ti, hi });
+  };
+
+  // Close inline edit when clicking outside the grid
+  useEffect(() => {
+    if (!editCell) return;
+    const handler = (e) => {
+      if (ledgerRef.current && !ledgerRef.current.contains(e.target)) {
+        commitEdit();
+        setEditCell(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [editCell, commitEdit]);
 
   const saveToHistory = async () => {
     if (teams.some(tm => tm.hands.length > 0)) {
@@ -572,18 +615,34 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                 {teams.map((tm, ti) => {
                   const h = isBlankRow ? null : (tm.hands[hi] ?? null);
                   const isLastFilled = hi === maxHands - 1 && h != null;
+                  const isEditing = editCell?.ti === ti && editCell?.hi === hi;
                   const cumul = tm.hands.slice(0, hi + 1).reduce((s, x) => s + handVal(x), 0);
                   return (
-                    <div key={ti} onClick={() => !winner && setCellPopup({ ti, hi })} style={{
+                    <div key={ti} onClick={() => !winner && handleCellClick(ti, hi)} style={{
                       textAlign: "center", cursor: winner ? "default" : "pointer",
-                      background: h ? t.bgS : t.card,
-                      border: h ? `1px solid ${t.brd}` : `1px dashed ${t.brd}`,
+                      background: isEditing ? t.card : (h ? t.bgS : t.card),
+                      border: isEditing ? `2px solid ${t.pri}` : (h ? `1px solid ${t.brd}` : `1px dashed ${t.brd}`),
                       borderRadius: 4,
                       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                      minHeight: 64, padding: "8px 4px",
-                      transition: "all .2s",
+                      minHeight: isEditing ? 90 : 64, padding: isEditing ? "6px 2px" : "8px 4px",
+                      transition: "all .15s",
                     }}>
-                      {!h ? (
+                      {isEditing ? (
+                        <InlineCellEdit
+                          ti={ti} hi={hi}
+                          existing={h}
+                          editRef={editRef}
+                          onDone={() => {
+                            commitEdit();
+                            const nextTi = ti + 1;
+                            if (nextTi < teams.length) setEditCell({ ti: nextTi, hi });
+                            else setEditCell(null);
+                          }}
+                          onClose={() => { editRef.current = null; setEditCell(null); }}
+                          onClear={() => { editRef.current = null; clearCell(ti, hi); setEditCell(null); }}
+                          t={t}
+                        />
+                      ) : !h ? (
                         <span style={{ color: t.txtF, fontSize: 13, opacity: 0.4 }}>·</span>
                       ) : h.base !== undefined ? (
                         <>
@@ -711,152 +770,115 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
         </div>
       </Modal>}
 
-      {/* Cell entry popup */}
-      {cellPopup && <CellEntry
-        team={teams[cellPopup.ti]}
-        ti={cellPopup.ti} hi={cellPopup.hi}
-        existing={teams[cellPopup.ti]?.hands[cellPopup.hi] ?? null}
-        onSave={(handObj) => { saveCell(cellPopup.ti, cellPopup.hi, handObj); setCellPopup(null); }}
-        onClear={() => { clearCell(cellPopup.ti, cellPopup.hi); setCellPopup(null); }}
-        onClose={() => setCellPopup(null)}
-        t={t}
-      />}
-
       <UndoBar toast={toast} onUndo={() => toast?.undo?.()} onClose={() => setToast(null)} />
     </div>
   );
 }
 
-// ─── CELL ENTRY (compact popup for one cell) ──
-function CellEntry({ team, ti, hi, existing, onSave, onClear, onClose, t }) {
+// ─── INLINE CELL EDIT (inputs directly in the grid cell) ──
+function InlineCellEdit({ ti, hi, existing, editRef, onDone, onClose, onClear, t }) {
   const isEdit = existing != null;
-
-  // Initialize form from existing hand data
-  const initMode = () => {
-    if (!existing) return "pos";
-    if (existing.v !== undefined && existing.v < 0) return "neg";
+  const [mode, setMode] = useState(() => {
+    if (existing?.v !== undefined && existing.v < 0) return "neg";
     return "pos";
-  };
-  const initBase = () => {
+  });
+  const [base, setBase] = useState(() => {
     if (!existing) return "";
     if (existing.base !== undefined) return String(existing.base);
-    const v = existing.v ?? 0;
-    return v >= 0 ? String(v) : "";
-  };
-  const initPts = () => {
+    return existing.v >= 0 ? String(existing.v ?? 0) : "";
+  });
+  const [pts, setPts] = useState(() => {
     if (!existing) return "";
     if (existing.pts !== undefined) return String(existing.pts);
-    return "0";
-  };
-  const initNeg = () => {
+    return "";
+  });
+  const [neg, setNeg] = useState(() => {
     if (!existing) return "";
     if (existing.v !== undefined && existing.v < 0) return String(Math.abs(existing.v));
     return "";
-  };
+  });
 
-  const [mode, setMode] = useState(initMode);
-  const [base, setBase] = useState(initBase);
-  const [pts, setPts] = useState(initPts);
-  const [neg, setNeg] = useState(initNeg);
+  const baseInputRef = useRef(null);
+  const ptsInputRef = useRef(null);
+  const negInputRef = useRef(null);
 
-  const handleSave = () => {
-    if (mode === "neg") {
-      const n = parseInt(neg) || 0;
-      onSave({ v: n > 0 ? -n : 0 });
-    } else {
-      const b = parseInt(base) || 0;
-      const p = parseInt(pts) || 0;
-      onSave({ base: b, pts: p, v: b + p });
-    }
-  };
+  // Keep editRef in sync with current values
+  useEffect(() => {
+    editRef.current = { ti, hi, mode, base, pts, neg, wasEdit: isEdit };
+  });
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") { e.preventDefault(); handleSave(); }
+  // Auto-focus on mount and mode change
+  useEffect(() => {
+    setTimeout(() => {
+      if (mode === "neg") negInputRef.current?.focus();
+      else baseInputRef.current?.focus();
+    }, 30);
+  }, [mode]);
+
+  const totalVal = (parseInt(base) || 0) + (parseInt(pts) || 0);
+
+  const keyHandler = (next) => (e) => {
+    if (e.key === "Enter") { e.preventDefault(); next ? next.current?.focus() : onDone(); }
+    if (e.key === "Escape") { e.preventDefault(); onClose(); }
   };
 
   return (
-    <Modal onClose={onClose}>
-      <div style={{
-        background: t.card, borderRadius: 12, padding: 20, border: `1px solid ${t.brd}`,
-        boxShadow: t.shH, maxWidth: 300, width: "100%",
-      }}>
-        {/* Header: team name + hand number */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <span style={{ fontSize: 16, fontFamily: F.serif, color: t.pri }}>{team.name}</span>
-          <span style={{ fontSize: 12, color: t.txtM, fontFamily: F.sans }}>Mano {hi + 1}</span>
-        </div>
-
-        {/* Sumó / Restó toggle */}
-        <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: `1px solid ${t.brd}`, marginBottom: 16 }}>
-          <button onClick={() => setMode("pos")} style={{
-            flex: 1, background: mode === "pos" ? t.pri : "transparent",
-            border: "none", padding: "6px 0", fontSize: 12, fontWeight: 600,
-            color: mode === "pos" ? "#fff" : t.txtM,
-            cursor: "pointer", fontFamily: F.sans, touchAction: "manipulation",
-          }}>Sumó</button>
-          <button onClick={() => setMode("neg")} style={{
-            flex: 1, background: mode === "neg" ? t.err : "transparent",
-            border: "none", borderLeft: `1px solid ${t.brd}`, padding: "6px 0", fontSize: 12, fontWeight: 600,
-            color: mode === "neg" ? "#fff" : t.txtM,
-            cursor: "pointer", fontFamily: F.sans, touchAction: "manipulation",
-          }}>Restó</button>
-        </div>
-
-        {/* Inputs */}
-        {mode === "pos" ? (
-          <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: t.txtM, marginBottom: 4, fontFamily: F.sans, letterSpacing: 1, textTransform: "uppercase" }}>Base</div>
-              <input type="number" inputMode="numeric" value={base} autoFocus
-                onChange={e => setBase(e.target.value)} onKeyDown={handleKeyDown}
-                placeholder="0"
-                style={{
-                  width: "100%", background: "transparent", border: "none", borderBottom: `1.5px solid ${t.brd}`,
-                  padding: "6px 0", fontSize: 22, fontFamily: F.serif, color: t.pri, textAlign: "center", outline: "none", borderRadius: 0,
-                }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: t.txtM, marginBottom: 4, fontFamily: F.sans, letterSpacing: 1, textTransform: "uppercase" }}>Puntos</div>
-              <input type="number" inputMode="numeric" value={pts}
-                onChange={e => setPts(e.target.value)} onKeyDown={handleKeyDown}
-                placeholder="0"
-                style={{
-                  width: "100%", background: "transparent", border: "none", borderBottom: `1.5px solid ${t.brd}`,
-                  padding: "6px 0", fontSize: 22, fontFamily: F.serif, color: t.pri, textAlign: "center", outline: "none", borderRadius: 0,
-                }} />
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 8 }}>
-              <span style={{ fontSize: 15, fontFamily: F.serif, color: t.ok }}>
-                = {(parseInt(base) || 0) + (parseInt(pts) || 0)}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, color: t.txtM, marginBottom: 4, fontFamily: F.sans, letterSpacing: 1, textTransform: "uppercase" }}>Puntos a restar</div>
-            <input type="number" inputMode="numeric" value={neg} autoFocus
-              onChange={e => setNeg(e.target.value)} onKeyDown={handleKeyDown}
-              placeholder="0"
-              style={{
-                width: "100%", background: "transparent", border: "none", borderBottom: `1.5px solid ${t.err}`,
-                padding: "6px 0", fontSize: 22, fontFamily: F.serif, color: t.err, textAlign: "center", outline: "none", borderRadius: 0,
-              }} />
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div style={{ display: "flex", gap: 8 }}>
-          {isEdit && (
-            <button onClick={onClear} style={{
-              padding: "10px 14px", background: "transparent", border: `1px solid ${t.err}33`,
-              borderRadius: 8, color: t.err, fontSize: 13, fontFamily: F.sans, fontWeight: 500,
-              cursor: "pointer", touchAction: "manipulation",
-            }}>Borrar</button>
-          )}
-          <B onClick={handleSave} s={{ flex: 1, minHeight: 44, fontSize: 15 }}>Guardar</B>
-        </div>
+    <div onClick={e => e.stopPropagation()} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+      {/* +/− toggle */}
+      <div style={{ display: "flex", borderRadius: 3, overflow: "hidden", border: `1px solid ${t.brd}`, marginBottom: 2 }}>
+        <button onClick={() => setMode("pos")} style={{
+          padding: "1px 10px", fontSize: 13, fontWeight: 700, border: "none",
+          background: mode === "pos" ? t.pri : "transparent",
+          color: mode === "pos" ? "#fff" : t.txtM,
+          cursor: "pointer", fontFamily: F.sans, touchAction: "manipulation", lineHeight: 1.4,
+        }}>+</button>
+        <button onClick={() => setMode("neg")} style={{
+          padding: "1px 10px", fontSize: 13, fontWeight: 700, border: "none",
+          borderLeft: `1px solid ${t.brd}`,
+          background: mode === "neg" ? t.err : "transparent",
+          color: mode === "neg" ? "#fff" : t.txtM,
+          cursor: "pointer", fontFamily: F.sans, touchAction: "manipulation", lineHeight: 1.4,
+        }}>−</button>
       </div>
-    </Modal>
+      {mode === "pos" ? (
+        <>
+          <input ref={baseInputRef} type="number" inputMode="numeric" value={base}
+            onChange={e => setBase(e.target.value)} onKeyDown={keyHandler(ptsInputRef)}
+            onFocus={e => e.target.select()} placeholder="Base"
+            style={{
+              width: "85%", background: "transparent", border: "none",
+              borderBottom: `1px solid ${t.brd}`,
+              padding: "2px 0", fontSize: 18, fontFamily: F.sans, fontWeight: 500,
+              color: t.txt, textAlign: "center", outline: "none", borderRadius: 0,
+            }} />
+          <input ref={ptsInputRef} type="number" inputMode="numeric" value={pts}
+            onChange={e => setPts(e.target.value)} onKeyDown={keyHandler(null)}
+            onFocus={e => e.target.select()} placeholder="Pts"
+            style={{
+              width: "85%", background: "transparent", border: "none",
+              borderBottom: `1px solid ${t.brd}`,
+              padding: "2px 0", fontSize: 18, fontFamily: F.sans, fontWeight: 500,
+              color: t.txt, textAlign: "center", outline: "none", borderRadius: 0,
+            }} />
+          {totalVal !== 0 && <span style={{ fontSize: 11, color: t.ok, fontFamily: F.sans, fontWeight: 600 }}>= {totalVal}</span>}
+        </>
+      ) : (
+        <input ref={negInputRef} type="number" inputMode="numeric" value={neg}
+          onChange={e => setNeg(e.target.value)} onKeyDown={keyHandler(null)}
+          onFocus={e => e.target.select()} placeholder="Pts"
+          style={{
+            width: "85%", background: "transparent", border: "none",
+            borderBottom: `1px solid ${t.err}`,
+            padding: "2px 0", fontSize: 18, fontFamily: F.sans, fontWeight: 500,
+            color: t.err, textAlign: "center", outline: "none", borderRadius: 0,
+          }} />
+      )}
+      {isEdit && <button onClick={onClear} style={{
+        background: "none", border: "none", color: t.err, fontSize: 10,
+        fontFamily: F.sans, cursor: "pointer", padding: "1px 6px",
+        opacity: 0.7, touchAction: "manipulation", textDecoration: "underline",
+      }}>borrar</button>}
+    </div>
   );
 }
 
