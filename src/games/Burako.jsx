@@ -395,23 +395,22 @@ function Burako({ onBack, onContinueChange }) {
         <span style={{ fontSize: 12, color: t.txtM, fontFamily: "'DM Sans'", fontWeight: 600 }}>A {(tgt / 1000).toFixed(tgt % 1000 ? 1 : 0)}K</span>
         <div style={{ flex: 1 }} />
         <button onClick={doShare} style={{ background: "none", border: "none", color: t.txtM, fontSize: 14, cursor: "pointer", padding: 4, touchAction: "manipulation" }}>📤</button>
-        <button onClick={() => setModal("new")} style={{ background: "none", border: "none", color: t.txtM, fontSize: 14, cursor: "pointer", padding: 4, touchAction: "manipulation" }}>🔄</button>
+        <button onClick={() => setModal("revancha")} style={{ background: "none", border: "none", color: t.txtM, fontSize: 14, cursor: "pointer", padding: 4, touchAction: "manipulation" }}>🔄</button>
       </div>
 
       {/* ── Modals ── */}
       {modal && <Modal onClose={() => setModal(null)}>
         <div style={{ background: t.card, borderRadius: 16, padding: 24, textAlign: "center", boxShadow: t.shH }}>
           <p style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Playfair Display'", margin: "0 0 6px" }}>
-            {modal === "new" ? L.newGame : modal === "undo" ? L.undoQ : L.resetQ}</p>
+            {modal === "revancha" ? `¿${L.rematch}?` : modal === "undo" ? L.undoQ : `¿${L.nuevaPartida}?`}</p>
           <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px" }}>
-            {modal === "new" ? L.savesHist : modal === "undo" ? L.undoDesc : L.losesAll}</p>
+            {modal === "revancha" ? "Se reinician los puntos a cero." : modal === "undo" ? L.undoDesc : "Se vuelve a configurar todo."}</p>
           <div style={{ display: "flex", gap: 8 }}>
             <B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
-            {modal === "new" ? <B onClick={saveNew} s={{ flex: 1 }}>{L.yesNew}</B>
+            {modal === "revancha" ? <B onClick={rematch} s={{ flex: 1 }}>{L.rematch}</B>
               : modal === "undo" ? <B v="err" onClick={undoLast} s={{ flex: 1 }}>{L.yesUndo}</B>
-              : <B v="err" onClick={resetZ} s={{ flex: 1 }}>{L.reset}</B>}
+              : <B v="err" onClick={resetZ} s={{ flex: 1 }}>{L.nuevaPartida}</B>}
           </div>
-          {modal === "new" && <B v="err" onClick={() => setModal("reset")} s={{ marginTop: 8, width: "100%", fontSize: 12 }}>{L.resetNoSave}</B>}
         </div>
       </Modal>}
 
@@ -422,7 +421,7 @@ function Burako({ onBack, onContinueChange }) {
           <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 8 }}>
             <B onClick={doShare} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 12, padding: "6px 12px", minHeight: 34 }}>📤</B>
             <B onClick={rematch} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 12, padding: "6px 12px", minHeight: 34 }}>{L.rematch}</B>
-            <B onClick={() => setModal("new")} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 12, padding: "6px 12px", minHeight: 34 }}>{L.yesNew}</B>
+            <B onClick={resetZ} s={{ background: "rgba(255,255,255,.15)", color: "#fff", fontSize: 12, padding: "6px 12px", minHeight: 34 }}>{L.nuevaPartida}</B>
           </div>
         </div>
       )}

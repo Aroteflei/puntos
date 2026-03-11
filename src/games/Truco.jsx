@@ -1169,8 +1169,8 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
           { label: L.share, action: () => { setModal(null); doShare(); } },
           ...(hist.length > 0 ? [{ label: L.hist, action: () => { setModal(null); setShowH(true); } }] : []),
           ...(picaAllDuels.length > 0 ? [{ label: "Ver Duelos", action: () => { setModal(null); setShowDuels(true); } }] : []),
+          { label: L.revancha, action: () => setModal("revancha") },
           { label: L.nuevaPartida, action: () => setModal("new") },
-          { label: L.reset, action: () => setModal("reset") },
         ].map((item, i) => (
           <button key={i} onClick={item.action} style={{
             display: "block", width: "100%", textAlign: "left", padding: "12px 14px",
@@ -1181,14 +1181,14 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
       </div>
     </Modal>}
 
-    {(modal === "new" || modal === "reset") && <Modal onClose={() => setModal(null)}>
+    {(modal === "revancha" || modal === "new") && <Modal onClose={() => setModal(null)}>
       <div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
-        <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{modal === "new" ? `${L.nuevaPartida}?` : L.resetQ}</p>
-        <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "new" ? "Se reinician los puntos a cero." : L.losesAll}</p>
+        <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{modal === "revancha" ? `¿${L.revancha}?` : `¿${L.nuevaPartida}?`}</p>
+        <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "revancha" ? "Se reinician los puntos a cero." : "Se vuelve a configurar todo."}</p>
         <div style={{ display: "flex", gap: 10 }}>
           <B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
-          {modal === "new" ? <B onClick={async () => { await saveToHistory(); const nextSc = sc.map(s => ({ ...s, p: 0 })); setSc(nextSc); setPicaPhase(false); setPicaDuels([]); setPicaCurrent({ t0: 0, t1: 0 }); setPicaRound(0); setPicaAllDuels([]); setCollapsed(false); prevBothBuenasRef.current = false; setModal(null); undoStackRef.current = []; redoStackRef.current = []; persist({ sc: nextSc, picaPhase: false, picaDuels: [], picaCurrent: { t0: 0, t1: 0 }, picaRound: 0, picaAllDuels: [] }); }} s={{ flex: 1 }}>{L.nuevaPartida}</B>
-            : <B v="err" onClick={resetAll} s={{ flex: 1 }}>{L.reset}</B>}
+          {modal === "revancha" ? <B onClick={revancha} s={{ flex: 1 }}>{L.revancha}</B>
+            : <B v="err" onClick={nuevaPartida} s={{ flex: 1 }}>{L.nuevaPartida}</B>}
         </div>
       </div>
     </Modal>}

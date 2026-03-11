@@ -44,12 +44,13 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   const [names, setNames] = useState(["", "", "", ""]);
   const [teams, setTeams] = useState([]);
   const [cfg, setCfg] = useState({ ...DEF_CFG });
-  const [modal, setModal] = useState(null); // "menu"|"settings"|"new"|"reset"
+  const [modal, setModal] = useState(null); // "menu"|"settings"|"revancha"|"new"
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editCell, setEditCell] = useState(null); // { ti, hi } or null
   const [hist, setHist] = useState([]);
   const [showH, setShowH] = useState(false);
+  const [starter, setStarter] = useState(null); // team index who started first hand
   const nameRefs = useRef([]);
   const ledgerRef = useRef(null);
   const editRef = useRef(null);
@@ -65,6 +66,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
         setTeams(d.teams);
         setCfg(d.cfg || DEF_CFG);
         setMode(d.mode || (d.teams.length === 3 ? "3j" : "par"));
+        if (d.starter != null) setStarter(d.starter);
         setSetup(false);
         onContinueChange?.("burako2");
       }
@@ -74,10 +76,10 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
 
   useEffect(() => {
     if (teams.length && !setup) {
-      ST.save("burako2-game", { teams, cfg, mode });
+      ST.save("burako2-game", { teams, cfg, mode, starter });
       onContinueChange?.("burako2");
     }
-  }, [teams, cfg, mode, setup]);
+  }, [teams, cfg, mode, setup, starter]);
 
   // ── Setup ──
   const handleMode = (m) => {
@@ -250,7 +252,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     const DIV = 1;
     const COL_W = (W - PAD * 2 - (nCols - 1) * DIV) / nCols;
     const rows = Math.max(maxHands, 1);
-    const TITLE_H = 78, HEAD_H = hasBajada ? 54 : 40, HAND_H = 78, TOTAL_H = 68, FOOT_H = 40;
+    const TITLE_H = 78, HEAD_H = hasBajada ? 54 : 40, HAND_H = 90, TOTAL_H = 74, FOOT_H = 40;
     const H = TITLE_H + HEAD_H + rows * HAND_H + TOTAL_H + FOOT_H;
 
     const canvas = document.createElement('canvas');
@@ -292,8 +294,8 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     teams.forEach((tm, i) => {
       const cx = PAD + i * (COL_W + DIV) + COL_W / 2;
       ctx.fillStyle = '#1A1A1A';
-      ctx.font = '14px Georgia, serif';
-      ctx.fillText(tm.name, cx, Y0 + 18, COL_W - 10);
+      ctx.font = '18px Georgia, serif';
+      ctx.fillText(tm.name, cx, Y0 + 20, COL_W - 10);
       if (hasBajada) {
         ctx.fillStyle = '#7A7A78';
         ctx.font = '10px system-ui, sans-serif';
@@ -319,35 +321,40 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     for (let hi = 0; hi < rows; hi++) {
       const rY = hY + hi * HAND_H;
       ctx.fillStyle = '#B5B5B2';
-      ctx.font = '10px system-ui, sans-serif';
+      ctx.font = '12px system-ui, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(String(hi + 1).padStart(2, '0'), PAD - 20, rY + 18);
+      ctx.fillText(String(hi + 1).padStart(2, '0'), PAD - 22, rY + 22);
       teams.forEach((tm, ti) => {
         const h = tm.hands[hi];
         if (!h) return;
         const cx = PAD + ti * (COL_W + DIV) + COL_W / 2;
+        const cumul = tm.hands.slice(0, hi + 1).reduce((s, x) => s + handVal(x), 0);
         if (h.base !== undefined) {
-          ctx.fillStyle = '#1A1A1A';
-          ctx.font = '13px system-ui, sans-serif';
           ctx.textAlign = 'center';
-          const bStr = String(h.base), pStr = String(h.pts);
-          const bw = Math.max(ctx.measureText(bStr).width, ctx.measureText(pStr).width) + 16;
-          ctx.strokeStyle = '#E8E8E6';
-          ctx.lineWidth = 0.5;
-          ctx.strokeRect(cx - bw / 2, rY + 6, bw, 18);
-          ctx.fillText(bStr, cx, rY + 19);
-          ctx.strokeRect(cx - bw / 2, rY + 26, bw, 18);
-          ctx.fillText(pStr, cx, rY + 39);
-          ctx.beginPath(); ctx.moveTo(cx - bw / 2, rY + 48); ctx.lineTo(cx + bw / 2, rY + 48); ctx.stroke();
-          ctx.fillStyle = '#2D7A50';
-          ctx.font = '15px Georgia, serif';
-          ctx.fillText(String(handVal(h)), cx, rY + 64);
+          ctx.fillStyle = '#1A1A1A';
+          ctx.font = '18px system-ui, sans-serif';
+          ctx.fillText(String(h.base), cx, rY + 22);
+          ctx.fillText(String(h.pts), cx, rY + 44);
+          // Thin divider
+          ctx.strokeStyle = '#C8C8C6'; ctx.lineWidth = 0.5;
+          ctx.beginPath(); ctx.moveTo(cx - 28, rY + 52); ctx.lineTo(cx + 28, rY + 52); ctx.stroke();
+          // Cumulative total
+          ctx.fillStyle = cumul >= 0 ? '#2D7A50' : '#C23B22';
+          ctx.font = '20px Georgia, serif';
+          ctx.fillText(String(cumul), cx, rY + 74);
         } else {
           const v = handVal(h);
-          ctx.fillStyle = v >= 0 ? '#2D7A50' : '#C23B22';
-          ctx.font = '16px Georgia, serif';
           ctx.textAlign = 'center';
-          ctx.fillText(String(v), cx, rY + 42);
+          ctx.fillStyle = v >= 0 ? '#1A1A1A' : '#C23B22';
+          ctx.font = '20px system-ui, sans-serif';
+          ctx.fillText(String(v), cx, rY + 32);
+          // Thin divider
+          ctx.strokeStyle = '#C8C8C6'; ctx.lineWidth = 0.5;
+          ctx.beginPath(); ctx.moveTo(cx - 28, rY + 40); ctx.lineTo(cx + 28, rY + 40); ctx.stroke();
+          // Cumulative total
+          ctx.fillStyle = cumul >= 0 ? '#2D7A50' : '#C23B22';
+          ctx.font = '18px Georgia, serif';
+          ctx.fillText(String(cumul), cx, rY + 60);
         }
       });
       if (hi < rows - 1) {
@@ -365,11 +372,11 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     teams.forEach((tm, i) => {
       const cx = PAD + i * (COL_W + DIV) + COL_W / 2;
       ctx.fillStyle = '#1A5C52';
-      ctx.font = '600 12px system-ui, sans-serif';
-      ctx.fillText('TOTAL', cx, tY + 18);
-      ctx.font = '28px Georgia, serif';
+      ctx.font = '600 13px system-ui, sans-serif';
+      ctx.fillText('TOTAL', cx, tY + 20);
+      ctx.font = '32px Georgia, serif';
       ctx.textAlign = 'center';
-      ctx.fillText(String(total(tm)), cx, tY + 48);
+      ctx.fillText(String(total(tm)), cx, tY + 54);
     });
 
     // Footer watermark
@@ -574,12 +581,19 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                 display: "flex", flexDirection: "column", alignItems: "center",
                 minHeight: hasBajada ? 110 : undefined,
               }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: "50%",
-                  background: t.bgS, border: `1.5px solid ${t.brd}`, color: t.pri,
+                <div onClick={(e) => { e.stopPropagation(); setStarter(starter === i ? null : i); }} style={{
+                  position: "relative", width: 32, height: 32, borderRadius: "50%",
+                  background: t.bgS, border: `1.5px solid ${starter === i ? t.pri : t.brd}`, color: t.pri,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   margin: "0 auto 4px", fontSize: 11, fontWeight: 700, fontFamily: F.sans,
-                }}>{teamAvatar(tm.name)}</div>
+                  cursor: "pointer", touchAction: "manipulation",
+                }}>
+                  {teamAvatar(tm.name)}
+                  {starter === i && <div style={{
+                    position: "absolute", bottom: -2, right: -2, width: 8, height: 8,
+                    borderRadius: "50%", background: t.pri, border: `1.5px solid ${t.card}`,
+                  }} />}
+                </div>
                 <EN name={tm.name} onSave={n => ren(i, n)} sz={20} fw={500} ff={F.sans} />
                 <div style={{ flex: 1 }} />
                 {hasBajada && (
@@ -722,8 +736,8 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
             { label: "Compartir", action: doShare },
             ...(hist.length > 0 ? [{ label: L.hist, action: () => { setModal(null); setShowH(true); } }] : []),
             { label: "Configuración", action: () => setModal("settings") },
+            { label: L.revancha, action: () => setModal("revancha") },
             { label: L.nuevaPartida, action: () => setModal("new") },
-            { label: "Reiniciar", action: () => setModal("reset") },
           ].map((item, i) => (
             <button key={i} onClick={item.action} style={{
               display: "block", width: "100%", textAlign: "left", padding: "12px 14px",
@@ -757,16 +771,16 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
       </Modal>}
 
       {/* Confirm modals */}
-      {(modal === "new" || modal === "reset") && <Modal onClose={() => setModal(null)}>
+      {(modal === "revancha" || modal === "new") && <Modal onClose={() => setModal(null)}>
         <div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
           <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>
-            {modal === "new" ? `${L.nuevaPartida}?` : L.resetQ}</p>
+            {modal === "revancha" ? `¿${L.revancha}?` : `¿${L.nuevaPartida}?`}</p>
           <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>
-            {modal === "new" ? "Se reinician los puntos a cero." : L.losesAll}</p>
+            {modal === "revancha" ? "Se reinician los puntos a cero." : "Se vuelve a configurar todo."}</p>
           <div style={{ display: "flex", gap: 10 }}>
             <B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
-            {modal === "new" ? <B onClick={nuevaPartida} s={{ flex: 1 }}>{L.nuevaPartida}</B>
-              : <B v="err" onClick={resetZ} s={{ flex: 1 }}>{L.reset}</B>}
+            {modal === "revancha" ? <B onClick={revancha} s={{ flex: 1 }}>{L.revancha}</B>
+              : <B v="err" onClick={nuevaPartidaSetup} s={{ flex: 1 }}>{L.nuevaPartida}</B>}
           </div>
         </div>
       </Modal>}

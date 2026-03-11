@@ -242,8 +242,8 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
         {[
           { label: "Compartir", action: doShare },
           ...(hist.length > 0 ? [{ label: L.hist, action: () => { setModal(null); setShowH(true); } }] : []),
+          { label: L.revancha, action: () => setModal("revancha") },
           { label: L.nuevaPartida, action: () => setModal("new") },
-          { label: "Reiniciar", action: () => setModal("reset") },
         ].map((item, i) => (
           <button key={i} onClick={item.action} style={{
             display: "block", width: "100%", textAlign: "left", padding: "12px 14px",
@@ -254,11 +254,11 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
       </div>
     </Modal>}
 
-    {(modal === "new" || modal === "reset") && <Modal onClose={() => setModal(null)}><div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
-      <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{modal === "new" ? L.newGame : L.resetQ}</p>
-      <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "new" ? L.savesHist : L.losesAll}</p>
+    {(modal === "revancha" || modal === "new") && <Modal onClose={() => setModal(null)}><div style={{ background: t.card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${t.brd}`, boxShadow: t.shH }}>
+      <p style={{ fontSize: 18, fontFamily: F.serif, margin: "0 0 6px" }}>{modal === "revancha" ? `¿${L.revancha}?` : `¿${L.nuevaPartida}?`}</p>
+      <p style={{ fontSize: 13, color: t.txtM, margin: "0 0 16px", fontFamily: F.sans }}>{modal === "revancha" ? "Se reinician los puntos a cero." : "Se vuelve a configurar todo."}</p>
       <div style={{ display: "flex", gap: 10 }}><B v="gh" onClick={() => setModal(null)} s={{ flex: 1 }}>{L.cancel}</B>
-        {modal === "new" ? <B onClick={nuevaPartida} s={{ flex: 1 }}>{L.nuevaPartida}</B> : <B v="err" onClick={resetZ} s={{ flex: 1 }}>{L.reset}</B>}</div>
+        {modal === "revancha" ? <B onClick={revancha} s={{ flex: 1 }}>{L.revancha}</B> : <B v="err" onClick={nuevaPartidaSetup} s={{ flex: 1 }}>{L.nuevaPartida}</B>}</div>
     </div></Modal>}
 
     {/* Score entry modal */}
