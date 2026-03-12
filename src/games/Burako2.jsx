@@ -125,6 +125,7 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
   const lastRowComplete = maxHands === 0 || teams.every(tm => tm.hands[maxHands - 1] != null);
   const displayRows = winner ? maxHands : (lastRowComplete ? maxHands + 1 : maxHands);
   const hasBajada = mode === "par";
+  const numSeats = mode === "par" ? 4 : teams.length;
 
   const saveCell = (ti, hi, handObj) => {
     const prev = clone(teams);
@@ -139,6 +140,11 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
     setToast({ text: wasEdit ? L.editHand : L.newHand, undo: () => setTeams(prev) });
     if (sounds) vibFor(1);
     if (sounds && u.some(tm => total(tm) >= cfg.tgt)) vibWin();
+    // Auto-advance starter when a hand row is completed (new entry, not edit)
+    if (!wasEdit && starter != null) {
+      const rowComplete = u.every(tm => tm.hands[hi] != null);
+      if (rowComplete) setStarter((starter + 1) % numSeats);
+    }
     setTimeout(() => {
       if (ledgerRef.current) ledgerRef.current.scrollTop = ledgerRef.current.scrollHeight;
     }, 50);
@@ -581,19 +587,43 @@ function Burako2({ onBack, onContinueChange, onChangeGame }) {
                 display: "flex", flexDirection: "column", alignItems: "center",
                 minHeight: hasBajada ? 110 : undefined,
               }}>
-                <div onClick={(e) => { e.stopPropagation(); setStarter(starter === i ? null : i); }} style={{
-                  position: "relative", width: 32, height: 32, borderRadius: "50%",
-                  background: t.bgS, border: `1.5px solid ${starter === i ? t.pri : t.brd}`, color: t.pri,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  margin: "0 auto 4px", fontSize: 11, fontWeight: 700, fontFamily: F.sans,
-                  cursor: "pointer", touchAction: "manipulation",
-                }}>
-                  {teamAvatar(tm.name)}
-                  {starter === i && <div style={{
-                    position: "absolute", bottom: -2, right: -2, width: 8, height: 8,
-                    borderRadius: "50%", background: t.pri, border: `1.5px solid ${t.card}`,
-                  }} />}
-                </div>
+                {mode === "par" ? (
+                  <div style={{ display: "flex", gap: 4, margin: "0 auto 4px" }}>
+                    {tm.name.split(/\s*-\s*/).map((pName, pi) => {
+                      const seat = i + pi * 2;
+                      const isStarter = starter === seat;
+                      return (
+                        <div key={pi} onClick={(e) => { e.stopPropagation(); setStarter(isStarter ? null : seat); }} style={{
+                          position: "relative", width: 26, height: 26, borderRadius: "50%",
+                          background: t.bgS, border: `1.5px solid ${isStarter ? t.pri : t.brd}`, color: t.pri,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 10, fontWeight: 700, fontFamily: F.sans,
+                          cursor: "pointer", touchAction: "manipulation",
+                        }}>
+                          {pName.trim().charAt(0).toUpperCase()}
+                          {isStarter && <div style={{
+                            position: "absolute", bottom: -2, right: -2, width: 7, height: 7,
+                            borderRadius: "50%", background: t.pri, border: `1.5px solid ${t.card}`,
+                          }} />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div onClick={(e) => { e.stopPropagation(); setStarter(starter === i ? null : i); }} style={{
+                    position: "relative", width: 32, height: 32, borderRadius: "50%",
+                    background: t.bgS, border: `1.5px solid ${starter === i ? t.pri : t.brd}`, color: t.pri,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    margin: "0 auto 4px", fontSize: 11, fontWeight: 700, fontFamily: F.sans,
+                    cursor: "pointer", touchAction: "manipulation",
+                  }}>
+                    {teamAvatar(tm.name)}
+                    {starter === i && <div style={{
+                      position: "absolute", bottom: -2, right: -2, width: 8, height: 8,
+                      borderRadius: "50%", background: t.pri, border: `1.5px solid ${t.card}`,
+                    }} />}
+                  </div>
+                )}
                 <EN name={tm.name} onSave={n => ren(i, n)} sz={20} fw={500} ff={F.sans} />
                 <div style={{ flex: 1 }} />
                 {hasBajada && (
