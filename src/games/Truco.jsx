@@ -530,16 +530,142 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     else await ST.del("truco-hist");
   };
 
-  const doShare = () => {
-    const lines = sc.map((s) => `${s.name}: ${s.p}`);
-    if (picaAllDuels.length > 0) {
-      lines.push("");
-      lines.push(`Pica Pica (${picaAllDuels.length} duelos):`);
-      picaAllDuels.forEach((d, i) => {
-        lines.push(`  D${i + 1}: ${sc[0]?.name} ${d.t0} - ${d.t1} ${sc[1]?.name}`);
-      });
+  const doShare = async () => {
+    const pri = "#1A5C52", priL = "#3D8B7A", priD = "#0E3A33", bgS = "#F6F6F4", brd = "#E8E8E6", errC = "#C23B22", txtF = "#B5B5B2";
+    const W = 1080, gap = 20;
+    const maxT = Math.max(sc[0]?.p || 0, sc[1]?.p || 0);
+
+    // Layout
+    const headerH = winner ? 200 : 140;
+    const scoreAreaH = 380;
+    const H = headerH + scoreAreaH + 120;
+
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+
+    const rr = (x, y, w, h, r) => {
+      ctx.beginPath(); ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+    };
+    const fillRR = (x, y, w, h, r, color) => { rr(x, y, w, h, r); ctx.fillStyle = color; ctx.fill(); };
+    const strokeRR = (x, y, w, h, r, color, lw) => { rr(x, y, w, h, r); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.stroke(); };
+
+    // Background
+    ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
+    fillRR(0, 0, W, 6, 0, pri);
+
+    // Draw tally marks on canvas
+    const drawTally = (cx, cy, count, color, scale) => {
+      const sz = 36 * scale, pd = 3 * scale, lw = 2.5 * scale;
+      ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.globalAlpha = 0.7;
+      const full = Math.floor(count / 5);
+      const rem = count % 5;
+      const talliesPerRow = 4;
+      let drawn = 0;
+      const drawOne = (ox, oy, n) => {
+        // Draw partial square: left, bottom, right, top + diagonal for 5
+        if (n >= 1) { ctx.beginPath(); ctx.moveTo(ox + pd, oy + pd); ctx.lineTo(ox + pd, oy + sz - pd); ctx.stroke(); }
+        if (n >= 2) { ctx.beginPath(); ctx.moveTo(ox + pd, oy + sz - pd); ctx.lineTo(ox + sz - pd, oy + sz - pd); ctx.stroke(); }
+        if (n >= 3) { ctx.beginPath(); ctx.moveTo(ox + sz - pd, oy + sz - pd); ctx.lineTo(ox + sz - pd, oy + pd); ctx.stroke(); }
+        if (n >= 4) { ctx.beginPath(); ctx.moveTo(ox + sz - pd, oy + pd); ctx.lineTo(ox + pd, oy + pd); ctx.stroke(); }
+        if (n >= 5) { ctx.beginPath(); ctx.moveTo(ox + pd + 1, oy + sz - pd - 1); ctx.lineTo(ox + sz - pd - 1, oy + pd + 1); ctx.stroke(); }
+      };
+      const totalTallies = full + (rem > 0 ? 1 : 0);
+      const startX = cx - (Math.min(totalTallies, talliesPerRow) * (sz + 4 * scale)) / 2;
+      for (let i = 0; i < full; i++) {
+        const row = Math.floor(drawn / talliesPerRow);
+        const col = drawn % talliesPerRow;
+        drawOne(startX + col * (sz + 4 * scale), cy + row * (sz + 4 * scale), 5);
+        drawn++;
+      }
+      if (rem > 0) {
+        const row = Math.floor(drawn / talliesPerRow);
+        const col = drawn % talliesPerRow;
+        drawOne(startX + col * (sz + 4 * scale), cy + row * (sz + 4 * scale), rem);
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    let yOff = 0;
+
+    // Header
+    if (winner) {
+      const bannerH = 170;
+      const bannerG = ctx.createLinearGradient(0, 6, W, bannerH);
+      bannerG.addColorStop(0, priD); bannerG.addColorStop(0.5, pri); bannerG.addColorStop(1, priL);
+      ctx.fillStyle = bannerG; ctx.fillRect(0, 6, W, bannerH);
+      ctx.textAlign = "center"; ctx.fillStyle = "#fff";
+      ctx.font = "44px serif"; ctx.fillText("🏆", W / 2, 62);
+      ctx.font = "600 14px system-ui, sans-serif"; ctx.globalAlpha = 0.6;
+      ctx.fillText("V I C T O R I A", W / 2, 95); ctx.globalAlpha = 1;
+      ctx.font = "700 38px Georgia, serif";
+      ctx.fillText(`¡${winner.name}!`, W / 2, 138);
+      ctx.font = "500 18px system-ui, sans-serif"; ctx.globalAlpha = 0.75;
+      ctx.fillText(`${sc[0]?.p} — ${sc[1]?.p}`, W / 2, 165); ctx.globalAlpha = 1;
+      yOff = bannerH + 20;
+    } else {
+      ctx.textAlign = "center"; ctx.fillStyle = pri;
+      ctx.font = "600 42px Georgia, serif"; ctx.fillText("PUNTOS", W / 2, 70);
+      ctx.fillStyle = txtF; ctx.font = "500 14px system-ui, sans-serif";
+      ctx.fillText(`T R U C O  ·  A  ${target}`, W / 2, 100);
+      yOff = 130;
     }
-    shareResult(`Truco · A ${target}`, lines, { accent: "#1A5C52", accentLight: "#3D8B7A" });
+
+    // Score columns
+    const colW = (W - gap * 3) / 2;
+    const scoreY = yOff + 10;
+
+    sc.forEach((s, i) => {
+      const x = gap + i * (colW + gap);
+      const isWin = s.p === maxT && maxT > 0;
+
+      // Column card
+      fillRR(x, scoreY, colW, scoreAreaH, 16, bgS);
+      strokeRR(x, scoreY, colW, scoreAreaH, 16, isWin ? pri : brd, isWin ? 3 : 2);
+
+      // Team name
+      ctx.textAlign = "center"; ctx.fillStyle = pri;
+      ctx.font = "600 28px system-ui, sans-serif";
+      const name = s.name.length > 14 ? s.name.substring(0, 13) + "…" : s.name;
+      ctx.fillText(name, x + colW / 2, scoreY + 50);
+
+      // Big score
+      ctx.font = "400 120px Georgia, serif"; ctx.fillStyle = pri;
+      ctx.fillText(String(s.p), x + colW / 2, scoreY + 190);
+
+      // Target indicator
+      ctx.fillStyle = txtF; ctx.font = "500 16px system-ui, sans-serif";
+      ctx.fillText(`/ ${target}`, x + colW / 2, scoreY + 220);
+
+      // Tally marks
+      drawTally(x + colW / 2, scoreY + 248, s.p, pri, 1.2);
+    });
+
+    // Divider line between columns
+    ctx.strokeStyle = brd; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(W / 2, scoreY + 30); ctx.lineTo(W / 2, scoreY + scoreAreaH - 30); ctx.stroke();
+
+    // Date + watermark
+    const now = new Date();
+    const ds = now.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const ts = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    ctx.fillStyle = txtF; ctx.font = "500 22px system-ui, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(`${ds}  ·  ${ts}`, W / 2, H - 50);
+    ctx.fillStyle = pri; ctx.globalAlpha = 0.2; ctx.font = "600 16px system-ui, sans-serif";
+    ctx.fillText("PUNTOS APP", W / 2, H - 20); ctx.globalAlpha = 1;
+
+    try {
+      const blob = await new Promise(r => c.toBlob(r, "image/png"));
+      const file = new File([blob], "truco.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ title: "Truco", files: [file] }); return; }
+    } catch (e) { if (e?.name === "AbortError") return; }
+    const text = `Truco · A ${target}\n` + sc.map(s => `${s.name}: ${s.p}`).join("\n");
+    try { if (navigator.share) { await navigator.share({ title: "Truco", text }); return; } } catch (e) { if (e?.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(text); alert("Copiado"); } catch (e) { prompt("Copiá:", text); }
   };
 
   const picaPlayerName = (teamIdx, globalDuelIdx) => {
