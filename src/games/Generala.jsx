@@ -524,11 +524,12 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
 
         {/* Category rows */}
         {GC.map((cat, ci) => { const same = allSame(cat);
+          const catHint = showHints && !allDone && ps[currentTurnIndex]?.scores[cat.k] === null;
           return <div key={cat.k} style={{ display: "grid", gridTemplateColumns: gridCols, gap: 4, marginBottom: 4, position: "relative" }}>
             {/* Category label with dice/badge icon */}
-            <div style={{ padding: "8px 6px", background: t.bgS, border: `1px solid ${t.brd}`,
+            <div style={{ padding: "8px 6px", background: catHint ? `${t.pri}0A` : t.bgS, border: `1px solid ${catHint ? `${t.pri}25` : t.brd}`,
               borderRadius: ci === 0 ? "6px 0 0 0" : ci === GC.length - 1 ? "0 0 0 6px" : 0,
-              display: "flex", alignItems: "center", gap: 5 }}>
+              display: "flex", alignItems: "center", gap: 5, transition: "all .2s" }}>
               {cat.n ? <DiceFace n={cat.n} size={22} color={t.pri} /> : <ComboBadge k={cat.k} color={t.pri} t={t} />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, color: t.pri, fontFamily: F.sans, fontSize: 13, lineHeight: 1.2 }}>{cat.l}</div>
@@ -536,14 +537,13 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
               </div>
             </div>
             {ps.map((p, pi) => { const val = p.scores[cat.k];
-              const isHint = showHints && !allDone && pi === currentTurnIndex && val === null;
               return <div key={pi} onClick={() => {
                 if (val === null && !askTurnGuard(pi)) return;
                 setSheet({ pi, cat: cat.k });
               }}
                 style={{ textAlign: "center", cursor: "pointer",
-                  background: val !== null ? t.bgS : isHint ? `${t.pri}08` : t.card,
-                  border: val !== null ? `1px solid ${t.brd}` : isHint ? `1px dashed ${t.pri}30` : `1px dashed ${t.brd}`,
+                  background: val !== null ? t.bgS : t.card,
+                  border: val !== null ? `1px solid ${t.brd}` : `1px dashed ${t.brd}`,
                   borderRadius: 4,
                   display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48,
                   transition: "all .2s",
