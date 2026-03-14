@@ -531,123 +531,137 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   };
 
   const doShare = async () => {
-    const pri = "#1A5C52", priL = "#3D8B7A", priD = "#0E3A33", bgS = "#F6F6F4", brd = "#E8E8E6", errC = "#C23B22", txtF = "#B5B5B2";
-    const W = 1080, gap = 20;
-    const maxT = Math.max(sc[0]?.p || 0, sc[1]?.p || 0);
+    // Exact app theme colors
+    const pri = "#1A5C52", priL = "#3D8B7A", priD = "#0E3A33", brd = "#E8E8E6", txtC = "#1A1A1A", txtF = "#B5B5B2", okC = "#2D7A50", errC = "#C23B22";
+    const W = 1080;
+    const colW = W / 2;
+    const hasBuenas = target === 30;
 
-    // Layout
-    const headerH = winner ? 200 : 140;
-    const scoreAreaH = 380;
-    const H = headerH + scoreAreaH + 120;
+    // Tally drawing (replicates TrucoTally exactly: square segments + diagonal)
+    const drawTallyBlock = (ctx, cx, cy, count, color) => {
+      const SZ = 100, PD = 8, lw = 4, GAP = 10, perRow = 3;
+      ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.globalAlpha = 0.7;
+      const drawOne = (ox, oy, n) => {
+        if (n >= 1) { ctx.beginPath(); ctx.moveTo(ox + PD, oy + PD); ctx.lineTo(ox + PD, oy + SZ - PD); ctx.stroke(); }
+        if (n >= 2) { ctx.beginPath(); ctx.moveTo(ox + PD, oy + SZ - PD); ctx.lineTo(ox + SZ - PD, oy + SZ - PD); ctx.stroke(); }
+        if (n >= 3) { ctx.beginPath(); ctx.moveTo(ox + SZ - PD, oy + SZ - PD); ctx.lineTo(ox + SZ - PD, oy + PD); ctx.stroke(); }
+        if (n >= 4) { ctx.beginPath(); ctx.moveTo(ox + SZ - PD, oy + PD); ctx.lineTo(ox + PD, oy + PD); ctx.stroke(); }
+        if (n >= 5) { ctx.beginPath(); ctx.moveTo(ox + PD + 2, oy + SZ - PD - 2); ctx.lineTo(ox + SZ - PD - 2, oy + PD + 2); ctx.stroke(); }
+      };
+      let drawn = 0, ty = cy;
+      while (drawn < count) {
+        const rem = count - drawn;
+        const batch = Math.min(5, rem);
+        const totalLeft = Math.ceil((count - (drawn - drawn % (perRow * 5))) / 5);
+        const rowTallies = Math.min(totalLeft, perRow);
+        const col = Math.floor((drawn % (perRow * 5)) / 5);
+        const ox = cx - (rowTallies * (SZ + GAP)) / 2 + col * (SZ + GAP);
+        drawOne(ox, ty, batch);
+        drawn += batch;
+        if (drawn % (perRow * 5) === 0) ty += SZ + GAP;
+      }
+      ctx.globalAlpha = 1;
+      return ty + (count > 0 ? SZ : 0);
+    };
+
+    // Estimate tally area height
+    const maxScore = Math.max(sc[0]?.p || 0, sc[1]?.p || 0);
+    const tallyH = hasBuenas
+      ? Math.max(350, Math.ceil(Math.max(maxScore, 15) / 15) * 120 + 80)
+      : Math.max(200, Math.ceil(maxScore / 15) * 120 + 20);
+
+    // Winner banner
+    const bannerH = winner ? 180 : 0;
+    const topH = winner ? bannerH + 6 : 90;
+    const nameH = 60, scoreNumH = 90;
+    const H = topH + nameH + tallyH + scoreNumH + 100;
 
     const c = document.createElement("canvas");
     c.width = W; c.height = H;
     const ctx = c.getContext("2d");
 
-    const rr = (x, y, w, h, r) => {
-      ctx.beginPath(); ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
-    };
-    const fillRR = (x, y, w, h, r, color) => { rr(x, y, w, h, r); ctx.fillStyle = color; ctx.fill(); };
-    const strokeRR = (x, y, w, h, r, color, lw) => { rr(x, y, w, h, r); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.stroke(); };
-
-    // Background
+    // White bg
     ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
-    fillRR(0, 0, W, 6, 0, pri);
+    ctx.fillStyle = pri; ctx.fillRect(0, 0, W, 6);
 
-    // Draw tally marks on canvas
-    const drawTally = (cx, cy, count, color, scale) => {
-      const sz = 36 * scale, pd = 3 * scale, lw = 2.5 * scale;
-      ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.globalAlpha = 0.7;
-      const full = Math.floor(count / 5);
-      const rem = count % 5;
-      const talliesPerRow = 4;
-      let drawn = 0;
-      const drawOne = (ox, oy, n) => {
-        // Draw partial square: left, bottom, right, top + diagonal for 5
-        if (n >= 1) { ctx.beginPath(); ctx.moveTo(ox + pd, oy + pd); ctx.lineTo(ox + pd, oy + sz - pd); ctx.stroke(); }
-        if (n >= 2) { ctx.beginPath(); ctx.moveTo(ox + pd, oy + sz - pd); ctx.lineTo(ox + sz - pd, oy + sz - pd); ctx.stroke(); }
-        if (n >= 3) { ctx.beginPath(); ctx.moveTo(ox + sz - pd, oy + sz - pd); ctx.lineTo(ox + sz - pd, oy + pd); ctx.stroke(); }
-        if (n >= 4) { ctx.beginPath(); ctx.moveTo(ox + sz - pd, oy + pd); ctx.lineTo(ox + pd, oy + pd); ctx.stroke(); }
-        if (n >= 5) { ctx.beginPath(); ctx.moveTo(ox + pd + 1, oy + sz - pd - 1); ctx.lineTo(ox + sz - pd - 1, oy + pd + 1); ctx.stroke(); }
-      };
-      const totalTallies = full + (rem > 0 ? 1 : 0);
-      const startX = cx - (Math.min(totalTallies, talliesPerRow) * (sz + 4 * scale)) / 2;
-      for (let i = 0; i < full; i++) {
-        const row = Math.floor(drawn / talliesPerRow);
-        const col = drawn % talliesPerRow;
-        drawOne(startX + col * (sz + 4 * scale), cy + row * (sz + 4 * scale), 5);
-        drawn++;
-      }
-      if (rem > 0) {
-        const row = Math.floor(drawn / talliesPerRow);
-        const col = drawn % talliesPerRow;
-        drawOne(startX + col * (sz + 4 * scale), cy + row * (sz + 4 * scale), rem);
-      }
-      ctx.globalAlpha = 1;
-    };
+    let yOff = 6;
 
-    let yOff = 0;
-
-    // Header
     if (winner) {
-      const bannerH = 170;
-      const bannerG = ctx.createLinearGradient(0, 6, W, bannerH);
-      bannerG.addColorStop(0, priD); bannerG.addColorStop(0.5, pri); bannerG.addColorStop(1, priL);
-      ctx.fillStyle = bannerG; ctx.fillRect(0, 6, W, bannerH);
+      const g = ctx.createLinearGradient(0, 6, W, bannerH);
+      g.addColorStop(0, priD); g.addColorStop(0.5, pri); g.addColorStop(1, priL);
+      ctx.fillStyle = g; ctx.fillRect(0, 6, W, bannerH);
       ctx.textAlign = "center"; ctx.fillStyle = "#fff";
-      ctx.font = "44px serif"; ctx.fillText("🏆", W / 2, 62);
+      ctx.font = "44px serif"; ctx.fillText("🏆", W / 2, 58);
       ctx.font = "600 14px system-ui, sans-serif"; ctx.globalAlpha = 0.6;
-      ctx.fillText("V I C T O R I A", W / 2, 95); ctx.globalAlpha = 1;
+      ctx.fillText("V I C T O R I A", W / 2, 92); ctx.globalAlpha = 1;
       ctx.font = "700 38px Georgia, serif";
-      ctx.fillText(`¡${winner.name}!`, W / 2, 138);
+      ctx.fillText(`¡${winner.name}!`, W / 2, 134);
       ctx.font = "500 18px system-ui, sans-serif"; ctx.globalAlpha = 0.75;
-      ctx.fillText(`${sc[0]?.p} — ${sc[1]?.p}`, W / 2, 165); ctx.globalAlpha = 1;
-      yOff = bannerH + 20;
+      ctx.fillText(`${sc[0]?.p} — ${sc[1]?.p}`, W / 2, 162); ctx.globalAlpha = 1;
+      yOff = 6 + bannerH;
     } else {
-      ctx.textAlign = "center"; ctx.fillStyle = pri;
-      ctx.font = "600 42px Georgia, serif"; ctx.fillText("PUNTOS", W / 2, 70);
-      ctx.fillStyle = txtF; ctx.font = "500 14px system-ui, sans-serif";
-      ctx.fillText(`T R U C O  ·  A  ${target}`, W / 2, 100);
-      yOff = 130;
+      // "A 15/30" badge like the app header
+      ctx.fillStyle = "#F6F6F4"; ctx.fillRect(W - 140, 16, 110, 44);
+      ctx.strokeStyle = brd; ctx.lineWidth = 2; ctx.strokeRect(W - 140, 16, 110, 44);
+      ctx.fillStyle = txtF; ctx.font = "600 22px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(`A ${target}`, W - 85, 46);
+      yOff = 80;
     }
 
-    // Score columns
-    const colW = (W - gap * 3) / 2;
-    const scoreY = yOff + 10;
-
+    // Team names (like app: centered in each column)
+    const nameY = yOff + 36;
     sc.forEach((s, i) => {
-      const x = gap + i * (colW + gap);
-      const isWin = s.p === maxT && maxT > 0;
-
-      // Column card
-      fillRR(x, scoreY, colW, scoreAreaH, 16, bgS);
-      strokeRR(x, scoreY, colW, scoreAreaH, 16, isWin ? pri : brd, isWin ? 3 : 2);
-
-      // Team name
-      ctx.textAlign = "center"; ctx.fillStyle = pri;
-      ctx.font = "600 28px system-ui, sans-serif";
+      ctx.textAlign = "center"; ctx.fillStyle = txtC;
+      ctx.font = "700 30px Georgia, serif";
       const name = s.name.length > 14 ? s.name.substring(0, 13) + "…" : s.name;
-      ctx.fillText(name, x + colW / 2, scoreY + 50);
-
-      // Big score
-      ctx.font = "400 120px Georgia, serif"; ctx.fillStyle = pri;
-      ctx.fillText(String(s.p), x + colW / 2, scoreY + 190);
-
-      // Target indicator
-      ctx.fillStyle = txtF; ctx.font = "500 16px system-ui, sans-serif";
-      ctx.fillText(`/ ${target}`, x + colW / 2, scoreY + 220);
-
-      // Tally marks
-      drawTally(x + colW / 2, scoreY + 248, s.p, pri, 1.2);
+      ctx.fillText(name, i * colW + colW / 2, nameY);
     });
 
-    // Divider line between columns
+    // Separator after names
+    const sepY = nameY + 18;
     ctx.strokeStyle = brd; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(W / 2, scoreY + 30); ctx.lineTo(W / 2, scoreY + scoreAreaH - 30); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, sepY); ctx.lineTo(W, sepY); ctx.stroke();
+
+    // Vertical divider
+    ctx.beginPath(); ctx.moveTo(W / 2, sepY); ctx.lineTo(W / 2, sepY + tallyH); ctx.stroke();
+
+    // Tally marks for each team
+    const tallyStartY = sepY + 20;
+    sc.forEach((s, i) => {
+      const cx = i * colW + colW / 2;
+      if (hasBuenas && s.p > 0) {
+        // MALAS label
+        ctx.globalAlpha = 1; ctx.fillStyle = errC; ctx.font = "700 14px system-ui, sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("MALAS", cx, tallyStartY);
+        // Draw malas tallies (up to 15)
+        const malasCount = Math.min(s.p, 15);
+        const afterMalas = drawTallyBlock(ctx, cx, tallyStartY + 12, malasCount, txtC);
+        // Buenas divider
+        const divY = afterMalas + 12;
+        ctx.globalAlpha = 0.5; ctx.strokeStyle = okC; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx - 120, divY); ctx.lineTo(cx + 120, divY); ctx.stroke();
+        ctx.globalAlpha = 1; ctx.fillStyle = okC; ctx.font = "700 14px system-ui, sans-serif";
+        ctx.fillText("BUENAS", cx, divY - 4);
+        // Draw buenas tallies
+        if (s.p > 15) {
+          drawTallyBlock(ctx, cx, divY + 16, s.p - 15, txtC);
+        }
+      } else {
+        drawTallyBlock(ctx, cx, tallyStartY, s.p, txtC);
+      }
+    });
+
+    // Score separator
+    const scoreLineY = sepY + tallyH;
+    ctx.strokeStyle = brd; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, scoreLineY); ctx.lineTo(W, scoreLineY); ctx.stroke();
+
+    // Big score numbers (like the app)
+    sc.forEach((s, i) => {
+      ctx.textAlign = "center"; ctx.fillStyle = pri;
+      ctx.font = "400 80px Georgia, serif";
+      ctx.fillText(String(s.p), i * colW + colW / 2, scoreLineY + 70);
+    });
 
     // Date + watermark
     const now = new Date();
