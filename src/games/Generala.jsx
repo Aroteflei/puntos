@@ -155,48 +155,19 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
   const resetZ = async () => { setStarted(false); setSStep(0); setModal(null); setPs([]); await ST.del("generala-game"); onContinueChange?.(null) };
   const delH = i => setHist(h => h.filter((_, j) => j !== i));
   const doShare = async () => {
-    const accent = "#C4783D", accentL = "#D4945C";
-    const W = 1080, pad = 60;
-    const colW = Math.floor((W - pad * 2 - 140) / ps.length); // 140 for category col
-    const catColW = 140;
-    const gridW = catColW + ps.length * colW;
-    const rowH = 56;
-    const headerH = 70;
-    const gridH = headerH + GC.length * rowH + rowH; // +1 for total row
-    const H = 360 + gridH + 120; // top section + grid + bottom
+    // Use exact app theme colors
+    const pri = "#1A5C52", priL = "#3D8B7A", bgS = "#F6F6F4", brd = "#E8E8E6", err = "#C23B22", txtM = "#7A7A78", txtF = "#B5B5B2";
+    const W = 1080, pad = 40, gap = 8;
+    const catColW = 200;
+    const colW = Math.floor((W - pad * 2 - catColW - gap * ps.length) / ps.length);
+    const gridW = catColW + gap + ps.length * (colW + gap) - gap;
+    const rowH = 96, headerH = 120, totalH = 100;
+    const gridH = headerH + gap + GC.length * (rowH + gap) + gap + totalH;
+    const H = 200 + gridH + 100;
 
     const c = document.createElement("canvas");
     c.width = W; c.height = H;
     const ctx = c.getContext("2d");
-
-    // Background
-    const bgG = ctx.createLinearGradient(0, 0, 0, H);
-    bgG.addColorStop(0, "#F8F9FA"); bgG.addColorStop(1, "#EEEDEB");
-    ctx.fillStyle = bgG; ctx.fillRect(0, 0, W, H);
-
-    // Top accent bar
-    const barG = ctx.createLinearGradient(0, 0, W, 0);
-    barG.addColorStop(0, accent); barG.addColorStop(1, accentL);
-    ctx.fillStyle = barG; ctx.fillRect(0, 0, W, 8);
-
-    // Logo
-    ctx.textAlign = "center"; ctx.fillStyle = accent;
-    ctx.font = "80px Georgia, serif"; ctx.fillText("PUNTOS", W / 2, 130);
-    ctx.fillStyle = "#B5B5B2"; ctx.font = "500 13px system-ui, sans-serif";
-    ctx.fillText("A  N  O  T  A  D  O  R", W / 2, 162);
-
-    // Game title
-    ctx.fillStyle = "#1A1A1A"; ctx.font = "46px Georgia, serif";
-    ctx.fillText("Generala", W / 2, 250);
-
-    // Separator
-    ctx.strokeStyle = accent; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.3;
-    ctx.beginPath(); ctx.moveTo(W / 2 - 60, 275); ctx.lineTo(W / 2 + 60, 275); ctx.stroke();
-    ctx.globalAlpha = 1;
-
-    // Grid
-    const gx = (W - gridW) / 2, gy = 310;
-    const maxT = Math.max(...ps.map(p => tot(p)));
 
     // Rounded rect helper
     const rr = (x, y, w, h, r) => {
@@ -206,101 +177,149 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
       ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
       ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
     };
+    const fillRR = (x, y, w, h, r, color) => { rr(x, y, w, h, r); ctx.fillStyle = color; ctx.fill(); };
+    const strokeRR = (x, y, w, h, r, color, lw) => { rr(x, y, w, h, r); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.stroke(); };
 
-    // Card shadow + bg
-    ctx.shadowColor = "rgba(0,0,0,.06)"; ctx.shadowBlur = 24; ctx.shadowOffsetY = 6;
-    rr(gx - 16, gy - 10, gridW + 32, gridH + 20, 16);
-    ctx.fillStyle = "#fff"; ctx.fill();
-    ctx.shadowColor = "transparent";
+    // App background
+    ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
 
-    // Player header row
+    // Top bar (like the app header)
+    fillRR(0, 0, W, 6, 0, pri);
+
+    // PUNTOS title
+    ctx.textAlign = "center"; ctx.fillStyle = pri;
+    ctx.font = "600 42px Georgia, serif"; ctx.fillText("PUNTOS", W / 2, 70);
+    ctx.fillStyle = txtF; ctx.font = "500 14px system-ui, sans-serif";
+    ctx.fillText("G E N E R A L A", W / 2, 100);
+
+    // Grid area
+    const gx = (W - gridW) / 2, gy = 140;
+    const maxT = Math.max(...ps.map(p => tot(p)));
+
+    // Player header row - numbered avatars like the app
     ps.forEach((p, pi) => {
-      const x = gx + catColW + pi * colW;
+      const cx = gx + catColW + gap + pi * (colW + gap) + colW / 2;
+      const cy = gy + 10;
       const isWin = tot(p) === maxT && maxT > 0;
-      ctx.fillStyle = isWin ? accent : "#1A1A1A";
-      ctx.font = `${isWin ? 700 : 600} 18px system-ui, sans-serif`;
-      ctx.textAlign = "center";
-      const name = p.name.length > 8 ? p.name.substring(0, 7) + "…" : p.name;
-      ctx.fillText(name, x + colW / 2, gy + 28);
-      // Underline for winner
-      if (isWin) {
-        ctx.fillStyle = accent; ctx.globalAlpha = 0.3;
-        ctx.fillRect(x + 10, gy + 36, colW - 20, 2);
-        ctx.globalAlpha = 1;
+
+      // Header card bg
+      fillRR(gx + catColW + gap + pi * (colW + gap), gy, colW, headerH, 12, bgS);
+      strokeRR(gx + catColW + gap + pi * (colW + gap), gy, colW, headerH, 12, isWin ? pri : brd, isWin ? 3 : 2);
+
+      // Numbered circle avatar
+      const avatarR = 24;
+      ctx.beginPath(); ctx.arc(cx, cy + avatarR + 6, avatarR, 0, Math.PI * 2);
+      ctx.fillStyle = bgS; ctx.fill();
+      ctx.strokeStyle = isWin ? pri : brd; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = pri; ctx.font = "700 22px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(String(pi + 1), cx, cy + avatarR + 14);
+
+      // Player name
+      if (!isDefaultName(p.name)) {
+        ctx.fillStyle = pri; ctx.font = "600 20px system-ui, sans-serif";
+        const name = p.name.length > 10 ? p.name.substring(0, 9) + "…" : p.name;
+        ctx.fillText(name, cx, cy + avatarR * 2 + 24);
       }
     });
-
-    // Header separator
-    ctx.strokeStyle = "#E0E0DE"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(gx, gy + headerH - 20); ctx.lineTo(gx + gridW, gy + headerH - 20); ctx.stroke();
 
     // Category rows
     GC.forEach((cat, ci) => {
-      const ry = gy + headerH + ci * rowH;
-      // Alternating row bg
-      if (ci % 2 === 0) {
-        ctx.fillStyle = "rgba(0,0,0,.02)";
-        ctx.fillRect(gx, ry - 4, gridW, rowH);
-      }
-      // Category name
-      ctx.fillStyle = "#7A7A78"; ctx.font = "500 16px system-ui, sans-serif"; ctx.textAlign = "left";
-      ctx.fillText(cat.l, gx + 12, ry + rowH / 2 + 1);
+      const ry = gy + headerH + gap + ci * (rowH + gap);
 
-      // Scores
+      // Category cell (like app's bgS cell with border)
+      fillRR(gx, ry, catColW, rowH, ci === 0 ? 12 : ci === GC.length - 1 ? 12 : 4, bgS);
+      strokeRR(gx, ry, catColW, rowH, ci === 0 ? 12 : ci === GC.length - 1 ? 12 : 4, brd, 2);
+
+      // Badge/icon area
+      const badgeX = gx + 14, badgeY = ry + rowH / 2 - 18;
+      const badgeS = 36;
+      if (cat.n) {
+        // Dice face
+        strokeRR(badgeX, badgeY, badgeS, badgeS, 6, pri, 1.5);
+        ctx.fillStyle = pri;
+        const dots = { 1:[[.5,.5]], 2:[[.3,.3],[.7,.7]], 3:[[.3,.3],[.5,.5],[.7,.7]], 4:[[.3,.3],[.7,.3],[.3,.7],[.7,.7]], 5:[[.3,.3],[.7,.3],[.5,.5],[.3,.7],[.7,.7]], 6:[[.3,.3],[.7,.3],[.3,.5],[.7,.5],[.3,.7],[.7,.7]] };
+        (dots[cat.n] || []).forEach(([dx, dy]) => {
+          ctx.beginPath(); ctx.arc(badgeX + dx * badgeS, badgeY + dy * badgeS, 3.5, 0, Math.PI * 2); ctx.fill();
+        });
+      } else {
+        // Combo badge
+        fillRR(badgeX, badgeY, badgeS, badgeS, 6, bgS);
+        strokeRR(badgeX, badgeY, badgeS, badgeS, 6, brd, 1.5);
+        ctx.fillStyle = pri; ctx.font = "700 16px system-ui, sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(COMBO_LABELS[cat.k], badgeX + badgeS / 2, badgeY + badgeS / 2 + 6);
+      }
+
+      // Category name
+      ctx.textAlign = "left"; ctx.fillStyle = pri; ctx.font = "600 22px system-ui, sans-serif";
+      ctx.fillText(cat.l, gx + 58, ry + rowH / 2 - 4);
+      // Subtitle
+      ctx.fillStyle = txtF; ctx.font = "500 16px system-ui, sans-serif";
+      ctx.fillText(cat.n ? `Hasta ${cat.m}` : gV(cat).join("/"), gx + 58, ry + rowH / 2 + 18);
+
+      // Score cells for each player
       ps.forEach((p, pi) => {
-        const x = gx + catColW + pi * colW;
+        const x = gx + catColW + gap + pi * (colW + gap);
         const val = p.scores[cat.k];
+
+        if (val !== null) {
+          fillRR(x, ry, colW, rowH, 8, bgS);
+          strokeRR(x, ry, colW, rowH, 8, brd, 2);
+        } else {
+          fillRR(x, ry, colW, rowH, 8, "#FFFFFF");
+          // Dashed border - draw as dotted segments
+          ctx.setLineDash([8, 6]); strokeRR(x, ry, colW, rowH, 8, brd, 1.5); ctx.setLineDash([]);
+        }
+
         ctx.textAlign = "center";
         if (val === "x") {
-          ctx.fillStyle = "#CC4444"; ctx.font = "700 20px system-ui, sans-serif";
-          ctx.fillText("✗", x + colW / 2, ry + rowH / 2 + 2);
+          ctx.fillStyle = err; ctx.font = "700 32px system-ui, sans-serif";
+          ctx.fillText("✗", x + colW / 2, ry + rowH / 2 + 11);
         } else if (val !== null) {
-          const isWin = tot(p) === maxT && maxT > 0;
-          ctx.fillStyle = isWin ? accent : "#1A1A1A";
-          ctx.font = "400 22px Georgia, serif";
-          ctx.fillText(String(val), x + colW / 2, ry + rowH / 2 + 2);
+          ctx.fillStyle = pri; ctx.font = "400 36px Georgia, serif";
+          ctx.fillText(String(val), x + colW / 2, ry + rowH / 2 + 12);
         } else {
-          ctx.fillStyle = "#D0D0CE"; ctx.font = "400 16px system-ui, sans-serif";
-          ctx.fillText("·", x + colW / 2, ry + rowH / 2 + 2);
+          ctx.fillStyle = txtF; ctx.font = "400 24px system-ui, sans-serif";
+          ctx.globalAlpha = 0.4; ctx.fillText("·", x + colW / 2, ry + rowH / 2 + 8); ctx.globalAlpha = 1;
         }
       });
-
-      // Row separator
-      if (ci < GC.length - 1) {
-        ctx.strokeStyle = "#EEEDEB"; ctx.lineWidth = 0.5;
-        ctx.beginPath(); ctx.moveTo(gx + catColW - 8, ry + rowH - 4); ctx.lineTo(gx + gridW, ry + rowH - 4); ctx.stroke();
-      }
     });
 
     // Total row
-    const ty = gy + headerH + GC.length * rowH;
-    ctx.strokeStyle = accent; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(gx, ty - 4); ctx.lineTo(gx + gridW, ty - 4); ctx.stroke();
+    const ty = gy + headerH + gap + GC.length * (rowH + gap) + gap;
 
-    ctx.fillStyle = accent; ctx.font = "700 14px system-ui, sans-serif"; ctx.textAlign = "left";
-    ctx.fillText("TOTAL", gx + 12, ty + rowH / 2 + 1);
+    // TOTAL label cell (green bg like the app)
+    fillRR(gx, ty, catColW, totalH, 12, pri);
+    ctx.fillStyle = "#fff"; ctx.font = "700 18px system-ui, sans-serif"; ctx.textAlign = "center";
+    ctx.letterSpacing = "2px";
+    ctx.fillText("TOTAL", gx + catColW / 2, ty + totalH / 2 + 7);
 
+    // Total score cells
     ps.forEach((p, pi) => {
-      const x = gx + catColW + pi * colW;
+      const x = gx + catColW + gap + pi * (colW + gap);
       const isWin = tot(p) === maxT && maxT > 0;
-      ctx.fillStyle = isWin ? accent : "#1A1A1A";
-      ctx.font = `${isWin ? 700 : 600} 28px Georgia, serif`;
-      ctx.textAlign = "center";
-      ctx.fillText(String(tot(p)), x + colW / 2, ty + rowH / 2 + 4);
+      fillRR(x, ty, colW, totalH, 12, bgS);
+      strokeRR(x, ty, colW, totalH, 12, isWin ? pri : brd, isWin ? 3 : 2);
+      ctx.fillStyle = pri; ctx.font = "400 48px Georgia, serif"; ctx.textAlign = "center";
+      ctx.fillText(String(tot(p)), x + colW / 2, ty + totalH / 2 + 16);
     });
 
-    // Date
+    // Winner trophy
+    const winners = ps.filter(p => tot(p) === maxT && maxT > 0);
+    if (winners.length === 1 && allDone) {
+      const wi = ps.indexOf(winners[0]);
+      const wx = gx + catColW + gap + wi * (colW + gap) + colW / 2;
+      ctx.font = "32px serif"; ctx.textAlign = "center";
+      ctx.fillText("🏆", wx, gy - 4);
+    }
+
+    // Date + watermark
     const now = new Date();
     const ds = now.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const ts = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-    ctx.fillStyle = "#B5B5B2"; ctx.font = "500 22px system-ui, sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(`${ds}  ·  ${ts}`, W / 2, H - 70);
-
-    // Watermark
-    ctx.fillStyle = accent; ctx.globalAlpha = 0.25;
-    ctx.font = "600 16px system-ui, sans-serif";
-    ctx.fillText("PUNTOS APP", W / 2, H - 35);
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = txtF; ctx.font = "500 22px system-ui, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(`${ds}  ·  ${ts}`, W / 2, H - 50);
+    ctx.fillStyle = pri; ctx.globalAlpha = 0.2; ctx.font = "600 16px system-ui, sans-serif";
+    ctx.fillText("PUNTOS APP", W / 2, H - 20); ctx.globalAlpha = 1;
 
     try {
       const blob = await new Promise(r => c.toBlob(r, "image/png"));
