@@ -163,7 +163,12 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
     const gridW = catColW + gap + ps.length * (colW + gap) - gap;
     const rowH = 96, headerH = 120, totalH = 100;
     const gridH = headerH + gap + GC.length * (rowH + gap) + gap + totalH;
-    const H = 200 + gridH + 100;
+
+    // Determine if there's a winner to size the canvas correctly
+    const maxT = Math.max(...ps.map(p => tot(p)));
+    const winnerP = allDone && ps.filter(p => tot(p) === maxT).length === 1 ? ps.find(p => tot(p) === maxT) : null;
+    const headerSection = winnerP ? 200 : 140;
+    const H = headerSection + gridH + 100;
 
     const c = document.createElement("canvas");
     c.width = W; c.height = H;
@@ -186,15 +191,36 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
     // Top bar (like the app header)
     fillRR(0, 0, W, 6, 0, pri);
 
-    // PUNTOS title
-    ctx.textAlign = "center"; ctx.fillStyle = pri;
-    ctx.font = "600 42px Georgia, serif"; ctx.fillText("PUNTOS", W / 2, 70);
-    ctx.fillStyle = txtF; ctx.font = "500 14px system-ui, sans-serif";
-    ctx.fillText("G E N E R A L A", W / 2, 100);
+    // Winner banner or PUNTOS title
+    let headerBottom = 100;
+
+    if (winnerP) {
+      // Winner banner (like the app's gradient banner)
+      const priD = "#0E3A33";
+      const bannerH = 160;
+      const bannerG = ctx.createLinearGradient(0, 6, W, bannerH);
+      bannerG.addColorStop(0, priD); bannerG.addColorStop(0.5, pri); bannerG.addColorStop(1, priL);
+      ctx.fillStyle = bannerG; ctx.fillRect(0, 6, W, bannerH);
+
+      ctx.textAlign = "center"; ctx.fillStyle = "#fff";
+      ctx.font = "40px serif"; ctx.fillText("🏆", W / 2, 60);
+      ctx.font = "600 14px system-ui, sans-serif"; ctx.globalAlpha = 0.6;
+      ctx.fillText("V I C T O R I A", W / 2, 90); ctx.globalAlpha = 1;
+      ctx.font = "700 36px Georgia, serif";
+      ctx.fillText(`¡${winnerP.name}!`, W / 2, 130);
+      ctx.font = "500 18px system-ui, sans-serif"; ctx.globalAlpha = 0.75;
+      ctx.fillText(`${tot(winnerP)} puntos`, W / 2, 156); ctx.globalAlpha = 1;
+      headerBottom = bannerH + 30;
+    } else {
+      ctx.textAlign = "center"; ctx.fillStyle = pri;
+      ctx.font = "600 42px Georgia, serif"; ctx.fillText("PUNTOS", W / 2, 70);
+      ctx.fillStyle = txtF; ctx.font = "500 14px system-ui, sans-serif";
+      ctx.fillText("G E N E R A L A", W / 2, 100);
+      headerBottom = 120;
+    }
 
     // Grid area
-    const gx = (W - gridW) / 2, gy = 140;
-    const maxT = Math.max(...ps.map(p => tot(p)));
+    const gx = (W - gridW) / 2, gy = headerBottom + 20;
 
     // Player header row - numbered avatars like the app
     ps.forEach((p, pi) => {
@@ -214,12 +240,10 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
       ctx.fillStyle = pri; ctx.font = "700 22px system-ui, sans-serif"; ctx.textAlign = "center";
       ctx.fillText(String(pi + 1), cx, cy + avatarR + 14);
 
-      // Player name
-      if (!isDefaultName(p.name)) {
-        ctx.fillStyle = pri; ctx.font = "600 20px system-ui, sans-serif";
-        const name = p.name.length > 10 ? p.name.substring(0, 9) + "…" : p.name;
-        ctx.fillText(name, cx, cy + avatarR * 2 + 24);
-      }
+      // Player name (always show)
+      ctx.fillStyle = pri; ctx.font = "600 20px system-ui, sans-serif";
+      const name = p.name.length > 10 ? p.name.substring(0, 9) + "…" : p.name;
+      ctx.fillText(name, cx, cy + avatarR * 2 + 24);
     });
 
     // Category rows
@@ -302,15 +326,6 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
       ctx.fillStyle = pri; ctx.font = "400 48px Georgia, serif"; ctx.textAlign = "center";
       ctx.fillText(String(tot(p)), x + colW / 2, ty + totalH / 2 + 16);
     });
-
-    // Winner trophy
-    const winners = ps.filter(p => tot(p) === maxT && maxT > 0);
-    if (winners.length === 1 && allDone) {
-      const wi = ps.indexOf(winners[0]);
-      const wx = gx + catColW + gap + wi * (colW + gap) + colW / 2;
-      ctx.font = "32px serif"; ctx.textAlign = "center";
-      ctx.fillText("🏆", wx, gy - 4);
-    }
 
     // Date + watermark
     const now = new Date();
