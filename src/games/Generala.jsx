@@ -82,13 +82,15 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
   const [loading, setLoading] = useState(true);
   const [editingIdx, setEditingIdx] = useState(null);
   const [editVal, setEditVal] = useState("");
+  const [turnGuard, setTurnGuard] = useState(true);
+  const [showHints, setShowHints] = useState(true);
   const playerNameRefs = useRef([]);
 
   const handleCount = (n) => { setPCount(n); setPNames(Array.from({ length: n }, (_, i) => pNames[i] || `Jugador ${i + 1}`)) };
 
-  useEffect(() => { ST.load("generala-game").then(d => { if (d?.ps?.length) { setPs(d.ps); setStarted(true); onContinueChange?.("generala") } setLoading(false); });
+  useEffect(() => { ST.load("generala-game").then(d => { if (d?.ps?.length) { setPs(d.ps); setStarted(true); onContinueChange?.("generala"); if (d.turnGuard === false) setTurnGuard(false); if (d.showHints === false) setShowHints(false); } setLoading(false); });
     ST.load("generala-hist").then(d => { if (d) setHist(d) }) }, []);
-  useEffect(() => { if (started && ps.length) { ST.save("generala-game", { ps }); onContinueChange?.("generala") } }, [ps, started, onContinueChange]);
+  useEffect(() => { if (started && ps.length) { ST.save("generala-game", { ps, turnGuard, showHints }); onContinueChange?.("generala") } }, [ps, started, turnGuard, showHints, onContinueChange]);
   useEffect(() => { if (hist.length) ST.save("generala-hist", hist) }, [hist]);
 
   const freshScores = () => { const fresh = {}; GC.forEach(c => { fresh[c.k] = null }); return fresh; };
@@ -116,7 +118,7 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
   const currentTurnIndex = ps.length ? Math.max(0, turnCounts.findIndex(c => c === filledCount)) : 0;
   const currentTurnName = ps[currentTurnIndex]?.name;
   const askTurnGuard = (pi) => {
-    if (!ps.length || pi === currentTurnIndex) return true;
+    if (!turnGuard || !ps.length || pi === currentTurnIndex) return true;
     const msg = L.turnWarning.replace('{name}', ps[pi]?.name || '').replace('{expected}', currentTurnName || '');
     return window.confirm(msg);
   };
@@ -152,7 +154,163 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
 
   const resetZ = async () => { setStarted(false); setSStep(0); setModal(null); setPs([]); await ST.del("generala-game"); onContinueChange?.(null) };
   const delH = i => setHist(h => h.filter((_, j) => j !== i));
-  const doShare = () => shareResult("Generala", ps.map(p => `${p.name}: ${tot(p)}`), { accent: "#C4783D", accentLight: "#D4945C" });
+  const doShare = async () => {
+    const accent = "#C4783D", accentL = "#D4945C";
+    const W = 1080, pad = 60;
+    const colW = Math.floor((W - pad * 2 - 140) / ps.length); // 140 for category col
+    const catColW = 140;
+    const gridW = catColW + ps.length * colW;
+    const rowH = 56;
+    const headerH = 70;
+    const gridH = headerH + GC.length * rowH + rowH; // +1 for total row
+    const H = 360 + gridH + 120; // top section + grid + bottom
+
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+
+    // Background
+    const bgG = ctx.createLinearGradient(0, 0, 0, H);
+    bgG.addColorStop(0, "#F8F9FA"); bgG.addColorStop(1, "#EEEDEB");
+    ctx.fillStyle = bgG; ctx.fillRect(0, 0, W, H);
+
+    // Top accent bar
+    const barG = ctx.createLinearGradient(0, 0, W, 0);
+    barG.addColorStop(0, accent); barG.addColorStop(1, accentL);
+    ctx.fillStyle = barG; ctx.fillRect(0, 0, W, 8);
+
+    // Logo
+    ctx.textAlign = "center"; ctx.fillStyle = accent;
+    ctx.font = "80px Georgia, serif"; ctx.fillText("PUNTOS", W / 2, 130);
+    ctx.fillStyle = "#B5B5B2"; ctx.font = "500 13px system-ui, sans-serif";
+    ctx.fillText("A  N  O  T  A  D  O  R", W / 2, 162);
+
+    // Game title
+    ctx.fillStyle = "#1A1A1A"; ctx.font = "46px Georgia, serif";
+    ctx.fillText("Generala", W / 2, 250);
+
+    // Separator
+    ctx.strokeStyle = accent; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.3;
+    ctx.beginPath(); ctx.moveTo(W / 2 - 60, 275); ctx.lineTo(W / 2 + 60, 275); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Grid
+    const gx = (W - gridW) / 2, gy = 310;
+    const maxT = Math.max(...ps.map(p => tot(p)));
+
+    // Rounded rect helper
+    const rr = (x, y, w, h, r) => {
+      ctx.beginPath(); ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+    };
+
+    // Card shadow + bg
+    ctx.shadowColor = "rgba(0,0,0,.06)"; ctx.shadowBlur = 24; ctx.shadowOffsetY = 6;
+    rr(gx - 16, gy - 10, gridW + 32, gridH + 20, 16);
+    ctx.fillStyle = "#fff"; ctx.fill();
+    ctx.shadowColor = "transparent";
+
+    // Player header row
+    ps.forEach((p, pi) => {
+      const x = gx + catColW + pi * colW;
+      const isWin = tot(p) === maxT && maxT > 0;
+      ctx.fillStyle = isWin ? accent : "#1A1A1A";
+      ctx.font = `${isWin ? 700 : 600} 18px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      const name = p.name.length > 8 ? p.name.substring(0, 7) + "…" : p.name;
+      ctx.fillText(name, x + colW / 2, gy + 28);
+      // Underline for winner
+      if (isWin) {
+        ctx.fillStyle = accent; ctx.globalAlpha = 0.3;
+        ctx.fillRect(x + 10, gy + 36, colW - 20, 2);
+        ctx.globalAlpha = 1;
+      }
+    });
+
+    // Header separator
+    ctx.strokeStyle = "#E0E0DE"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(gx, gy + headerH - 20); ctx.lineTo(gx + gridW, gy + headerH - 20); ctx.stroke();
+
+    // Category rows
+    GC.forEach((cat, ci) => {
+      const ry = gy + headerH + ci * rowH;
+      // Alternating row bg
+      if (ci % 2 === 0) {
+        ctx.fillStyle = "rgba(0,0,0,.02)";
+        ctx.fillRect(gx, ry - 4, gridW, rowH);
+      }
+      // Category name
+      ctx.fillStyle = "#7A7A78"; ctx.font = "500 16px system-ui, sans-serif"; ctx.textAlign = "left";
+      ctx.fillText(cat.l, gx + 12, ry + rowH / 2 + 1);
+
+      // Scores
+      ps.forEach((p, pi) => {
+        const x = gx + catColW + pi * colW;
+        const val = p.scores[cat.k];
+        ctx.textAlign = "center";
+        if (val === "x") {
+          ctx.fillStyle = "#CC4444"; ctx.font = "700 20px system-ui, sans-serif";
+          ctx.fillText("✗", x + colW / 2, ry + rowH / 2 + 2);
+        } else if (val !== null) {
+          const isWin = tot(p) === maxT && maxT > 0;
+          ctx.fillStyle = isWin ? accent : "#1A1A1A";
+          ctx.font = "400 22px Georgia, serif";
+          ctx.fillText(String(val), x + colW / 2, ry + rowH / 2 + 2);
+        } else {
+          ctx.fillStyle = "#D0D0CE"; ctx.font = "400 16px system-ui, sans-serif";
+          ctx.fillText("·", x + colW / 2, ry + rowH / 2 + 2);
+        }
+      });
+
+      // Row separator
+      if (ci < GC.length - 1) {
+        ctx.strokeStyle = "#EEEDEB"; ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(gx + catColW - 8, ry + rowH - 4); ctx.lineTo(gx + gridW, ry + rowH - 4); ctx.stroke();
+      }
+    });
+
+    // Total row
+    const ty = gy + headerH + GC.length * rowH;
+    ctx.strokeStyle = accent; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(gx, ty - 4); ctx.lineTo(gx + gridW, ty - 4); ctx.stroke();
+
+    ctx.fillStyle = accent; ctx.font = "700 14px system-ui, sans-serif"; ctx.textAlign = "left";
+    ctx.fillText("TOTAL", gx + 12, ty + rowH / 2 + 1);
+
+    ps.forEach((p, pi) => {
+      const x = gx + catColW + pi * colW;
+      const isWin = tot(p) === maxT && maxT > 0;
+      ctx.fillStyle = isWin ? accent : "#1A1A1A";
+      ctx.font = `${isWin ? 700 : 600} 28px Georgia, serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(String(tot(p)), x + colW / 2, ty + rowH / 2 + 4);
+    });
+
+    // Date
+    const now = new Date();
+    const ds = now.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const ts = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    ctx.fillStyle = "#B5B5B2"; ctx.font = "500 22px system-ui, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(`${ds}  ·  ${ts}`, W / 2, H - 70);
+
+    // Watermark
+    ctx.fillStyle = accent; ctx.globalAlpha = 0.25;
+    ctx.font = "600 16px system-ui, sans-serif";
+    ctx.fillText("PUNTOS APP", W / 2, H - 35);
+    ctx.globalAlpha = 1;
+
+    try {
+      const blob = await new Promise(r => c.toBlob(r, "image/png"));
+      const file = new File([blob], "generala.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ title: "Generala", files: [file] }); return; }
+    } catch (e) { if (e?.name === "AbortError") return; }
+    const text = "Generala\n" + ps.map(p => `${p.name}: ${tot(p)}`).join("\n");
+    try { if (navigator.share) { await navigator.share({ title: "Generala", text }); return; } } catch (e) { if (e?.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(text); alert("Copiado"); } catch (e) { prompt("Copiá:", text); }
+  };
 
   const startNameEdit = (i) => {
     setEditingIdx(i);
@@ -240,6 +398,20 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
         </button>
         <div style={{ height: 1, background: t.brd, margin: "0 10px" }} />
         {[
+          { label: "Aviso de turno", val: turnGuard, toggle: () => setTurnGuard(g => !g) },
+          { label: "Mostrar pendientes", val: showHints, toggle: () => setShowHints(g => !g) },
+        ].map((opt, i) => (
+          <button key={i} onClick={() => { opt.toggle(); setModal(null); }} style={{
+            display: "flex", width: "100%", alignItems: "center", gap: 8, padding: "12px 14px",
+            background: "none", border: "none", color: t.txt, fontSize: 14, fontWeight: 500,
+            cursor: "pointer", borderRadius: 4, fontFamily: F.sans, touchAction: "manipulation",
+          }}>
+            <span style={{ fontSize: 16, width: 16, textAlign: "center" }}>{opt.val ? "✓" : ""}</span>
+            <span style={{ flex: 1, textAlign: "left" }}>{opt.label}</span>
+          </button>
+        ))}
+        <div style={{ height: 1, background: t.brd, margin: "0 10px" }} />
+        {[
           { label: "Compartir", action: doShare },
           ...(hist.length > 0 ? [{ label: L.hist, action: () => { setModal(null); setShowH(true); } }] : []),
           { label: L.revancha, action: () => setModal("revancha") },
@@ -294,25 +466,33 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
     </Modal>}
 
     {/* Winner banner */}
-    {allDone && <div style={{ textAlign: "center", padding: 16, background: t.pri, color: "#fff", animation: "scaleIn .3s ease" }}>
-      <div style={{ fontSize: 20, fontFamily: F.serif, fontWeight: 400 }}>¡{ps.reduce((b, p) => tot(p) > tot(b) ? p : b, ps[0]).name} {L.winSg}!</div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10 }}>
-        <button onClick={revancha} style={{
-          background: "rgba(255,255,255,.15)", border: "1px solid rgba(255,255,255,.3)",
-          borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: F.sans, fontWeight: 600,
-          padding: "10px 20px", cursor: "pointer", flex: 1, maxWidth: 160, touchAction: "manipulation",
-        }}>{L.revancha}</button>
-        <button onClick={nuevaPartidaSetup} style={{
-          background: "transparent", border: "1px solid rgba(255,255,255,.3)",
-          borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: F.sans, fontWeight: 500,
-          padding: "10px 20px", cursor: "pointer", flex: 1, maxWidth: 160, touchAction: "manipulation",
-        }}>{L.nuevaPartidaSetup}</button>
-      </div>
-      <button onClick={doShare} style={{
-        background: "none", border: "none", color: "rgba(255,255,255,.6)",
-        fontSize: 12, fontFamily: F.sans, cursor: "pointer", marginTop: 8, padding: "4px 8px", touchAction: "manipulation",
-      }}>{L.share}</button>
-    </div>}
+    {allDone && (() => { const winnerP = ps.reduce((b, p) => tot(p) > tot(b) ? p : b, ps[0]); return (
+      <div style={{ textAlign: "center", padding: "24px 16px 20px", background: `linear-gradient(135deg, ${t.priD}, ${t.pri}, ${t.priL})`, color: "#fff", animation: "winnerSlideIn .5s ease-out", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent)", backgroundSize: "200% 100%", animation: "shimmer 3s ease-in-out infinite" }} />
+        <div style={{ position: "relative" }}>
+          <div style={{ fontSize: 40, animation: "trophyBounce .6s ease-out", marginBottom: 4 }}>🏆</div>
+          <div style={{ fontSize: 11, fontFamily: F.sans, fontWeight: 600, letterSpacing: 2.5, textTransform: "uppercase", opacity: 0.6, marginBottom: 4, animation: "fadeInUp .4s ease-out .2s both" }}>Victoria</div>
+          <div style={{ fontSize: 26, fontFamily: F.serif, fontWeight: 700, animation: "fadeInUp .4s ease-out .3s both" }}>¡{winnerP.name}!</div>
+          <div style={{ fontSize: 15, fontFamily: F.sans, opacity: 0.75, marginTop: 2, animation: "fadeInUp .4s ease-out .35s both" }}>{tot(winnerP)} puntos</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16, animation: "fadeInUp .4s ease-out .45s both" }}>
+            <button onClick={revancha} style={{
+              background: "rgba(255,255,255,.18)", border: "1px solid rgba(255,255,255,.25)",
+              borderRadius: 10, color: "#fff", fontSize: 14, fontFamily: F.sans, fontWeight: 600,
+              padding: "11px 22px", cursor: "pointer", flex: 1, maxWidth: 160, touchAction: "manipulation",
+            }}>{L.revancha}</button>
+            <button onClick={nuevaPartidaSetup} style={{
+              background: "transparent", border: "1px solid rgba(255,255,255,.2)",
+              borderRadius: 10, color: "rgba(255,255,255,.8)", fontSize: 14, fontFamily: F.sans, fontWeight: 500,
+              padding: "11px 22px", cursor: "pointer", flex: 1, maxWidth: 160, touchAction: "manipulation",
+            }}>{L.nuevaPartidaSetup}</button>
+          </div>
+          <button onClick={doShare} style={{
+            background: "none", border: "none", color: "rgba(255,255,255,.5)",
+            fontSize: 12, fontFamily: F.sans, cursor: "pointer", marginTop: 10, padding: "4px 8px", touchAction: "manipulation",
+            animation: "fadeInUp .4s ease-out .55s both",
+          }}>{L.share}</button>
+        </div>
+      </div>); })()}
 
     {/* ══════ SCORE GRID ══════ */}
     <div style={{ padding: "10px 8px 20px", overflowX: "auto" }}>
@@ -323,10 +503,10 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
           {ps.map((p, i) => <div key={i} style={{ padding: "8px 4px 6px", textAlign: "center", background: t.card, borderRadius: "6px 6px 0 0", border: `1px solid ${t.brd}`, borderBottom: "none" }}>
             <div onClick={() => startNameEdit(i)} style={{
               width: 32, height: 32, borderRadius: "50%",
-              background: t.bgS, border: `1.5px solid ${t.brd}`, color: t.pri,
+              background: t.bgS, border: `1.5px solid ${!allDone && i === currentTurnIndex ? t.pri : t.brd}`, color: t.pri,
               display: "flex", alignItems: "center", justifyContent: "center",
               margin: "0 auto 4px", fontSize: 13, fontWeight: 700, fontFamily: F.sans,
-              cursor: "pointer",
+              cursor: "pointer", transition: "border-color .2s",
             }}>{i + 1}</div>
             {editingIdx === i ? (
               <input autoFocus autoCapitalize="words" value={editVal}
@@ -355,21 +535,18 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
                 <div style={{ fontSize: 10, color: t.txtF, fontFamily: F.sans }}>{cat.n ? `${L.upTo} ${cat.m}` : gV(cat).join("/")}</div>
               </div>
             </div>
-            {/* Score cells — Doble Gen blocked if Generala not filled */}
             {ps.map((p, pi) => { const val = p.scores[cat.k];
-              const isDobleBlocked = cat.k === "doble" && p.scores["gen"] === null;
+              const isHint = showHints && !allDone && pi === currentTurnIndex && val === null;
               return <div key={pi} onClick={() => {
-                if (isDobleBlocked) return;
                 if (val === null && !askTurnGuard(pi)) return;
                 setSheet({ pi, cat: cat.k });
               }}
-                style={{ textAlign: "center", cursor: isDobleBlocked ? "default" : "pointer",
-                  background: val !== null ? t.bgS : t.card,
-                  border: val !== null ? `1px solid ${t.brd}` : `1px dashed ${t.brd}`,
+                style={{ textAlign: "center", cursor: "pointer",
+                  background: val !== null ? t.bgS : isHint ? `${t.pri}08` : t.card,
+                  border: val !== null ? `1px solid ${t.brd}` : isHint ? `1px dashed ${t.pri}30` : `1px dashed ${t.brd}`,
                   borderRadius: 4,
                   display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48,
                   transition: "all .2s",
-                  opacity: isDobleBlocked ? 0.25 : 1,
                 }}>
                 {val === "x" ? <span style={{ color: t.err, fontSize: 18, fontWeight: 700, fontFamily: F.sans }}>✗</span>
                   : val !== null ? <span style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 400, color: t.pri }}>{val}</span>

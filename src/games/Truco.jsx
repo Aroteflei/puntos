@@ -840,37 +840,43 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
 
       {/* Winner banner */}
       {winner && (
-        <div style={{ textAlign: "center", padding: ph ? 12 : 16, background: t.pri, color: "#fff", flexShrink: 0, animation: "scaleIn .3s ease" }}>
-          <div style={{ fontSize: ph ? 18 : 20, fontFamily: F.serif, fontWeight: 400 }}>¡{winner.name} {L.winPl}!</div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10 }}>
-            <button onClick={revancha} style={{
-              background: "rgba(255,255,255,.15)", border: "1px solid rgba(255,255,255,.3)",
-              borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: F.sans, fontWeight: 600,
-              padding: "10px 20px", cursor: "pointer", flex: 1, touchAction: "manipulation",
-            }}>{L.revancha}</button>
-            <button onClick={nuevaPartida} style={{
-              background: "transparent", border: "1px solid rgba(255,255,255,.3)",
-              borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: F.sans, fontWeight: 500,
-              padding: "10px 20px", cursor: "pointer", flex: 1, touchAction: "manipulation",
-            }}>{L.nuevaPartidaSetup}</button>
-          </div>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 8 }}>
-            <button onClick={doShare} style={{
-              background: "none", border: "none", color: "rgba(255,255,255,.6)",
-              fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
-            }}>{L.share}</button>
-            {picaAllDuels.length > 0 && (
-              <button onClick={() => setShowDuels(true)} style={{
-                background: "none", border: "none", color: "rgba(255,255,255,.6)",
+        <div style={{ textAlign: "center", padding: "24px 16px 20px", background: `linear-gradient(135deg, ${t.priD}, ${t.pri}, ${t.priL})`, color: "#fff", flexShrink: 0, animation: "winnerSlideIn .5s ease-out", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent)", backgroundSize: "200% 100%", animation: "shimmer 3s ease-in-out infinite" }} />
+          <div style={{ position: "relative" }}>
+            <div style={{ fontSize: 40, animation: "trophyBounce .6s ease-out", marginBottom: 4 }}>🏆</div>
+            <div style={{ fontSize: 11, fontFamily: F.sans, fontWeight: 600, letterSpacing: 2.5, textTransform: "uppercase", opacity: 0.6, marginBottom: 4, animation: "fadeInUp .4s ease-out .2s both" }}>Victoria</div>
+            <div style={{ fontSize: 26, fontFamily: F.serif, fontWeight: 700, animation: "fadeInUp .4s ease-out .3s both" }}>¡{winner.name}!</div>
+            <div style={{ fontSize: 15, fontFamily: F.sans, opacity: 0.75, marginTop: 2, animation: "fadeInUp .4s ease-out .35s both" }}>{sc[0]?.p} — {sc[1]?.p}</div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16, animation: "fadeInUp .4s ease-out .45s both" }}>
+              <button onClick={revancha} style={{
+                background: "rgba(255,255,255,.18)", border: "1px solid rgba(255,255,255,.25)",
+                borderRadius: 10, color: "#fff", fontSize: 14, fontFamily: F.sans, fontWeight: 600,
+                padding: "11px 22px", cursor: "pointer", flex: 1, touchAction: "manipulation",
+              }}>{L.revancha}</button>
+              <button onClick={nuevaPartida} style={{
+                background: "transparent", border: "1px solid rgba(255,255,255,.2)",
+                borderRadius: 10, color: "rgba(255,255,255,.8)", fontSize: 14, fontFamily: F.sans, fontWeight: 500,
+                padding: "11px 22px", cursor: "pointer", flex: 1, touchAction: "manipulation",
+              }}>{L.nuevaPartidaSetup}</button>
+            </div>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 10, animation: "fadeInUp .4s ease-out .55s both" }}>
+              <button onClick={doShare} style={{
+                background: "none", border: "none", color: "rgba(255,255,255,.5)",
                 fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
-              }}>Ver Duelos</button>
-            )}
-            {undoStackRef.current.length > 0 && (
-              <button onClick={handleUndo} style={{
-                background: "none", border: "none", color: "rgba(255,255,255,.6)",
-                fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
-              }}>{L.undo}</button>
-            )}
+              }}>{L.share}</button>
+              {picaAllDuels.length > 0 && (
+                <button onClick={() => setShowDuels(true)} style={{
+                  background: "none", border: "none", color: "rgba(255,255,255,.5)",
+                  fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
+                }}>Ver Duelos</button>
+              )}
+              {undoStackRef.current.length > 0 && (
+                <button onClick={handleUndo} style={{
+                  background: "none", border: "none", color: "rgba(255,255,255,.5)",
+                  fontSize: 12, fontFamily: F.sans, cursor: "pointer", padding: "4px 8px", touchAction: "manipulation",
+                }}>{L.undo}</button>
+              )}
+            </div>
           </div>
         </div>
       )}
