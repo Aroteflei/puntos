@@ -531,136 +531,163 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
   };
 
   const doShare = async () => {
-    // Exact app theme colors
-    const pri = "#1A5C52", priL = "#3D8B7A", priD = "#0E3A33", brd = "#E8E8E6", txtC = "#1A1A1A", txtF = "#B5B5B2", okC = "#2D7A50", errC = "#C23B22";
-    const W = 1080;
-    const colW = W / 2;
+    const pri = "#1A5C52", priL = "#3D8B7A", priD = "#0E3A33";
+    const brd = "#E8E8E6", bgS = "#F6F6F4";
+    const txtC = "#1A1A1A", txtF = "#B5B5B2";
+    const okC = "#2D7A50", errC = "#C23B22";
+    const W = 1080, colW = W / 2;
     const hasBuenas = target === 30;
 
-    // Tally drawing (replicates TrucoTally exactly: square segments + diagonal)
-    const drawTallyBlock = (ctx, cx, cy, count, color) => {
-      const SZ = 100, PD = 8, lw = 4, GAP = 10, perRow = 3;
-      ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.globalAlpha = 0.7;
-      const drawOne = (ox, oy, n) => {
-        if (n >= 1) { ctx.beginPath(); ctx.moveTo(ox + PD, oy + PD); ctx.lineTo(ox + PD, oy + SZ - PD); ctx.stroke(); }
-        if (n >= 2) { ctx.beginPath(); ctx.moveTo(ox + PD, oy + SZ - PD); ctx.lineTo(ox + SZ - PD, oy + SZ - PD); ctx.stroke(); }
-        if (n >= 3) { ctx.beginPath(); ctx.moveTo(ox + SZ - PD, oy + SZ - PD); ctx.lineTo(ox + SZ - PD, oy + PD); ctx.stroke(); }
-        if (n >= 4) { ctx.beginPath(); ctx.moveTo(ox + SZ - PD, oy + PD); ctx.lineTo(ox + PD, oy + PD); ctx.stroke(); }
-        if (n >= 5) { ctx.beginPath(); ctx.moveTo(ox + PD + 2, oy + SZ - PD - 2); ctx.lineTo(ox + SZ - PD - 2, oy + PD + 2); ctx.stroke(); }
-      };
-      let drawn = 0, ty = cy;
-      while (drawn < count) {
-        const rem = count - drawn;
-        const batch = Math.min(5, rem);
-        const totalLeft = Math.ceil((count - (drawn - drawn % (perRow * 5))) / 5);
-        const rowTallies = Math.min(totalLeft, perRow);
-        const col = Math.floor((drawn % (perRow * 5)) / 5);
-        const ox = cx - (rowTallies * (SZ + GAP)) / 2 + col * (SZ + GAP);
-        drawOne(ox, ty, batch);
-        drawn += batch;
-        if (drawn % (perRow * 5) === 0) ty += SZ + GAP;
-      }
-      ctx.globalAlpha = 1;
-      return ty + (count > 0 ? SZ : 0);
+    // Tally square params
+    const SZ = 80, PD = 6, GAP = 12, perRow = 3;
+
+    // Exact height of a tally block for N points
+    const tallyBlockH = (count) => {
+      if (count === 0) return 0;
+      const groups = Math.ceil(count / 5);
+      const rows = Math.ceil(groups / perRow);
+      return rows * (SZ + GAP) - GAP;
     };
 
-    // Estimate tally area height
-    const maxScore = Math.max(sc[0]?.p || 0, sc[1]?.p || 0);
-    const tallyH = hasBuenas
-      ? Math.max(350, Math.ceil(Math.max(maxScore, 15) / 15) * 120 + 80)
-      : Math.max(200, Math.ceil(maxScore / 15) * 120 + 20);
+    // Exact tally section height per team (content only)
+    const tallyContentH = (score) => {
+      if (score === 0) return 0;
+      if (hasBuenas) {
+        let h = 24 + tallyBlockH(Math.min(score, 15)) + 36;
+        if (score > 15) h += tallyBlockH(score - 15);
+        return h;
+      }
+      return tallyBlockH(score);
+    };
 
-    // Winner banner
+    const maxContentH = Math.max(tallyContentH(sc[0]?.p || 0), tallyContentH(sc[1]?.p || 0));
+    const tallyAreaH = Math.max(maxContentH + 40, 140);
+
+    // Layout
     const bannerH = winner ? 180 : 0;
-    const topH = winner ? bannerH + 6 : 90;
-    const nameH = 60, scoreNumH = 90;
-    const H = topH + nameH + tallyH + scoreNumH + 100;
+    const topH = winner ? bannerH + 6 : 80;
+    const nameRowH = 56;
+    const scoreRowH = 100;
+    const footerH = 80;
+    const H = topH + nameRowH + tallyAreaH + scoreRowH + footerH;
 
     const c = document.createElement("canvas");
     c.width = W; c.height = H;
     const ctx = c.getContext("2d");
 
-    // White bg
+    // Draw tally square segments
+    const drawSquare = (ox, oy, n) => {
+      ctx.strokeStyle = txtC; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.globalAlpha = 0.7;
+      if (n >= 1) { ctx.beginPath(); ctx.moveTo(ox + PD, oy + PD); ctx.lineTo(ox + PD, oy + SZ - PD); ctx.stroke(); }
+      if (n >= 2) { ctx.beginPath(); ctx.moveTo(ox + PD, oy + SZ - PD); ctx.lineTo(ox + SZ - PD, oy + SZ - PD); ctx.stroke(); }
+      if (n >= 3) { ctx.beginPath(); ctx.moveTo(ox + SZ - PD, oy + SZ - PD); ctx.lineTo(ox + SZ - PD, oy + PD); ctx.stroke(); }
+      if (n >= 4) { ctx.beginPath(); ctx.moveTo(ox + SZ - PD, oy + PD); ctx.lineTo(ox + PD, oy + PD); ctx.stroke(); }
+      if (n >= 5) { ctx.beginPath(); ctx.moveTo(ox + PD + 2, oy + SZ - PD - 2); ctx.lineTo(ox + SZ - PD - 2, oy + PD + 2); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    };
+
+    // Draw tally groups, returns Y of bottom edge
+    const drawTallies = (cx, startY, count) => {
+      if (count === 0) return startY;
+      const groups = Math.ceil(count / 5);
+      const totalRows = Math.ceil(groups / perRow);
+      for (let g = 0; g < groups; g++) {
+        const row = Math.floor(g / perRow);
+        const col = g % perRow;
+        const inRow = Math.min(perRow, groups - row * perRow);
+        const rowW = inRow * SZ + (inRow - 1) * GAP;
+        const ox = cx - rowW / 2 + col * (SZ + GAP);
+        const oy = startY + row * (SZ + GAP);
+        const isLast = g === groups - 1;
+        const segs = isLast && count % 5 !== 0 ? count % 5 : 5;
+        drawSquare(ox, oy, segs);
+      }
+      return startY + totalRows * (SZ + GAP) - GAP;
+    };
+
+    // White bg + accent bar
     ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = pri; ctx.fillRect(0, 0, W, 6);
-
-    let yOff = 6;
+    let y = 6;
 
     if (winner) {
       const g = ctx.createLinearGradient(0, 6, W, bannerH);
       g.addColorStop(0, priD); g.addColorStop(0.5, pri); g.addColorStop(1, priL);
       ctx.fillStyle = g; ctx.fillRect(0, 6, W, bannerH);
       ctx.textAlign = "center"; ctx.fillStyle = "#fff";
-      ctx.font = "44px serif"; ctx.fillText("🏆", W / 2, 58);
+      ctx.font = "44px serif"; ctx.fillText("\u{1F3C6}", W / 2, 56);
       ctx.font = "600 14px system-ui, sans-serif"; ctx.globalAlpha = 0.6;
-      ctx.fillText("V I C T O R I A", W / 2, 92); ctx.globalAlpha = 1;
+      ctx.fillText("V I C T O R I A", W / 2, 90); ctx.globalAlpha = 1;
       ctx.font = "700 38px Georgia, serif";
-      ctx.fillText(`¡${winner.name}!`, W / 2, 134);
+      ctx.fillText(`¡${winner.name}!`, W / 2, 132);
       ctx.font = "500 18px system-ui, sans-serif"; ctx.globalAlpha = 0.75;
-      ctx.fillText(`${sc[0]?.p} — ${sc[1]?.p}`, W / 2, 162); ctx.globalAlpha = 1;
-      yOff = 6 + bannerH;
+      ctx.fillText(`${sc[0]?.p} — ${sc[1]?.p}`, W / 2, 160); ctx.globalAlpha = 1;
+      y = 6 + bannerH;
     } else {
-      // "A 15/30" badge like the app header
-      ctx.fillStyle = "#F6F6F4"; ctx.fillRect(W - 140, 16, 110, 44);
-      ctx.strokeStyle = brd; ctx.lineWidth = 2; ctx.strokeRect(W - 140, 16, 110, 44);
-      ctx.fillStyle = txtF; ctx.font = "600 22px system-ui, sans-serif"; ctx.textAlign = "center";
-      ctx.fillText(`A ${target}`, W - 85, 46);
-      yOff = 80;
+      ctx.fillStyle = bgS; ctx.fillRect(W - 140, 16, 110, 40);
+      ctx.strokeStyle = brd; ctx.lineWidth = 1; ctx.strokeRect(W - 140, 16, 110, 40);
+      ctx.fillStyle = txtF; ctx.font = "600 20px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(`A ${target}`, W - 85, 43);
+      y = topH;
     }
 
-    // Team names (like app: centered in each column)
-    const nameY = yOff + 36;
+    // Team names — full names, auto-shrink font to fit
+    const nameY = y + 34;
     sc.forEach((s, i) => {
       ctx.textAlign = "center"; ctx.fillStyle = txtC;
-      ctx.font = "700 30px Georgia, serif";
-      const name = s.name.length > 14 ? s.name.substring(0, 13) + "…" : s.name;
-      ctx.fillText(name, i * colW + colW / 2, nameY);
+      let fs = 28;
+      ctx.font = `700 ${fs}px Georgia, serif`;
+      while (ctx.measureText(s.name).width > colW - 40 && fs > 14) {
+        fs -= 2;
+        ctx.font = `700 ${fs}px Georgia, serif`;
+      }
+      ctx.fillText(s.name, i * colW + colW / 2, nameY);
     });
+    y += nameRowH;
 
-    // Separator after names
-    const sepY = nameY + 18;
+    // Separator below names
     ctx.strokeStyle = brd; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, sepY); ctx.lineTo(W, sepY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
 
+    // Tally area
+    const tallyTop = y;
+    const tallyBot = y + tallyAreaH;
     // Vertical divider
-    ctx.beginPath(); ctx.moveTo(W / 2, sepY); ctx.lineTo(W / 2, sepY + tallyH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W / 2, tallyTop); ctx.lineTo(W / 2, tallyBot); ctx.stroke();
 
-    // Tally marks for each team
-    const tallyStartY = sepY + 20;
+    // Draw tallies per team
     sc.forEach((s, i) => {
       const cx = i * colW + colW / 2;
+      let ty = tallyTop + 20;
       if (hasBuenas && s.p > 0) {
-        // MALAS label
-        ctx.globalAlpha = 1; ctx.fillStyle = errC; ctx.font = "700 14px system-ui, sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("MALAS", cx, tallyStartY);
-        // Draw malas tallies (up to 15)
-        const malasCount = Math.min(s.p, 15);
-        const afterMalas = drawTallyBlock(ctx, cx, tallyStartY + 12, malasCount, txtC);
-        // Buenas divider
-        const divY = afterMalas + 12;
+        ctx.fillStyle = errC; ctx.font = "700 13px system-ui, sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("MALAS", cx, ty + 10);
+        ty += 24;
+        const afterMalas = drawTallies(cx, ty, Math.min(s.p, 15));
+        const divY = afterMalas + 18;
         ctx.globalAlpha = 0.5; ctx.strokeStyle = okC; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(cx - 120, divY); ctx.lineTo(cx + 120, divY); ctx.stroke();
-        ctx.globalAlpha = 1; ctx.fillStyle = okC; ctx.font = "700 14px system-ui, sans-serif";
+        ctx.beginPath(); ctx.moveTo(cx - 110, divY); ctx.lineTo(cx + 110, divY); ctx.stroke();
+        ctx.globalAlpha = 1; ctx.fillStyle = okC; ctx.font = "700 13px system-ui, sans-serif";
         ctx.fillText("BUENAS", cx, divY - 4);
-        // Draw buenas tallies
-        if (s.p > 15) {
-          drawTallyBlock(ctx, cx, divY + 16, s.p - 15, txtC);
-        }
+        if (s.p > 15) drawTallies(cx, divY + 18, s.p - 15);
+      } else if (s.p > 0) {
+        drawTallies(cx, ty, s.p);
       } else {
-        drawTallyBlock(ctx, cx, tallyStartY, s.p, txtC);
+        ctx.fillStyle = txtF; ctx.globalAlpha = 0.15; ctx.font = "400 40px Georgia, serif";
+        ctx.textAlign = "center"; ctx.fillText("—", cx, tallyTop + tallyAreaH / 2 + 14);
+        ctx.globalAlpha = 1;
       }
     });
 
-    // Score separator
-    const scoreLineY = sepY + tallyH;
+    // Separator below tallies
     ctx.strokeStyle = brd; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, scoreLineY); ctx.lineTo(W, scoreLineY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, tallyBot); ctx.lineTo(W, tallyBot); ctx.stroke();
 
-    // Big score numbers (like the app)
+    // Big score numbers
     sc.forEach((s, i) => {
       ctx.textAlign = "center"; ctx.fillStyle = pri;
-      ctx.font = "400 80px Georgia, serif";
-      ctx.fillText(String(s.p), i * colW + colW / 2, scoreLineY + 70);
+      ctx.font = "400 72px Georgia, serif";
+      ctx.fillText(String(s.p), i * colW + colW / 2, tallyBot + 70);
     });
 
     // Date + watermark
@@ -668,9 +695,9 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     const ds = now.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const ts = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
     ctx.fillStyle = txtF; ctx.font = "500 22px system-ui, sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(`${ds}  ·  ${ts}`, W / 2, H - 50);
+    ctx.fillText(`${ds}  ·  ${ts}`, W / 2, H - 40);
     ctx.fillStyle = pri; ctx.globalAlpha = 0.2; ctx.font = "600 16px system-ui, sans-serif";
-    ctx.fillText("PUNTOS APP", W / 2, H - 20); ctx.globalAlpha = 1;
+    ctx.fillText("PUNTOS APP", W / 2, H - 14); ctx.globalAlpha = 1;
 
     try {
       const blob = await new Promise(r => c.toBlob(r, "image/png"));
@@ -697,30 +724,163 @@ function Truco({ onBack, onContinueChange, onChangeGame }) {
     return groups;
   };
 
-  const shareDuels = () => {
+  const shareDuels = async () => {
+    const pri = "#1A5C52", priL = "#3D8B7A", priD = "#0E3A33";
+    const brd = "#E8E8E6", bgS = "#F6F6F4";
+    const txtC = "#1A1A1A", txtF = "#B5B5B2", txtM = "#7A7A78";
+    const okC = "#2D7A50", errC = "#C23B22";
+    const W = 1080, pad = 60;
     const n0 = sc[0]?.name || "Eq 1";
     const n1 = sc[1]?.name || "Eq 2";
     const hasNames = teamSize === 3 && rawNames.some(n => n?.trim());
-    const lines = [`${n0} vs ${n1}: `];
     const groups = groupedDuels();
+
+    // Exact height computation
+    const titleH = 60, headerH = 50, rowH = 44, groupHeaderH = 40, subtotalH = 44, totalRowH = 56, footerH = 80;
+    let contentH = titleH + headerH;
+    groups.forEach(duels => {
+      if (!duels.length) return;
+      contentH += groupHeaderH + duels.length * rowH;
+      if (duels.length > 1) contentH += subtotalH;
+      contentH += 10;
+    });
+    contentH += totalRowH + footerH;
+    const H = contentH + pad * 2;
+
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+
+    ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = pri; ctx.fillRect(0, 0, W, 6);
+    let y = pad;
+
+    // Title
+    ctx.textAlign = "center"; ctx.fillStyle = pri;
+    ctx.font = "700 32px Georgia, serif";
+    ctx.fillText("Pica Pica \u00B7 Duelos", W / 2, y + 36);
+    y += titleH;
+
+    // Column layout
+    const labelW = 80, diffW = 80;
+    const innerW = W - pad * 2 - labelW - diffW;
+    const leftX = pad + labelW;
+    const t0X = leftX + innerW / 4;
+    const t1X = leftX + innerW * 3 / 4;
+    const dX = W - pad - diffW / 2;
+
+    // Header — auto-shrink names to fit
+    ctx.textAlign = "center";
+    let fs0 = 20;
+    ctx.font = `700 ${fs0}px system-ui, sans-serif`; ctx.fillStyle = pri;
+    while (ctx.measureText(n0).width > innerW / 2 - 20 && fs0 > 13) { fs0--; ctx.font = `700 ${fs0}px system-ui, sans-serif`; }
+    ctx.fillText(n0, t0X, y + 32);
+    let fs1 = 20;
+    ctx.font = `700 ${fs1}px system-ui, sans-serif`;
+    while (ctx.measureText(n1).width > innerW / 2 - 20 && fs1 > 13) { fs1--; ctx.font = `700 ${fs1}px system-ui, sans-serif`; }
+    ctx.fillText(n1, t1X, y + 32);
+    ctx.font = "600 14px system-ui, sans-serif"; ctx.fillStyle = txtF;
+    ctx.fillText("Dif", dX, y + 32);
+    y += headerH;
+
+    // Thick separator
+    ctx.strokeStyle = pri; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
+
+    // Duel groups
     groups.forEach((duels, dIdx) => {
       if (!duels.length) return;
-      let hdr = `D${dIdx + 1}`;
-      if (hasNames) hdr += ` (${picaPlayerName(0, dIdx)} v ${picaPlayerName(1, dIdx)})`;
-      lines.push(`${hdr}: `);
-      duels.forEach((d, c) => {
+      ctx.textAlign = "left"; ctx.fillStyle = pri;
+      ctx.font = "700 18px system-ui, sans-serif";
+      ctx.fillText(`D${dIdx + 1}`, pad + 8, y + 28);
+      if (hasNames) {
+        ctx.font = "400 14px system-ui, sans-serif"; ctx.fillStyle = txtM;
+        ctx.fillText(`${picaPlayerName(0, dIdx)} vs ${picaPlayerName(1, dIdx)}`, pad + 48, y + 28);
+      }
+      y += groupHeaderH;
+
+      duels.forEach((d, ci) => {
         const diff = d.t0 - d.t1;
-        lines.push(`  PP${c + 1}: ${d.t0} - ${d.t1}${diff !== 0 ? ` (${diff > 0 ? "+" : ""}${diff})` : ""}`);
+        const w0 = d.t0 > d.t1, w1 = d.t1 > d.t0;
+        if (ci % 2 === 0) { ctx.fillStyle = bgS; ctx.fillRect(pad, y, W - pad * 2, rowH); }
+        ctx.textAlign = "left"; ctx.fillStyle = txtF;
+        ctx.font = "500 14px system-ui, sans-serif";
+        ctx.fillText(`PP${ci + 1}`, pad + 12, y + rowH / 2 + 5);
+        ctx.textAlign = "center";
+        ctx.font = `${w0 ? 700 : 400} 22px Georgia, serif`; ctx.fillStyle = w0 ? pri : txtC;
+        ctx.fillText(String(d.t0), t0X, y + rowH / 2 + 7);
+        ctx.fillStyle = txtF; ctx.font = "400 16px system-ui, sans-serif";
+        ctx.fillText("-", leftX + innerW / 2, y + rowH / 2 + 5);
+        ctx.font = `${w1 ? 700 : 400} 22px Georgia, serif`; ctx.fillStyle = w1 ? pri : txtC;
+        ctx.fillText(String(d.t1), t1X, y + rowH / 2 + 7);
+        ctx.font = "600 16px system-ui, sans-serif";
+        ctx.fillStyle = diff > 0 ? okC : diff < 0 ? errC : txtF;
+        ctx.fillText(diff > 0 ? `+${diff}` : diff === 0 ? "=" : String(diff), dX, y + rowH / 2 + 5);
+        ctx.strokeStyle = brd; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pad, y + rowH); ctx.lineTo(W - pad, y + rowH); ctx.stroke();
+        y += rowH;
       });
-      const s0 = duels.reduce((s, d) => s + d.t0, 0);
-      const s1 = duels.reduce((s, d) => s + d.t1, 0);
-      const dd = s0 - s1;
-      lines.push(`  Total: ${s0} - ${s1}${dd !== 0 ? ` (${dd > 0 ? "+" : ""}${dd})` : ""}`);
+
+      if (duels.length > 1) {
+        const sub0 = duels.reduce((s, d) => s + d.t0, 0);
+        const sub1 = duels.reduce((s, d) => s + d.t1, 0);
+        const subDiff = sub0 - sub1;
+        ctx.textAlign = "center";
+        ctx.font = "600 18px system-ui, sans-serif";
+        ctx.fillStyle = sub0 > sub1 ? pri : txtC;
+        ctx.fillText(String(sub0), t0X, y + subtotalH / 2 + 6);
+        ctx.fillStyle = txtF; ctx.font = "400 14px system-ui, sans-serif";
+        ctx.fillText("-", leftX + innerW / 2, y + subtotalH / 2 + 4);
+        ctx.font = "600 18px system-ui, sans-serif";
+        ctx.fillStyle = sub1 > sub0 ? pri : txtC;
+        ctx.fillText(String(sub1), t1X, y + subtotalH / 2 + 6);
+        ctx.font = "700 14px system-ui, sans-serif";
+        ctx.fillStyle = subDiff > 0 ? okC : subDiff < 0 ? errC : txtF;
+        ctx.fillText(subDiff > 0 ? `+${subDiff}` : subDiff === 0 ? "=" : String(subDiff), dX, y + subtotalH / 2 + 4);
+        y += subtotalH;
+      }
+      y += 10;
     });
-    const totalT0 = picaAllDuels.reduce((s, d) => s + d.t0, 0);
-    const totalT1 = picaAllDuels.reduce((s, d) => s + d.t1, 0);
-    lines.push(`TOTAL: ${totalT0} - ${totalT1}`);
-    shareResult("Pica Pica · Duelos", lines, { accent: "#1A5C52", accentLight: "#3D8B7A" });
+
+    // Grand total
+    ctx.strokeStyle = pri; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
+    const tot0 = picaAllDuels.reduce((s, d) => s + d.t0, 0);
+    const tot1 = picaAllDuels.reduce((s, d) => s + d.t1, 0);
+    const totDiff = tot0 - tot1;
+    ctx.textAlign = "left"; ctx.fillStyle = txtM;
+    ctx.font = "700 16px system-ui, sans-serif";
+    ctx.fillText("Total", pad + 8, y + totalRowH / 2 + 5);
+    ctx.textAlign = "center";
+    ctx.font = "700 28px Georgia, serif";
+    ctx.fillStyle = tot0 > tot1 ? pri : txtC;
+    ctx.fillText(String(tot0), t0X, y + totalRowH / 2 + 10);
+    ctx.fillStyle = txtF; ctx.font = "400 16px system-ui, sans-serif";
+    ctx.fillText("-", leftX + innerW / 2, y + totalRowH / 2 + 5);
+    ctx.font = "700 28px Georgia, serif";
+    ctx.fillStyle = tot1 > tot0 ? pri : txtC;
+    ctx.fillText(String(tot1), t1X, y + totalRowH / 2 + 10);
+    ctx.font = "700 16px system-ui, sans-serif";
+    ctx.fillStyle = totDiff > 0 ? okC : totDiff < 0 ? errC : txtF;
+    ctx.fillText(totDiff > 0 ? `+${totDiff}` : totDiff === 0 ? "=" : String(totDiff), dX, y + totalRowH / 2 + 5);
+
+    // Date + watermark
+    const now = new Date();
+    const ds = now.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const ts = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    ctx.fillStyle = txtF; ctx.font = "500 22px system-ui, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(`${ds}  \u00B7  ${ts}`, W / 2, H - 40);
+    ctx.fillStyle = pri; ctx.globalAlpha = 0.2; ctx.font = "600 16px system-ui, sans-serif";
+    ctx.fillText("PUNTOS APP", W / 2, H - 14); ctx.globalAlpha = 1;
+
+    try {
+      const blob = await new Promise(r => c.toBlob(r, "image/png"));
+      const file = new File([blob], "picapica.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ title: "Pica Pica", files: [file] }); return; }
+    } catch (e) { if (e?.name === "AbortError") return; }
+    const text = `Pica Pica \u00B7 Duelos\n${n0} vs ${n1}\nTotal: ${tot0} - ${tot1}`;
+    try { if (navigator.share) { await navigator.share({ title: "Pica Pica", text }); return; } } catch (e) { if (e?.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(text); alert("Copiado"); } catch (e) { prompt("Copiá:", text); }
   };
 
   const restoreState = (s) => {
