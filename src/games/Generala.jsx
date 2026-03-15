@@ -561,7 +561,7 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
           const catHint = showHints && !allDone && ps[currentTurnIndex]?.scores[cat.k] === null;
           return <div key={cat.k} style={{ display: "grid", gridTemplateColumns: gridCols, gap: 4, marginBottom: 4, position: "relative" }}>
             {/* Category label with dice/badge icon */}
-            <div style={{ padding: "8px 6px", background: catHint ? `${t.pri}0A` : t.bgS, border: `1px solid ${catHint ? `${t.pri}25` : t.brd}`,
+            <div style={{ padding: "8px 6px", background: catHint ? `${t.pri}22` : t.bgS, border: catHint ? `2px solid ${t.pri}70` : `1px solid ${t.brd}`,
               borderRadius: ci === 0 ? "6px 0 0 0" : ci === GC.length - 1 ? "0 0 0 6px" : 0,
               display: "flex", alignItems: "center", gap: 5, transition: "all .2s" }}>
               {cat.n ? <DiceFace n={cat.n} size={22} color={t.pri} /> : <ComboBadge k={cat.k} color={t.pri} t={t} />}
