@@ -566,7 +566,7 @@ function Generala({ onBack, onContinueChange, onChangeGame }) {
               display: "flex", alignItems: "center", gap: 5, transition: "all .2s" }}>
               {cat.n ? <DiceFace n={cat.n} size={22} color={t.pri} /> : <ComboBadge k={cat.k} color={t.pri} t={t} />}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, color: t.pri, fontFamily: F.sans, fontSize: 13, lineHeight: 1.2 }}>{cat.l}</div>
+                <div style={{ fontWeight: 600, color: t.pri, fontFamily: F.sans, fontSize: 13, lineHeight: 1.2, whiteSpace: "nowrap" }}>{cat.l}</div>
                 <div style={{ fontSize: 10, color: t.txtF, fontFamily: F.sans }}>{cat.n ? `${L.upTo} ${cat.m}` : gV(cat).join("/")}</div>
               </div>
             </div>
